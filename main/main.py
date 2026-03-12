@@ -27,6 +27,7 @@ ACCOUNTS_FILE = DATA_DIR / "accounts.csv"
 
 TRIBES   = ["Romans", "Teutons", "Gauls", "Egyptians", "Huns", "Spartans", "Natars"]
 STATUSES = ["active", "archived"]
+SPEEDS   = ["1x", "2x", "3x", "5x", "10x"]
 
 TRIBE_ICON = {
     "Romans":    "🦅",
@@ -76,7 +77,7 @@ def villages_file(server: str, account: str) -> Path:
 
 # ─── Data layer ───────────────────────────────────────────────────────────────
 
-ACCOUNT_FIELDS = ["server", "account", "tribe", "status"]
+ACCOUNT_FIELDS = ["server", "account", "tribe", "status", "speed"]
 VILLAGE_FIELDS = ["village_name", "coord_x", "coord_y", "population"]
 
 def ensure_data_dir():
@@ -96,14 +97,14 @@ def _rewrite_accounts(accounts: list):
         w.writeheader()
         w.writerows(accounts)
 
-def save_new_account(server: str, account: str, tribe: str, status: str = "active"):
+def save_new_account(server: str, account: str, tribe: str, status: str = "active", speed: str = "1x"):
     ensure_data_dir()
     accounts = load_accounts()
     key = account_key(server, account)
     if any(account_key(a["server"], a["account"]) == key for a in accounts):
         return
     accounts.append({"server": server.upper(), "account": account,
-                     "tribe": tribe, "status": status})
+                     "tribe": tribe, "status": status, "speed": speed})
     _rewrite_accounts(accounts)
     # Create folder skeleton
     adir = account_dir(server, account)
@@ -261,12 +262,24 @@ class AddAccountDialog(tk.Toplevel):
                  bg=BG_DARK, fg=TEXT_SECONDARY).pack(anchor="w", pady=(6, 0))
         self.status_var = tk.StringVar(value="active")
         sf = tk.Frame(pad, bg=BG_DARK)
-        sf.pack(fill="x", pady=(2, 16))
+        sf.pack(fill="x", pady=(2, 10))
         for s in STATUSES:
             tk.Radiobutton(sf, text=s.capitalize(), variable=self.status_var, value=s,
                            bg=BG_DARK, fg=TEXT_SECONDARY, selectcolor=BG_MID,
                            activebackground=BG_DARK, activeforeground=ACCENT,
                            font=FONT_SMALL, cursor="hand2").pack(side="left", padx=(0, 16))
+
+        # Speed selector
+        tk.Label(pad, text="Server Speed", font=FONT_SMALL,
+                 bg=BG_DARK, fg=TEXT_SECONDARY).pack(anchor="w", pady=(6, 0))
+        self.speed_var = tk.StringVar(value="1x")
+        speed_frame = tk.Frame(pad, bg=BG_DARK)
+        speed_frame.pack(fill="x", pady=(2, 16))
+        for sp in SPEEDS:
+            tk.Radiobutton(speed_frame, text=sp, variable=self.speed_var, value=sp,
+                           bg=BG_DARK, fg=TEXT_SECONDARY, selectcolor=BG_MID,
+                           activebackground=BG_DARK, activeforeground=ACCENT,
+                           font=FONT_SMALL, cursor="hand2").pack(side="left", padx=(0, 12))
 
         btn_row = tk.Frame(pad, bg=BG_DARK)
         btn_row.pack(fill="x")
@@ -280,7 +293,7 @@ class AddAccountDialog(tk.Toplevel):
             messagebox.showwarning("Missing info",
                 "Please fill in both server and account name.", parent=self)
             return
-        self.result = (server, account, self.tribe_var.get(), self.status_var.get())
+        self.result = (server, account, self.tribe_var.get(), self.status_var.get(), self.speed_var.get())
         self.destroy()
 
 
@@ -413,9 +426,10 @@ class LoginScreen(tk.Frame):
         for a in self._accounts:
             icon = "🟢" if a.get("status") == "active" else "🔵"
             ticon = TRIBE_ICON.get(a.get("tribe", ""), "")
+            speed = a.get("speed", "1x")
             self.account_list.insert(
                 tk.END,
-                f"  {icon}  [{a['server']}]  {a['account']}   {ticon} {a.get('tribe','')}"
+                f"  {icon}  [{a['server']}]  {a['account']}   {ticon} {a.get('tribe','')}  ⚡{speed}"
             )
 
     def _selected(self):
@@ -475,6 +489,7 @@ class MainApp(tk.Frame):
         self.account_data = get_account(server, account) or {}
         self.tribe  = self.account_data.get("tribe", "")
         self.status = self.account_data.get("status", "active")
+        self.speed  = self.account_data.get("speed", "1x")
         self.is_archived = (self.status == "archived")
 
         self.pack(fill="both", expand=True)
@@ -505,6 +520,7 @@ class MainApp(tk.Frame):
             ("Server: ", self.server, ACCENT),
             ("  Account: ", self.account, TEXT_PRIMARY),
             (f"  {tribe_icon} ", self.tribe, TEXT_SECONDARY),
+            ("  ⚡", self.speed, ACCENT),
         ]:
             tk.Label(bar, text=label, font=FONT_SMALL, bg=BG_MID, fg=TEXT_MUTED).pack(side="left")
             tk.Label(bar, text=value, font=("Consolas", 10, "bold"),
@@ -622,7 +638,7 @@ class MainApp(tk.Frame):
         ticon = TRIBE_ICON.get(self.tribe, "")
         self._content_header(
             f"Welcome back, {self.account}",
-            f"{self.server}  ·  {ticon} {self.tribe}  ·  {self.status.upper()}"
+            f"{self.server}  ·  {ticon} {self.tribe}  ·  {self.status.upper()}  ·  ⚡{self.speed}"
         )
         self._placeholder_card(
             "Select a view from the left panel",
