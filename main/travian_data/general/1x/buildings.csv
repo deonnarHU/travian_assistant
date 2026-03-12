@@ -1,42 +1,42 @@
-tribe,name,level,cost_wood,cost_clay,cost_iron,cost_crop,build_time_1x,population_gained,culture_points,special_effect
-all,Woodcutter,1,40,100,50,60,0:03:20,2,0,+production per level
-all,Clay Pit,1,80,40,80,50,0:03:20,2,0,+production per level
-all,Iron Mine,1,100,80,30,60,0:03:20,2,0,+production per level
-all,Cropland,1,70,90,70,20,0:04:10,1,0,+production per level
-all,Main Building,1,70,40,60,20,0:06:40,2,2,Reduces build time per level; demolish at lvl10
-all,Warehouse,1,130,80,150,40,0:08:20,1,0,Stores wood/clay/iron; 800 cap at lvl1
-all,Granary,1,160,100,100,70,0:08:20,1,0,Stores crop; 800 cap at lvl1
-all,Rally Point,1,40,30,35,10,0:08:20,1,1,See incoming/outgoing troops; required for barracks
-all,Marketplace,1,100,80,120,70,0:10:50,2,4,1 merchant per level; enables trading
-all,Embassy,1,180,130,150,80,0:30:00,3,3,Join/found alliance; raise max alliance size
-all,Cranny,1,40,50,30,10,0:03:20,1,1,Hides 200 resources from raiders at lvl1
-all,Academy,1,220,160,90,40,0:30:00,4,3,Research new troops per level
-all,Barracks,1,210,140,260,120,0:30:00,4,4,Train infantry; speed boost per level
-all,Stable,1,260,140,220,100,0:50:00,5,5,Train cavalry; speed boost per level
-all,Workshop,1,460,510,600,320,1:30:00,3,3,Train siege weapons
-all,Smithy,1,180,240,150,80,0:30:00,4,2,Upgrade troop attack/defense per level
-all,Armoury,1,130,210,180,90,0:30:00,4,2,Upgrade troop defense per level
-all,Townhall,1,1250,1000,1250,400,6:00:00,4,10,Host celebrations for culture points
-all,Residence,1,580,460,350,180,2:00:00,4,4,Expand to 3 villages; trains settlers
-all,Palace,1,1200,800,1000,600,5:00:00,6,5,Capital + expand; trains senators/chiefs
-all,Tournament Square,1,1000,1000,1000,1000,4:00:00,2,2,Boosts troop travel speed beyond 30 fields
-all,Trade Office,1,300,500,350,200,1:30:00,2,2,Increases merchant carry capacity
-all,Hero's Mansion,1,700,670,700,240,3:00:00,4,4,Equip hero items; capture oases
-all,Sawmill,1,400,350,350,100,1:30:00,1,1,+5% wood production per level (max 5)
-all,Brickyard,1,440,480,320,120,1:30:00,1,1,+5% clay production per level (max 5)
-all,Iron Foundry,1,200,450,400,100,1:30:00,1,1,+5% iron production per level (max 5)
-all,Flour Mill,1,500,440,380,140,1:30:00,1,1,+5% crop production per level (max 5)
-all,Bakery,1,500,440,380,140,2:00:00,1,1,+5% crop production per level (max 5); needs Flour Mill 5
-all,Great Warehouse,1,650,400,750,200,1:00:00,2,0,Triple-capacity warehouse (capital only with artifact)
-all,Great Granary,1,800,500,500,350,1:00:00,2,0,Triple-capacity granary (capital only with artifact)
-all,Great Barracks,1,1300,840,1560,720,1:00:00,5,3,Train 3x infantry simultaneously at 3x cost
-all,Great Stable,1,1560,840,1320,600,1:00:00,5,3,Train 3x cavalry simultaneously at 3x cost
-all,Stonemason,1,155,130,125,70,0:30:00,2,2,Protects buildings from catapults (capital only)
-all,Treasury,1,2500,2000,2400,1200,8:00:00,4,10,Stores artifacts; 1 diet per 10 levels
-Romans,City Wall,1,70,90,170,70,0:30:00,2,2,Strongest wall; high defense bonus but fragile to rams
-Romans,Horse Drinking Trough,1,780,420,660,320,2:00:00,2,2,Reduces cavalry crop upkeep by 1 per 5 levels
-Teutons,Earth Wall,1,120,200,0,80,0:20:00,2,2,Hard to destroy; moderate defense bonus
-Teutons,Brewery,1,1460,2000,1120,680,6:00:00,3,3,Boosts troop attack from this village during parties
-Teutons,Trapper,1,100,100,100,80,0:30:00,2,2,Traps enemy troops per level (up to 1000 at max)
-Gauls,Palisade,1,160,100,80,60,0:20:00,2,2,Balanced defense; hard to destroy; moderate bonus
-Gauls,Menhir,1,65,65,65,65,0:05:00,1,1,Slows enemy scouts; Gaul-specific cranny bonus
+tribe,name,level,cost_wood,cost_clay,cost_iron,cost_crop,build_time_1x,population_gained,culture_points,special_effect,is_unique
+all,Woodcutter,1,40,100,50,60,0:03:20,2,0,+production per level,No
+all,Clay Pit,1,80,40,80,50,0:03:20,2,0,+production per level,No
+all,Iron Mine,1,100,80,30,60,0:03:20,2,0,+production per level,No
+all,Cropland,1,70,90,70,20,0:04:10,1,0,+production per level,No
+all,Main Building,1,70,40,60,20,0:06:40,2,2,Reduces build time per level; demolish at lvl10,Yes
+all,Warehouse,1,130,80,150,40,0:08:20,1,0,Stores wood/clay/iron; 800 cap at lvl1,No
+all,Granary,1,160,100,100,70,0:08:20,1,0,Stores crop; 800 cap at lvl1,No
+all,Rally Point,1,40,30,35,10,0:08:20,1,1,See incoming/outgoing troops; required for barracks,Yes
+all,Marketplace,1,100,80,120,70,0:10:50,2,4,1 merchant per level; enables trading,Yes
+all,Embassy,1,180,130,150,80,0:30:00,3,3,Join/found alliance; raise max alliance size,Yes
+all,Cranny,1,40,50,30,10,0:03:20,1,1,Hides 200 resources from raiders at lvl1,No
+all,Academy,1,220,160,90,40,0:30:00,4,3,Research new troops per level,Yes
+all,Barracks,1,210,140,260,120,0:30:00,4,4,Train infantry; speed boost per level,Yes
+all,Stable,1,260,140,220,100,0:50:00,5,5,Train cavalry; speed boost per level,Yes
+all,Workshop,1,460,510,600,320,1:30:00,3,3,Train siege weapons,Yes
+all,Smithy,1,180,240,150,80,0:30:00,4,2,Upgrade troop attack/defense per level,Yes
+all,Armoury,1,130,210,180,90,0:30:00,4,2,Upgrade troop defense per level,Yes
+all,Townhall,1,1250,1000,1250,400,6:00:00,4,10,Host celebrations for culture points,Yes
+all,Residence,1,580,460,350,180,2:00:00,4,4,Expand to 3 villages; trains settlers,Yes
+all,Palace,1,1200,800,1000,600,5:00:00,6,5,Capital + expand; trains senators/chiefs,Yes
+all,Tournament Square,1,1000,1000,1000,1000,4:00:00,2,2,Boosts troop travel speed beyond 30 fields,Yes
+all,Trade Office,1,300,500,350,200,1:30:00,2,2,Increases merchant carry capacity,Yes
+all,Hero's Mansion,1,700,670,700,240,3:00:00,4,4,Equip hero items; capture oases,Yes
+all,Sawmill,1,400,350,350,100,1:30:00,1,1,+5% wood production per level (max 5),Yes
+all,Brickyard,1,440,480,320,120,1:30:00,1,1,+5% clay production per level (max 5),Yes
+all,Iron Foundry,1,200,450,400,100,1:30:00,1,1,+5% iron production per level (max 5),Yes
+all,Flour Mill,1,500,440,380,140,1:30:00,1,1,+5% crop production per level (max 5),Yes
+all,Bakery,1,500,440,380,140,2:00:00,1,1,+5% crop production per level (max 5); needs Flour Mill 5,Yes
+all,Great Warehouse,1,650,400,750,200,1:00:00,2,0,Triple-capacity warehouse (capital only with artifact),Yes
+all,Great Granary,1,800,500,500,350,1:00:00,2,0,Triple-capacity granary (capital only with artifact),Yes
+all,Great Barracks,1,1300,840,1560,720,1:00:00,5,3,Train 3x infantry simultaneously at 3x cost,Yes
+all,Great Stable,1,1560,840,1320,600,1:00:00,5,3,Train 3x cavalry simultaneously at 3x cost,Yes
+all,Stonemason,1,155,130,125,70,0:30:00,2,2,Protects buildings from catapults (capital only),Yes
+all,Treasury,1,2500,2000,2400,1200,8:00:00,4,10,Stores artifacts; 1 diet per 10 levels,Yes
+Romans,City Wall,1,70,90,170,70,0:30:00,2,2,Strongest wall; high defense bonus but fragile to rams,Yes
+Romans,Horse Drinking Trough,1,780,420,660,320,2:00:00,2,2,Reduces cavalry crop upkeep by 1 per 5 levels,Yes
+Teutons,Earth Wall,1,120,200,0,80,0:20:00,2,2,Hard to destroy; moderate defense bonus,Yes
+Teutons,Brewery,1,1460,2000,1120,680,6:00:00,3,3,Boosts troop attack from this village during parties,Yes
+Teutons,Trapper,1,100,100,100,80,0:30:00,2,2,Traps enemy troops per level (up to 1000 at max),No
+Gauls,Palisade,1,160,100,80,60,0:20:00,2,2,Balanced defense; hard to destroy; moderate bonus,Yes
+Gauls,Menhir,1,65,65,65,65,0:05:00,1,1,Slows enemy scouts; Gaul-specific cranny bonus,Yes
