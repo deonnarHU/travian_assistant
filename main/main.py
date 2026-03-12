@@ -65,30 +65,34 @@ FONT_TINY    = ("Consolas", 8)
 # We track 22 inner village building slots (standard village center).
 # Special slots with fixed building type: Wall (slot 40), Rally Point (slot 39).
 
-# All buildable inner buildings (tribe=all + tribe-specific)
-ALL_BUILDINGS = [
+# Universal buildings available to every tribe
+_UNIVERSAL_BUILDINGS = [
     "Main Building", "Warehouse", "Granary", "Marketplace", "Embassy",
     "Barracks", "Stable", "Workshop", "Academy", "Smithy", "Armoury",
     "Cranny", "Townhall", "Residence", "Palace", "Tournament Square",
     "Trade Office", "Hero's Mansion", "Sawmill", "Brickyard",
     "Iron Foundry", "Flour Mill", "Bakery", "Great Warehouse", "Great Granary",
     "Great Barracks", "Great Stable", "Stonemason", "Treasury",
-    # Tribe-specific
-    "Horse Drinking Trough",   # Romans
-    "Brewery", "Trapper",       # Teutons
-    "Menhir",                   # Gauls
 ]
-ALL_BUILDINGS_SORTED = sorted(ALL_BUILDINGS)
 
-TRIBE_BUILDINGS = {
-    "Romans":    ALL_BUILDINGS_SORTED + [],
-    "Teutons":   ALL_BUILDINGS_SORTED + [],
-    "Gauls":     ALL_BUILDINGS_SORTED + [],
-    "Egyptians": ALL_BUILDINGS_SORTED + [],
-    "Huns":      ALL_BUILDINGS_SORTED + [],
-    "Spartans":  ALL_BUILDINGS_SORTED + [],
-    "Natars":    ALL_BUILDINGS_SORTED + [],
+# Tribe-exclusive buildings (not available to any other tribe)
+_TRIBE_EXCLUSIVE = {
+    "Romans":    ["Horse Drinking Trough"],
+    "Teutons":   ["Brewery", "Trapper"],
+    "Gauls":     ["Menhir"],
+    "Egyptians": [],
+    "Huns":      [],
+    "Spartans":  [],
+    "Natars":    [],
 }
+
+def buildings_for_tribe(tribe: str) -> list:
+    """Return sorted list of inner buildings available to the given tribe."""
+    return sorted(_UNIVERSAL_BUILDINGS + _TRIBE_EXCLUSIVE.get(tribe, []))
+
+# Keep ALL_BUILDINGS for legacy references (e.g. uniqueness checks)
+ALL_BUILDINGS = _UNIVERSAL_BUILDINGS + [b for bs in _TRIBE_EXCLUSIVE.values() for b in bs]
+ALL_BUILDINGS_SORTED = sorted(set(ALL_BUILDINGS))
 
 WALL_BY_TRIBE = {
     "Romans": "City Wall", "Teutons": "Earth Wall", "Gauls": "Palisade",
@@ -776,7 +780,7 @@ class VillageLayoutPlanner(tk.Frame):
     def _available_buildings(self, slot_id):
         used = self._used_unique(exclude_slot=slot_id)
         result = ["— Empty —"]
-        for b in sorted(ALL_BUILDINGS):
+        for b in buildings_for_tribe(self.tribe):
             if b in self._UNIQUE and b in used:
                 continue
             result.append(b)
@@ -947,7 +951,7 @@ class VillageBuildingsView(tk.Frame):
             return [locked_name]
         used = self._used_unique_cur(exclude_slot=slot_id)
         result = ["— Empty —"]
-        for b in sorted(ALL_BUILDINGS):
+        for b in buildings_for_tribe(self.tribe):
             if b in self._UNIQUE and b in used:
                 continue
             result.append(b)
