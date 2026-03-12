@@ -100,8 +100,7 @@ WALL_BY_TRIBE = {
     "Spartans": "Spartan Wall", "Natars": "Natar Wall",
 }
 
-MAX_BUILDING_LEVEL = 20   # most buildings
-SIEGE_MAX          = 10   # Workshop, Great Barracks, etc.
+MAX_BUILDING_LEVEL = 20   # default for most buildings
 
 # 22 inner village building slots
 # slot_id: (label, locked_building or None)
@@ -116,9 +115,29 @@ VILLAGE_SLOTS = {
     20: ("Wall",    "__WALL__"),          # tribe-specific wall, locked
 }
 
-BUILDING_LEVELS = [str(i) for i in range(0, 21)]   # 0 = empty / not built
+BUILDING_LEVELS = [str(i) for i in range(0, 21)]   # 0–20, default full range
 
-BUILDING_LEVELS = [str(i) for i in range(0, 21)]   # 0 = empty / not built
+# Max-level cache: building name -> highest level row present in buildings.csv
+_MAX_LEVEL_CACHE: dict = {}
+
+def building_max_level(name: str) -> int:
+    """Return the maximum buildable level for a building (read from CSV, cached)."""
+    global _MAX_LEVEL_CACHE
+    if not _MAX_LEVEL_CACHE:
+        csv_path = DATA_DIR / "general" / "1x" / "buildings.csv"
+        if csv_path.exists():
+            with open(csv_path, newline="") as f:
+                for row in csv.DictReader(f):
+                    try:
+                        n, lv = row["name"], int(row["level"])
+                        _MAX_LEVEL_CACHE[n] = max(_MAX_LEVEL_CACHE.get(n, 0), lv)
+                    except (ValueError, KeyError):
+                        pass
+    return _MAX_LEVEL_CACHE.get(name, MAX_BUILDING_LEVEL)
+
+def level_options(name: str) -> list:
+    """Return the '0'..'N' string list for a building's level combobox."""
+    return [str(i) for i in range(0, building_max_level(name) + 1)]
 
 # ─── Unique buildings (loaded from CSV) ───────────────────────────────────────
 # Buildings marked is_unique=Yes may appear only once in a village layout.
@@ -200,7 +219,7 @@ def save_template(server, account, template_name, layout: dict):
 
 ACCOUNT_FIELDS = ["server", "account", "tribe", "status", "speed"]
 VILLAGE_FIELDS = ["village_name", "coord_x", "coord_y",
-                  "res_wood", "res_clay", "res_iron", "res_crop"]
+                  "res_wood", "res_clay", "res_iron", "res_crop", "applied_template"]
 LAYOUT_FIELDS  = ["slot_id", "building", "level"]
 BUILDING_FIELDS_CSV = ["slot_id", "building", "level"]
 
@@ -917,7 +936,8 @@ class VillageLayoutPlanner(tk.Frame):
 
         self._building_vars = {}
         self._level_vars    = {}
-        self._combos        = {}   # slot_id -> Combobox widget (for rebuilding values)
+        self._combos        = {}   # slot_id -> building Combobox (for rebuilding values)
+        self._level_combos  = {}   # slot_id -> level Combobox (for updating range)
         self._UNIQUE        = load_unique_buildings()
 
         self._load_and_build()
@@ -945,7 +965,8 @@ class VillageLayoutPlanner(tk.Frame):
         return result
 
     def _on_building_change(self, slot_id, *_):
-        """Rebuild available options in all other free combos."""
+        """Rebuild available options in all other free combos, and update own level range."""
+        # 1. Update unique-enforcement options in all other building combos
         for sid, cb in self._combos.items():
             if sid == slot_id:
                 continue
@@ -954,6 +975,25 @@ class VillageLayoutPlanner(tk.Frame):
             cb["values"] = new_vals
             if cur_val not in new_vals:
                 self._building_vars[sid].set("— Empty —")
+
+        # 2. Update the level combo range for the slot whose building just changed
+        lv_cb = self._level_combos.get(slot_id)
+        if lv_cb is None:
+            return
+        new_building = self._building_vars[slot_id].get()
+        if new_building and new_building != "— Empty —":
+            opts = level_options(new_building)
+        else:
+            opts = BUILDING_LEVELS
+        lv_cb["values"] = opts
+        # Clamp current selection if it exceeds new max
+        try:
+            cur_lv = int(self._level_vars[slot_id].get())
+        except ValueError:
+            cur_lv = 0
+        max_lv = int(opts[-1])
+        if cur_lv > max_lv:
+            self._level_vars[slot_id].set(str(max_lv))
 
     # ── Build UI ──────────────────────────────────────────────────────────────
 
@@ -1047,9 +1087,13 @@ class VillageLayoutPlanner(tk.Frame):
 
             # Level
             state = "disabled" if self.is_archived else "readonly"
+            cur_building = self._building_vars[slot_id].get() if not is_locked else locked_name
+            opts = level_options(cur_building) if cur_building and cur_building != "— Empty —" else BUILDING_LEVELS
             lv_cb = styled_combo(row, self._level_vars[slot_id],
-                                 BUILDING_LEVELS, width=PLANNER_COLS[3][2], state=state)
+                                 opts, width=PLANNER_COLS[3][2], state=state)
             lv_cb.pack(side="left", padx=4, pady=3)
+            if not is_locked:
+                self._level_combos[slot_id] = lv_cb
 
     def _save(self):
         layout = {}
@@ -1112,6 +1156,9 @@ class VillageLayoutPlanner(tk.Frame):
             lv = str(data.get("level", 0))
             self._building_vars[slot_id].set(b)
             self._level_vars[slot_id].set(lv)
+        # Persist the applied template name in the village record
+        update_village(self.server, self.account, self.village_name,
+                       {"applied_template": dlg.result})
         self._save_status.config(text=f"✓ Loaded '{dlg.result}'", fg=ACCENT)
         fade_label(self._save_status, after_ms=3500)
 
@@ -1138,6 +1185,7 @@ class VillageBuildingsView(tk.Frame):
         self._cur_level_vars    = {}
         self._progress_bars     = {}
         self._cur_combos        = {}
+        self._cur_level_combos  = {}   # slot_id -> level Combobox
         self._planned_levels    = {}
         self._UNIQUE            = load_unique_buildings()
 
@@ -1166,6 +1214,7 @@ class VillageBuildingsView(tk.Frame):
         return result
 
     def _on_cur_building_change(self, slot_id, *_):
+        # 1. Update unique-enforcement options in all other building combos
         for sid, cb in self._cur_combos.items():
             if sid == slot_id: continue
             cur_val = self._cur_building_vars[sid].get()
@@ -1173,6 +1222,24 @@ class VillageBuildingsView(tk.Frame):
             cb["values"] = new_vals
             if cur_val not in new_vals:
                 self._cur_building_vars[sid].set("— Empty —")
+
+        # 2. Update level combo range for the changed slot
+        lv_cb = self._cur_level_combos.get(slot_id)
+        if lv_cb is None:
+            return
+        new_building = self._cur_building_vars[slot_id].get()
+        if new_building and new_building != "— Empty —":
+            opts = level_options(new_building)
+        else:
+            opts = BUILDING_LEVELS
+        lv_cb["values"] = opts
+        try:
+            cur_lv = int(self._cur_level_vars[slot_id].get())
+        except ValueError:
+            cur_lv = 0
+        max_lv = int(opts[-1])
+        if cur_lv > max_lv:
+            self._cur_level_vars[slot_id].set(str(max_lv))
 
     # ── Build UI ──────────────────────────────────────────────────────────────
 
@@ -1284,9 +1351,13 @@ class VillageBuildingsView(tk.Frame):
 
             # Current level
             state = "disabled" if self.is_archived else "readonly"
+            cur_bname = self._cur_building_vars[slot_id].get() if not locked_name else locked_name
+            opts = level_options(cur_bname) if cur_bname and cur_bname != "— Empty —" else BUILDING_LEVELS
             lv_cb = styled_combo(row, self._cur_level_vars[slot_id],
-                                 BUILDING_LEVELS, width=BUILDINGS_COLS[4][2], state=state)
+                                 opts, width=BUILDINGS_COLS[4][2], state=state)
             lv_cb.pack(side="left", padx=4, pady=3)
+            if not locked_name:
+                self._cur_level_combos[slot_id] = lv_cb
 
             # Progress bar
             bar = make_progress_bar(row, c_level, p_level, row_bg, bar_w=90, bar_h=14)
@@ -1432,6 +1503,7 @@ class MainApp(tk.Frame):
         self.account = account
         self.on_logout = on_logout
         self.selected_village = None
+        self._row_to_village  = {}   # listbox row -> village list index
 
         self.account_data = get_account(server, account) or {}
         self.tribe  = self.account_data.get("tribe", "")
@@ -1683,10 +1755,11 @@ class MainApp(tk.Frame):
     def _refresh_village_list(self):
         self.villages = load_villages(self.server, self.account)
         self.village_listbox.delete(0, tk.END)
+        self._row_to_village = {}   # listbox row index -> village list index
         if not self.villages:
             self.village_listbox.insert(tk.END, "  (no villages yet)")
             return
-        for v in self.villages:
+        for v_idx, v in enumerate(self.villages):
             x = v.get("coord_x", "?"); y = v.get("coord_y", "?")
             w = v.get("res_wood", "?"); c = v.get("res_clay", "?")
             i = v.get("res_iron", "?"); cr = v.get("res_crop", "?")
@@ -1703,17 +1776,24 @@ class MainApp(tk.Frame):
                 prog_col = progress_color(int(prog * 100), 100)
 
             base_idx = self.village_listbox.size()
+            tmpl = v.get("applied_template", "").strip()
+            rows = 3 + (1 if tmpl else 0)
+            for r in range(rows):
+                self._row_to_village[base_idx + r] = v_idx
+
             self.village_listbox.insert(tk.END, f"  🏘 {v['village_name']}")
             self.village_listbox.insert(tk.END, f"      ({x} | {y})  👤{pop_str}  ★{cp_str}")
             self.village_listbox.insert(tk.END, f"      🌲{w} 🧱{c} ⚙{i} 🌾{cr}  ▶{prog_str}")
-            # Colour the resource+progress line by progress status
             self.village_listbox.itemconfig(base_idx + 2, fg=prog_col)
+            if tmpl:
+                self.village_listbox.insert(tk.END, f"      📋 {tmpl}")
+                self.village_listbox.itemconfig(base_idx + 3, fg=TEXT_MUTED)
 
     def _on_village_select(self, _event):
         sel = self.village_listbox.curselection()
         if not sel or not self.villages: return
-        village_idx = sel[0] // 3   # 3 lines per village
-        if village_idx >= len(self.villages): return
+        village_idx = self._row_to_village.get(sel[0])
+        if village_idx is None or village_idx >= len(self.villages): return
         village = self.villages[village_idx]
         name = village["village_name"]
         self.selected_village = name
