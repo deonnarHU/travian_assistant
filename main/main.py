@@ -938,11 +938,15 @@ class VillageBuildingsView(tk.Frame):
         tk.Label(hdr, text=f"{self.village_name}  —  Buildings",
                  font=FONT_TITLE, bg=BG_DARK, fg=TEXT_PRIMARY).pack(side="left", anchor="w")
         if not self.is_archived:
+            # Status label pre-reserved with fixed width so buttons never shift
             self._save_status = tk.Label(hdr, text="", font=FONT_SMALL,
-                                         bg=BG_DARK, fg=COL_FULL_GREEN)
-            self._save_status.pack(side="right", padx=(0, 12))
+                                         bg=BG_DARK, fg=COL_FULL_GREEN,
+                                         width=22, anchor="w")
+            self._save_status.pack(side="left", padx=(16, 0))
+            styled_button(hdr, "🔀  Sort to Plan", command=self._sort_to_plan,
+                          small=True).pack(side="left", padx=(0, 6))
             styled_button(hdr, "💾  Save Current State", command=self._save,
-                          accent=True).pack(side="right")
+                          accent=True).pack(side="left")
 
         make_separator(self).pack(fill="x", padx=24, pady=10)
 
@@ -1050,6 +1054,73 @@ class VillageBuildingsView(tk.Frame):
                 return _trace
             self._cur_level_vars[slot_id].trace_add(
                 "write", _make_bar_tracer(slot_id, p_level))
+
+    def _sort_to_plan(self):
+        """
+        Reshuffle current building assignments in free slots so they align with
+        the planned layout order.
+
+        Logic:
+        - Collect all (building, level) pairs from the current free slots.
+        - Walk the planned layout in slot order; if a plan slot has a building,
+          try to match it from the pool. Assign matched pair to that slot.
+        - Any unmatched current entries fill remaining free slots in original order.
+        - Locked slots (Rally Point, Wall) are never touched.
+        """
+        wall_building = WALL_BY_TRIBE.get(self.tribe, "Wall")
+
+        # Gather current free-slot contents as a list of (building, level) pairs
+        pool = []
+        free_slots = []
+        for slot_id in range(1, 21):
+            _, locked = VILLAGE_SLOTS[slot_id]
+            if locked:
+                continue
+            free_slots.append(slot_id)
+            raw = self._cur_building_vars[slot_id].get()
+            b = "" if raw == "— Empty —" else raw
+            try:    lv = int(self._cur_level_vars[slot_id].get())
+            except: lv = 0
+            if b:
+                pool.append([b, lv])
+
+        # Build ordered assignment: match pool entries to plan slots in order
+        assignment = []   # list of (building, level) to fill free_slots in order
+        used = [False] * len(pool)
+
+        for slot_id in free_slots:
+            planned = self.layout.get(slot_id, {})
+            p_b = planned.get("building", "")
+            if not p_b:
+                assignment.append(("", 0))
+                continue
+            # Find first unused pool entry with matching building name
+            matched = False
+            for i, (b, lv) in enumerate(pool):
+                if not used[i] and b == p_b:
+                    assignment.append((b, lv))
+                    used[i] = True
+                    matched = True
+                    break
+            if not matched:
+                assignment.append(("", 0))
+
+        # Append any unmatched pool entries (buildings not in plan)
+        leftover = [(b, lv) for i, (b, lv) in enumerate(pool) if not used[i]]
+        slot_idx = 0
+        leftover_idx = 0
+        for i, (b, lv) in enumerate(assignment):
+            if b == "" and leftover_idx < len(leftover):
+                assignment[i] = leftover[leftover_idx]
+                leftover_idx += 1
+
+        # Apply to UI vars
+        for slot_id, (b, lv) in zip(free_slots, assignment):
+            self._cur_building_vars[slot_id].set(b if b else "— Empty —")
+            self._cur_level_vars[slot_id].set(str(lv))
+
+        self._save_status.config(text="↕ Sorted to plan", fg=ACCENT)
+        fade_label(self._save_status, after_ms=3000)
 
     def _save(self):
         buildings = {}
