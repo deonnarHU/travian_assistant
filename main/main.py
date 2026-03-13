@@ -175,6 +175,234 @@ def layout_file(server, account, village_name):
 def buildings_file(server, account, village_name):
     return Path(str(_vkey(server, account, village_name)) + "_buildings.csv")
 
+def troops_file(server, account, village_name):
+    return Path(str(_vkey(server, account, village_name)) + "_troops.csv")
+
+# Troop table row keys (stored as column headers in the CSV)
+TROOP_ROWS = ["trained", "native_in", "native_out", "foreign_in"]
+
+def load_troop_data(server, account, village_name, troop_names: list) -> dict:
+    """
+    Return dict: row_key -> {troop_name: int}.
+    Initialises to 0 for any missing entry.
+    """
+    fpath = troops_file(server, account, village_name)
+    data = {row: {t: 0 for t in troop_names} for row in TROOP_ROWS}
+    if fpath.exists():
+        with open(fpath, newline="") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                rk = row.get("row", "")
+                if rk in data:
+                    for t in troop_names:
+                        try:
+                            data[rk][t] = int(row.get(t, 0) or 0)
+                        except ValueError:
+                            data[rk][t] = 0
+    return data
+
+def save_troop_data(server, account, village_name, troop_names: list, data: dict):
+    fpath = troops_file(server, account, village_name)
+    with open(fpath, "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=["row"] + troop_names)
+        w.writeheader()
+        for rk in TROOP_ROWS:
+            row_dict = {"row": rk}
+            row_dict.update({t: data[rk].get(t, 0) for t in troop_names})
+            w.writerow(row_dict)
+
+def get_tribe_troops(tribe: str) -> list:
+    """Return ordered list of troop names for the given tribe from troops.csv."""
+    csv_path = DATA_DIR / "general" / "1x" / "troops.csv"
+    troops = []
+    if csv_path.exists():
+        with open(csv_path, newline="") as f:
+            for row in csv.DictReader(f):
+                if row["tribe"].strip().lower() == tribe.strip().lower():
+                    troops.append(row["name"].strip())
+    return troops
+
+# ─── Resource layout per-village ─────────────────────────────────────────────
+# 18 resource field slots per village.  Each slot has a type and level.
+RESOURCE_TYPES  = ["Woodcutter", "Clay Pit", "Iron Mine", "Cropland"]
+RESOURCE_FIELDS = ["slot", "type", "level"]
+
+def resource_file(server, account, village_name) -> Path:
+    return Path(str(_vkey(server, account, village_name)) + "_resources.csv")
+
+def load_resource_layout(server, account, village_name) -> list:
+    """Return list of 18 dicts {slot, type, level}. Defaults to empty Cropland lvl0."""
+    fpath = resource_file(server, account, village_name)
+    default = [{"slot": str(i), "type": "Cropland", "level": "0"} for i in range(1, 19)]
+    if not fpath.exists():
+        return default
+    result = []
+    with open(fpath, newline="") as f:
+        for row in csv.DictReader(f):
+            result.append({"slot": row["slot"], "type": row.get("type","Cropland"),
+                           "level": row.get("level","0")})
+    # Fill missing slots
+    present = {r["slot"] for r in result}
+    for i in range(1, 19):
+        if str(i) not in present:
+            result.append({"slot": str(i), "type": "Cropland", "level": "0"})
+    result.sort(key=lambda r: int(r["slot"]))
+    return result[:18]
+
+def save_resource_layout(server, account, village_name, slots: list):
+    fpath = resource_file(server, account, village_name)
+    with open(fpath, "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=RESOURCE_FIELDS)
+        w.writeheader()
+        for slot in slots:
+            w.writerow(slot)
+    # Update the village-level counts (res_wood/clay/iron/crop)
+    counts = {"Woodcutter": 0, "Clay Pit": 0, "Iron Mine": 0, "Cropland": 0}
+    for s in slots:
+        t = s.get("type", "Cropland")
+        if t in counts:
+            counts[t] += 1
+    update_village(server, account, village_name, {
+        "res_wood":  counts["Woodcutter"],
+        "res_clay":  counts["Clay Pit"],
+        "res_iron":  counts["Iron Mine"],
+        "res_crop":  counts["Cropland"],
+    })
+
+# ─── Troop overview paste parser ──────────────────────────────────────────────
+import re as _re
+import unicodedata as _ud
+
+def _clean(s: str) -> str:
+    """Strip unicode directional marks, non-breaking spaces, and strip."""
+    return _re.sub(r'[\u200e\u200f\u202a-\u202e\u2066-\u2069\xad\xa0]', '', s).strip()
+
+def parse_troop_overview(raw_text: str, tribe: str) -> dict:
+    """
+    Parse a raw paste from the Travian troop overview page.
+
+    Returns:
+        {
+          "troop_columns": [str, ...],          # column names found in the table
+          "village_troops": {
+              "Village Name": {"Legionnaire": 123, ...},
+              ...
+          },
+          "village_coords": {
+              "Village Name": (x, y),           # from sidebar groups section
+          },
+          "village_groups": {
+              "Village Name": "Group Name",      # from sidebar
+          },
+        }
+    Returns None if no valid table could be found.
+    """
+    lines = [_clean(ln) for ln in raw_text.splitlines()]
+    lines = [ln for ln in lines if ln]  # drop blanks
+
+    tribe_troops = get_tribe_troops(tribe)
+    # Also accept "Hero" as a valid column (it appears in the paste but isn't in troops.csv)
+    valid_cols = set(tribe_troops) | {"Hero"}
+
+    # ── Find the table header row ──────────────────────────────────────────
+    # It starts with "Village" and is followed by troop names
+    header_idx = None
+    troop_columns = []
+    for i, ln in enumerate(lines):
+        parts = [_clean(p) for p in ln.split("\t")]
+        if not parts:
+            continue
+        if _clean(parts[0]).lower() == "village" and len(parts) > 1:
+            cols = [_clean(p) for p in parts[1:]]
+            # Accept if at least one column matches a known troop
+            if any(c in valid_cols for c in cols):
+                header_idx = i
+                troop_columns = [c for c in cols if c in valid_cols]
+                break
+
+    if header_idx is None:
+        return None
+
+    # ── Read data rows until "Sum" or end ─────────────────────────────────
+    village_troops = {}
+    for ln in lines[header_idx + 1:]:
+        parts = [_clean(p) for p in ln.split("\t")]
+        if not parts:
+            continue
+        name_raw = _clean(parts[0])
+        if name_raw.lower() == "sum":
+            break
+        # Village names are like "19. Vigántpetend" — strip the prefix number
+        vname = _re.sub(r'^\d+\.\s*', '', name_raw).strip()
+        if not vname:
+            continue
+        counts = {}
+        for j, col in enumerate(troop_columns):
+            raw_val = parts[j + 1] if j + 1 < len(parts) else "0"
+            # Remove thousand separators (commas or non-breaking thin spaces)
+            raw_val = _re.sub(r'[,\u202f\u00a0]', '', raw_val)
+            try:
+                counts[col] = int(raw_val)
+            except ValueError:
+                counts[col] = 0
+        village_troops[vname] = counts
+
+    # ── Parse sidebar: group names and coordinates ─────────────────────────
+    # Pattern in the sidebar:
+    #   Group Name
+    #   19. Vigántpetend
+    #   ‭(‭89‬|‭53‬)‬        ← coords line
+    village_coords = {}
+    village_groups = {}
+
+    coord_pat = _re.compile(r'\(?\s*(-?\d+)\s*\|\s*(-?\d+)\s*\)?$')
+    i = 0
+    current_group = ""
+    # Known non-group lines to skip
+    skip_prefixes = {"village", "sum", "deonnar", "task overview", "homepage",
+                     "© ", "info box", "link list", "privacy", "switch",
+                     "hero", "server time", "alliance"}
+
+    while i < len(lines):
+        ln = lines[i]
+        # Coord line right after a village name line
+        coord_m = coord_pat.search(ln)
+        if coord_m and i > 0:
+            # The village name should be the previous line (may have a number prefix)
+            prev = _clean(lines[i - 1])
+            vname_candidate = _re.sub(r'^\d+\.\s*', '', prev).strip()
+            if vname_candidate in village_troops:
+                village_coords[vname_candidate] = (coord_m.group(1), coord_m.group(2))
+                if current_group:
+                    village_groups[vname_candidate] = current_group
+            i += 1
+            continue
+
+        # Check if this looks like a group header (no number prefix, no coords,
+        # not a village name, doesn't match skip patterns)
+        lln = ln.lower()
+        is_skip = any(lln.startswith(s) for s in skip_prefixes)
+        has_number_prefix = bool(_re.match(r'^\d+\.', ln))
+        is_known_village = _re.sub(r'^\d+\.\s*', '', ln).strip() in village_troops
+
+        if (not is_skip and not has_number_prefix and not is_known_village
+                and len(ln) > 2 and len(ln) < 60
+                and not coord_pat.search(ln)):
+            # Candidate group header — accept if next non-blank is a village line
+            for j in range(i + 1, min(i + 4, len(lines))):
+                nxt = lines[j]
+                if _re.match(r'^\d+\.', nxt) or _re.sub(r'^\d+\.\s*','',nxt).strip() in village_troops:
+                    current_group = ln
+                    break
+        i += 1
+
+    return {
+        "troop_columns":   troop_columns,
+        "village_troops":  village_troops,
+        "village_coords":  village_coords,
+        "village_groups":  village_groups,
+    }
+
 def templates_dir(server, account) -> Path:
     return account_dir(server, account) / "Village_Templates"
 
@@ -278,9 +506,19 @@ def load_villages(server, account):
         return list(csv.DictReader(f))
 
 def _rewrite_villages(server, account, villages):
-    with open(villages_file(server, account), "w", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=VILLAGE_FIELDS)
-        w.writeheader(); w.writerows(villages)
+    vfile = villages_file(server, account)
+    vfile.parent.mkdir(parents=True, exist_ok=True)
+    with open(vfile, "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=VILLAGE_FIELDS, extrasaction="ignore")
+        w.writeheader()
+        for v in villages:
+            # Ensure all required fields are present with sensible defaults
+            row = {k: v.get(k, "") for k in VILLAGE_FIELDS}
+            if not row["res_wood"]: row["res_wood"] = 4
+            if not row["res_clay"]: row["res_clay"] = 4
+            if not row["res_iron"]: row["res_iron"] = 4
+            if not row["res_crop"]: row["res_crop"] = 6
+            w.writerow(row)
 
 def add_village(server, account, name, coord_x="", coord_y="",
                 res_wood=4, res_clay=4, res_iron=4, res_crop=6, group=""):
@@ -1524,6 +1762,493 @@ class VillageBuildingsView(tk.Frame):
         if self._on_save:
             self._on_save()
 
+# ─── Village Troops View ──────────────────────────────────────────────────────
+
+# Row metadata: key, label, bg colour, text colour
+_TROOP_ROW_META = [
+    ("trained",    "Trained here",        BG_PANEL, TEXT_PRIMARY),
+    ("native_in",  "Native in village",   BG_PANEL, TEXT_PRIMARY),
+    ("native_out", "Native sent out",     BG_PANEL, TEXT_MUTED),      # calculated
+    ("foreign_in", "Foreign in village",  BG_PANEL, TEXT_PRIMARY),
+]
+_NET_ROW_BG  = "#1a2540"   # distinct highlight for net row
+_NET_ROW_FG  = ACCENT
+
+class VillageTroopsView(tk.Frame):
+    """
+    Horizontal troop table for a village.
+
+    Columns  : one per tribe troop (name header + editable count cells)
+    Rows     : Trained here / Native in village / Native sent out (calculated) /
+               Foreign in village / [NET] Net troops in village
+    Constraint: native_in + native_out = trained  →  native_out = trained - native_in
+    Net row  : native_in + foreign_in  (troops physically present), highlighted.
+    All editable cells persist to *_troops.csv.
+    """
+
+    def __init__(self, master, server, account, village_name, tribe, is_archived=False):
+        super().__init__(master, bg=BG_DARK)
+        self.server       = server
+        self.account      = account
+        self.village_name = village_name
+        self.tribe        = tribe
+        self.is_archived  = is_archived
+
+        self._troop_names     = get_tribe_troops(tribe)
+        self._vars            = {}   # (row_key, troop_name) -> StringVar
+        self._net_labels      = {}   # troop_name -> Label (net row)
+        self._native_out_lbls = {}   # troop_name -> Label (calculated native_out)
+
+        self._load_and_build()
+
+    # ── Build ─────────────────────────────────────────────────────────────────
+
+    def _load_and_build(self):
+        data = load_troop_data(self.server, self.account,
+                               self.village_name, self._troop_names)
+
+        # Header
+        hdr = tk.Frame(self, bg=BG_DARK)
+        hdr.pack(fill="x", padx=24, pady=(24, 0))
+        tk.Label(hdr, text=f"{self.village_name}  —  Troops",
+                 font=FONT_TITLE, bg=BG_DARK, fg=TEXT_PRIMARY).pack(side="left")
+        if not self.is_archived:
+            self._status_lbl = tk.Label(hdr, text="", font=FONT_SMALL,
+                                        bg=BG_DARK, fg=COL_FULL_GREEN, width=22, anchor="w")
+            self._status_lbl.pack(side="left", padx=(16, 0))
+            styled_button(hdr, "💾  Save", command=self._save,
+                          accent=True).pack(side="left")
+
+        make_separator(self).pack(fill="x", padx=24, pady=10)
+
+        if not self._troop_names:
+            tk.Label(self, text=f"No troop data found for tribe '{self.tribe}'.",
+                     font=FONT_BODY, bg=BG_DARK, fg=TEXT_MUTED).pack(padx=24, anchor="w")
+            return
+
+        # Scrollable horizontal table
+        outer, inner = scrollable_frame(self)
+        outer.pack(fill="both", expand=True, padx=24, pady=(0, 16))
+
+        COL_W   = 11   # character width for troop columns
+        LABEL_W = 20   # character width for row-label column
+
+        def cell_bg(row_idx):
+            return BG_MID if row_idx % 2 == 0 else BG_PANEL
+
+        # ── Column header row (troop names) ──
+        hdr_row = tk.Frame(inner, bg=BG_MID)
+        hdr_row.pack(fill="x", pady=(0, 1))
+        tk.Label(hdr_row, text="", width=LABEL_W, bg=BG_MID).pack(side="left")
+        tk.Frame(hdr_row, bg=BORDER, width=1).pack(side="left", fill="y")
+        for tname in self._troop_names:
+            # Abbreviate long names to fit column
+            display = tname if len(tname) <= COL_W else tname[:COL_W - 1] + "…"
+            lbl = tk.Label(hdr_row, text=display, width=COL_W,
+                           font=("Consolas", 8, "bold"),
+                           bg=BG_MID, fg=ACCENT, anchor="center")
+            lbl.pack(side="left")
+            lbl.bind("<Enter>", lambda e, full=tname, w=lbl:
+                     w.config(text=full if len(full) <= COL_W+4 else full))
+            lbl.bind("<Leave>", lambda e, disp=display, w=lbl: w.config(text=disp))
+            tk.Frame(hdr_row, bg=BORDER, width=1).pack(side="left", fill="y")
+        make_separator(inner).pack(fill="x")
+
+        # ── Data rows ──
+        state = "disabled" if self.is_archived else "normal"
+        for row_idx, (rk, rlabel, _, _) in enumerate(_TROOP_ROW_META):
+            bg = cell_bg(row_idx)
+            row_frame = tk.Frame(inner, bg=bg)
+            row_frame.pack(fill="x", pady=1)
+
+            # Row label
+            tk.Label(row_frame, text=rlabel, width=LABEL_W,
+                     font=FONT_SMALL, bg=bg, fg=TEXT_SECONDARY,
+                     anchor="w", padx=6).pack(side="left")
+            tk.Frame(row_frame, bg=BORDER, width=1).pack(side="left", fill="y")
+
+            for tname in self._troop_names:
+                if rk == "native_out":
+                    # Calculated field — display-only label, no StringVar needed here
+                    lbl = tk.Label(row_frame, text="0", width=COL_W,
+                                   font=FONT_SMALL, bg=bg, fg=TEXT_MUTED,
+                                   anchor="center")
+                    lbl.pack(side="left", padx=1, pady=2)
+                    self._native_out_lbls[tname] = lbl
+                else:
+                    var = tk.StringVar(value=str(data[rk].get(tname, 0)))
+                    self._vars[(rk, tname)] = var
+                    sb = tk.Spinbox(
+                        row_frame, textvariable=var,
+                        from_=0, to=999999, increment=1, width=COL_W,
+                        bg=BG_MID, fg=TEXT_PRIMARY, buttonbackground=BG_HOVER,
+                        insertbackground=ACCENT, relief="flat", bd=0,
+                        highlightthickness=0, disabledbackground=bg,
+                        disabledforeground=TEXT_MUTED, state=state,
+                        font=FONT_SMALL, justify="center")
+                    sb.pack(side="left", padx=1, pady=2)
+                    # Both trained and native_in changes update native_out and net
+                    var.trace_add("write", lambda *_, t=tname: self._update_derived(t))
+                tk.Frame(row_frame, bg=BORDER, width=1).pack(side="left", fill="y")
+
+        make_separator(inner).pack(fill="x", pady=(4, 0))
+
+        # ── Net row ──
+        net_frame = tk.Frame(inner, bg=_NET_ROW_BG)
+        net_frame.pack(fill="x", pady=(1, 0))
+        tk.Label(net_frame, text="Net troops in village", width=LABEL_W,
+                 font=("Consolas", 9, "bold"),
+                 bg=_NET_ROW_BG, fg=_NET_ROW_FG,
+                 anchor="w", padx=6).pack(side="left")
+        tk.Frame(net_frame, bg=BORDER, width=1).pack(side="left", fill="y")
+        for tname in self._troop_names:
+            net_lbl = tk.Label(net_frame, text="0", width=COL_W,
+                               font=("Consolas", 9, "bold"),
+                               bg=_NET_ROW_BG, fg=_NET_ROW_FG, anchor="center")
+            net_lbl.pack(side="left")
+            self._net_labels[tname] = net_lbl
+            tk.Frame(net_frame, bg=BORDER, width=1).pack(side="left", fill="y")
+
+        # Initial calculation pass
+        for tname in self._troop_names:
+            self._update_derived(tname)
+
+    # ── Derived calculations ──────────────────────────────────────────────────
+
+    def _get_int(self, rk, tname) -> int:
+        try:
+            return max(0, int(self._vars[(rk, tname)].get() or 0))
+        except (ValueError, KeyError):
+            return 0
+
+    def _update_derived(self, tname: str):
+        """
+        native_out = trained - native_in   (clamped to 0)
+        net        = native_in + foreign_in
+        """
+        trained    = self._get_int("trained",   tname)
+        native_in  = self._get_int("native_in", tname)
+        foreign_in = self._get_int("foreign_in", tname)
+
+        native_out = max(0, trained - native_in)
+        net        = native_in + foreign_in
+
+        out_lbl = self._native_out_lbls.get(tname)
+        if out_lbl:
+            out_lbl.config(text=str(native_out))
+
+        net_lbl = self._net_labels.get(tname)
+        if net_lbl:
+            net_lbl.config(
+                text=str(net),
+                fg=COL_FULL_GREEN if net > 0 else _NET_ROW_FG)
+
+    # ── Save ─────────────────────────────────────────────────────────────────
+
+    def _save(self):
+        data = {rk: {} for rk in TROOP_ROWS}
+        for (rk, tname), var in self._vars.items():
+            try:
+                data[rk][tname] = max(0, int(var.get() or 0))
+            except ValueError:
+                data[rk][tname] = 0
+        # Derive native_out before saving so CSV stays consistent
+        for tname in self._troop_names:
+            trained   = data["trained"].get(tname, 0)
+            native_in = data["native_in"].get(tname, 0)
+            data["native_out"][tname] = max(0, trained - native_in)
+        save_troop_data(self.server, self.account,
+                        self.village_name, self._troop_names, data)
+        self._status_lbl.config(text="✓ Troops saved", fg=COL_FULL_GREEN)
+        fade_label(self._status_lbl, after_ms=3500)
+
+
+# ─── Village Resource Layout View ─────────────────────────────────────────────
+
+_RES_ICONS = {"Woodcutter": "🌲", "Clay Pit": "🧱", "Iron Mine": "⚙", "Cropland": "🌾"}
+_RES_LEVEL_MAX = {"Woodcutter": 10, "Clay Pit": 10, "Iron Mine": 10, "Cropland": 10}
+
+class VillageResourceLayoutView(tk.Frame):
+    """18 resource field slots, each with a type and level selector."""
+
+    def __init__(self, master, server, account, village_name, is_archived=False,
+                 on_save=None):
+        super().__init__(master, bg=BG_DARK)
+        self.server       = server
+        self.account      = account
+        self.village_name = village_name
+        self.is_archived  = is_archived
+        self._on_save     = on_save
+        self._type_vars   = {}   # slot_str -> StringVar
+        self._level_vars  = {}   # slot_str -> StringVar
+        self._load_and_build()
+
+    def _load_and_build(self):
+        slots = load_resource_layout(self.server, self.account, self.village_name)
+
+        hdr = tk.Frame(self, bg=BG_DARK)
+        hdr.pack(fill="x", padx=24, pady=(24, 0))
+        tk.Label(hdr, text=f"{self.village_name}  —  Resource Layout",
+                 font=FONT_TITLE, bg=BG_DARK, fg=TEXT_PRIMARY).pack(side="left")
+        if not self.is_archived:
+            self._status = tk.Label(hdr, text="", font=FONT_SMALL,
+                                    bg=BG_DARK, fg=COL_FULL_GREEN, width=22, anchor="w")
+            self._status.pack(side="left", padx=(16, 0))
+            styled_button(hdr, "💾  Save", command=self._save,
+                          accent=True).pack(side="left")
+
+        make_separator(self).pack(fill="x", padx=24, pady=10)
+        tk.Label(self, text="Set the type and level for each of the 18 resource fields.",
+                 font=FONT_SMALL, bg=BG_DARK, fg=TEXT_MUTED).pack(anchor="w", padx=24, pady=(0, 10))
+
+        outer, inner = scrollable_frame(self)
+        outer.pack(fill="both", expand=True, padx=24, pady=(0, 16))
+
+        # Column headers
+        col_hdr = tk.Frame(inner, bg=BG_PANEL)
+        col_hdr.pack(fill="x", pady=(0, 2))
+        for text, w in [("Slot", 5), ("Type", 16), ("Level", 8)]:
+            tk.Label(col_hdr, text=text, font=("Consolas", 8, "bold"),
+                     bg=BG_PANEL, fg=TEXT_MUTED, width=w, anchor="w").pack(side="left", padx=4)
+        make_separator(inner, bg=BORDER).pack(fill="x", pady=(0, 4))
+
+        state = "disabled" if self.is_archived else "readonly"
+        level_opts = [str(i) for i in range(0, 11)]
+
+        for i, slot in enumerate(slots):
+            skey = slot["slot"]
+            row_bg = BG_MID if i % 2 == 0 else BG_PANEL
+            row = tk.Frame(inner, bg=row_bg)
+            row.pack(fill="x", pady=1)
+
+            tk.Label(row, text=skey, width=5, bg=row_bg,
+                     fg=TEXT_MUTED, font=FONT_SMALL, anchor="w").pack(side="left", padx=4)
+
+            t_var = tk.StringVar(value=slot.get("type", "Cropland"))
+            self._type_vars[skey] = t_var
+            styled_combo(row, t_var, RESOURCE_TYPES, width=16,
+                         state=state).pack(side="left", padx=4, pady=2)
+
+            l_var = tk.StringVar(value=str(slot.get("level", "0")))
+            self._level_vars[skey] = l_var
+            styled_combo(row, l_var, level_opts, width=8,
+                         state=state).pack(side="left", padx=4, pady=2)
+
+            # Icon preview that updates with type
+            icon_lbl = tk.Label(row, text=_RES_ICONS.get(slot.get("type","Cropland"), ""),
+                                font=FONT_BODY, bg=row_bg, fg=TEXT_PRIMARY)
+            icon_lbl.pack(side="left", padx=4)
+            t_var.trace_add("write", lambda *_, v=t_var, lbl=icon_lbl, bg=row_bg:
+                            lbl.config(text=_RES_ICONS.get(v.get(), ""), bg=bg))
+
+    def _save(self):
+        slots = []
+        for i in range(1, 19):
+            skey = str(i)
+            slots.append({
+                "slot":  skey,
+                "type":  self._type_vars[skey].get(),
+                "level": self._level_vars[skey].get(),
+            })
+        save_resource_layout(self.server, self.account, self.village_name, slots)
+        self._status.config(text="✓ Resource layout saved", fg=COL_FULL_GREEN)
+        fade_label(self._status, after_ms=3500)
+        if self._on_save:
+            self._on_save()
+
+
+# ─── Troop Overview Import Dialog ─────────────────────────────────────────────
+
+class TroopOverviewImportDialog(tk.Toplevel):
+    """
+    Paste the raw text from the Travian 'Troops → Training' overview page.
+    Parses the troop table + village sidebar, adds missing villages, and
+    fills each village's 'trained here' troop counts.
+    """
+    def __init__(self, master, server, account, tribe, on_complete=None):
+        super().__init__(master)
+        self.server      = server
+        self.account     = account
+        self.tribe       = tribe
+        self._on_complete = on_complete
+        self.title("Import Troop Overview")
+        self.configure(bg=BG_DARK)
+        self.geometry("780x620")
+        self.grab_set()
+        self._parsed = None
+        self._build()
+
+    def _build(self):
+        pad = tk.Frame(self, bg=BG_DARK)
+        pad.pack(fill="both", expand=True, padx=20, pady=16)
+
+        tk.Label(pad, text="Import Troop Overview", font=FONT_HEADING,
+                 bg=BG_DARK, fg=TEXT_PRIMARY).pack(anchor="w", pady=(0, 4))
+        tk.Label(pad,
+                 text="Paste the full page text from Travian's Troops → Training overview.\n"
+                      "Villages will be added automatically. Troop counts fill 'Trained here'.",
+                 font=FONT_SMALL, bg=BG_DARK, fg=TEXT_MUTED,
+                 justify="left").pack(anchor="w", pady=(0, 10))
+
+        # Text area
+        txt_frame = tk.Frame(pad, bg=BORDER)
+        txt_frame.pack(fill="both", expand=True)
+        self._txt = tk.Text(txt_frame, bg=BG_MID, fg=TEXT_PRIMARY,
+                            insertbackground=ACCENT, font=("Consolas", 9),
+                            relief="flat", bd=6, wrap="none",
+                            selectbackground=BG_HOVER)
+        sb_y = tk.Scrollbar(txt_frame, command=self._txt.yview,
+                             bg=BG_MID, troughcolor=BG_DARK, relief="flat", bd=0, width=8)
+        sb_x = tk.Scrollbar(txt_frame, orient="horizontal",
+                             command=self._txt.xview,
+                             bg=BG_MID, troughcolor=BG_DARK, relief="flat", bd=0, width=8)
+        self._txt.config(yscrollcommand=sb_y.set, xscrollcommand=sb_x.set)
+        sb_y.pack(side="right", fill="y")
+        sb_x.pack(side="bottom", fill="x")
+        self._txt.pack(fill="both", expand=True)
+
+        # Preview area (shown after parse)
+        self._preview_frame = tk.Frame(pad, bg=BG_DARK)
+        self._preview_frame.pack(fill="x", pady=(8, 0))
+
+        # Buttons
+        btn_row = tk.Frame(pad, bg=BG_DARK)
+        btn_row.pack(fill="x", pady=(10, 0))
+        styled_button(btn_row, "🔍  Parse", command=self._parse,
+                      accent=True).pack(side="left")
+        styled_button(btn_row, "✅  Import", command=self._import,
+                      small=True).pack(side="left", padx=8)
+        self._status_lbl = tk.Label(btn_row, text="", font=FONT_SMALL,
+                                    bg=BG_DARK, fg=COL_FULL_GREEN)
+        self._status_lbl.pack(side="left", padx=8)
+        styled_button(btn_row, "Close", command=self.destroy,
+                      small=True).pack(side="right")
+
+    def _parse(self):
+        raw = self._txt.get("1.0", "end")
+        result = parse_troop_overview(raw, self.tribe)
+
+        for w in self._preview_frame.winfo_children():
+            w.destroy()
+
+        if result is None:
+            tk.Label(self._preview_frame,
+                     text="❌  Could not find a valid troop table. Make sure you pasted the full page.",
+                     font=FONT_SMALL, bg=BG_DARK, fg=COL_RED).pack(anchor="w")
+            self._parsed = None
+            return
+
+        self._parsed = result
+        vt = result["village_troops"]
+        coords = result["village_coords"]
+        groups = result["village_groups"]
+
+        existing = {v["village_name"] for v in load_villages(self.server, self.account)}
+        new_villages = [vn for vn in vt if vn not in existing]
+
+        # Summary
+        tk.Label(self._preview_frame,
+                 text=f"✔  Found {len(vt)} villages · {len(result['troop_columns'])} troop types · "
+                      f"{len(new_villages)} new villages to add · "
+                      f"{len(coords)} coordinates found",
+                 font=FONT_SMALL, bg=BG_DARK, fg=COL_FULL_GREEN).pack(anchor="w")
+
+        if new_villages:
+            tk.Label(self._preview_frame,
+                     text="New villages: " + ", ".join(new_villages),
+                     font=FONT_SMALL, bg=BG_DARK, fg=ACCENT,
+                     wraplength=700, justify="left").pack(anchor="w", pady=(2, 0))
+
+        if groups:
+            group_summary = ", ".join(f"{vn}→{g}" for vn, g in list(groups.items())[:6])
+            if len(groups) > 6:
+                group_summary += f" … (+{len(groups)-6} more)"
+            tk.Label(self._preview_frame,
+                     text="Groups: " + group_summary,
+                     font=FONT_SMALL, bg=BG_DARK, fg=TEXT_SECONDARY,
+                     wraplength=700, justify="left").pack(anchor="w", pady=(2, 0))
+
+    def _import(self):
+        if self._parsed is None:
+            self._parse()
+        if self._parsed is None:
+            return
+
+        vt     = self._parsed["village_troops"]
+        coords = self._parsed["village_coords"]
+        groups = self._parsed["village_groups"]
+        cols   = self._parsed["troop_columns"]
+
+        # Debug: show what we're about to import
+        self._status_lbl.config(
+            text=f"⏳ Importing {len(vt)} villages...", fg=TEXT_SECONDARY)
+        self.update_idletasks()
+
+        # Load once, work in memory, write once at the end
+        # Ensure account directory exists before writing any files
+        account_dir(self.server, self.account).mkdir(parents=True, exist_ok=True)
+        snapshots_dir(self.server, self.account).mkdir(exist_ok=True)
+
+        existing_villages = load_villages(self.server, self.account)
+        existing_map      = {v["village_name"]: v for v in existing_villages}
+
+        added = 0
+        tribe_troops = get_tribe_troops(self.tribe)
+        errors = []
+
+        for vname, troop_counts in vt.items():
+            try:
+                cx, cy = coords.get(vname, ("", ""))
+                grp    = groups.get(vname, "")
+
+                if vname not in existing_map:
+                    new_v = {"village_name": vname,
+                             "coord_x": cx, "coord_y": cy,
+                             "res_wood": 4, "res_clay": 4,
+                             "res_iron": 4, "res_crop": 6,
+                             "applied_template": "", "group": grp}
+                    existing_map[vname] = new_v
+                    existing_villages.append(new_v)
+                    added += 1
+                else:
+                    v = existing_map[vname]
+                    if not v.get("coord_x") and cx:  v["coord_x"] = cx
+                    if not v.get("coord_y") and cy:  v["coord_y"] = cy
+                    if not v.get("group")   and grp: v["group"]   = grp
+
+                troop_data = load_troop_data(self.server, self.account, vname, tribe_troops)
+                for t in tribe_troops:
+                    for col in cols:
+                        if col.lower() == t.lower():
+                            troop_data["trained"][t] = troop_counts.get(col, 0)
+                            break
+                for t in tribe_troops:
+                    troop_data["native_out"][t] = max(
+                        0, troop_data["trained"].get(t, 0) - troop_data["native_in"].get(t, 0))
+                save_troop_data(self.server, self.account, vname, tribe_troops, troop_data)
+
+            except Exception as e:
+                errors.append(f"{vname}: {e}")
+
+        # Single bulk write of all village records
+        _rewrite_villages(self.server, self.account, existing_villages)
+
+        if errors:
+            # Write to a log file so the user can inspect
+            log_path = account_dir(self.server, self.account) / "import_errors.txt"
+            with open(log_path, "w") as lf:
+                lf.write("\n".join(errors))
+            msg = (f"⚠  {len(existing_villages)} villages written ({added} new), "
+                   f"{len(errors)} errors — see import_errors.txt")
+            self._status_lbl.config(text=msg, fg=COL_ORANGE)
+        else:
+            msg = f"✅  Imported {len(vt)} villages ({added} new). Troop data updated."
+            self._status_lbl.config(text=msg, fg=COL_FULL_GREEN)
+
+        if self._on_complete:
+            self._on_complete()
+
+
 # ─── Main Application Window ──────────────────────────────────────────────────
 
 class MainApp(tk.Frame):
@@ -1613,9 +2338,13 @@ class MainApp(tk.Frame):
 
         snap_btn = styled_button(pad, "📸 Take Snapshot", command=self._take_snapshot,
                                  small=True, accent=not self.is_archived)
-        snap_btn.pack(fill="x", padx=8, pady=(0, 8))
+        snap_btn.pack(fill="x", padx=8, pady=(0, 4))
+        imp_btn = styled_button(pad, "📥 Import Overview", command=self._open_troops_import,
+                                small=True, accent=not self.is_archived)
+        imp_btn.pack(fill="x", padx=8, pady=(0, 8))
         if self.is_archived:
             snap_btn.config(state="disabled", fg=TEXT_MUTED, bg=BG_HOVER)
+            imp_btn.config(state="disabled", fg=TEXT_MUTED, bg=BG_HOVER)
 
     def _show_village_submenu(self, village_name):
         for w in self.village_nav_frame.winfo_children():
@@ -1627,13 +2356,19 @@ class MainApp(tk.Frame):
         section_label(self.village_nav_frame, "Village Menu").pack(fill="x", padx=12, pady=(6, 4))
         vn = village_name
         for label, cmd in [
-            ("🗺   Layout Planner",  lambda: self._show_village_layout(vn)),
-            ("🏗   Buildings",       lambda: self._show_village_buildings(vn)),
-            ("🔄  Trade Routes",     lambda: self._show_trade_routes(vn)),
-            ("📋  Set Trade Route",  lambda: self._show_set_trade_route(vn)),
-            ("🪖  Troops Sent Out",  lambda: self._show_troops_sent_out(vn)),
+            ("🗺   Layout Planner",    lambda: self._show_village_layout(vn)),
+            ("🏗   Buildings",         lambda: self._show_village_buildings(vn)),
+            ("🌾  Resource Layout",    lambda: self._show_resource_layout(vn)),
+            ("🔄  Trade Routes",       lambda: self._show_trade_routes(vn)),
+            ("📋  Set Trade Route",    lambda: self._show_set_trade_route(vn)),
+            ("🪖  Troops",             lambda: self._show_troops(vn)),
         ]:
             nav_button(self.village_nav_frame, label, command=cmd).pack(fill="x")
+
+        make_separator(self.village_nav_frame).pack(fill="x", padx=8, pady=4)
+        styled_button(self.village_nav_frame, "← Account overview",
+                      command=self._rebuild_account_nav,
+                      small=True).pack(fill="x", padx=8, pady=(0, 4))
 
     # ── Center ───────────────────────────────────────────────────────────────
 
@@ -1731,11 +2466,27 @@ class MainApp(tk.Frame):
         self._placeholder_card("Set Trade Route",
             "Destination village by X/Y coordinates, resource type, amount, and interval.")
 
-    def _show_troops_sent_out(self, village):
+    def _show_troops(self, village):
         self._clear_center()
-        self._content_header(f"{village}  —  Troops Sent Out", "Outgoing troop movements")
-        self._placeholder_card("Troops Sent Out",
-            "Outgoing raids, attacks, reinforcements, and settlers.")
+        view = VillageTroopsView(
+            self.center, self.server, self.account,
+            village, self.tribe, self.is_archived)
+        view.pack(fill="both", expand=True)
+
+    def _show_resource_layout(self, village):
+        self._clear_center()
+        view = VillageResourceLayoutView(
+            self.center, self.server, self.account,
+            village, self.is_archived,
+            on_save=lambda: self._refresh_village_list())
+        view.pack(fill="both", expand=True)
+
+    def _open_troops_import(self):
+        if self.is_archived:
+            return
+        TroopOverviewImportDialog(
+            self, self.server, self.account, self.tribe,
+            on_complete=self._refresh_village_list)
 
     # ── Snapshot ──────────────────────────────────────────────────────────────
 

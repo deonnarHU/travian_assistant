@@ -1,4 +1,19 @@
-village_name,coord_x,coord_y,res_wood,res_clay,res_iron,res_crop,applied_template,group,sort_order
-kjhkjh,76,67,4,4,4,6,Base Village,Feeders,1
-Sajtos,76,67,4,4,4,6,Hammer,Anvils,1
-Kolbász,76,67,4,4,4,6,Base Village,Feeders,2
+village_name,coord_x,coord_y,res_wood,res_clay,res_iron,res_crop,applied_template,group
+Vigántpetend,89,53,4,4,4,6,,WW Feed
+Balatoncsicsó,78,50,4,4,4,6,,WW Feed
+Taliándörögd,67,50,4,4,4,6,,WW Feed
+Szentbékkálla,56,49,4,4,4,6,,WW Feed
+Sülysáp,101,56,4,4,4,6,,Anvils
+Tápiószecso,,,4,4,4,6,,
+Alsóbélatelep,97,51,4,4,4,6,,Anvils
+Alsómocsolád,95,50,4,4,4,6,,Anvils
+Vácrátót,98,50,4,4,4,6,,Anvils
+Felsoszölnök,,,4,4,4,6,,
+Nagykálló,88,49,4,4,4,6,,Anvils
+Kehidakustány,97,49,4,4,4,6,,Anvils
+Solymár,98,51,4,4,4,6,,Feeders
+Bátonyterenye,100,50,4,4,4,6,,Feeders
+Balmazújváros,97,52,4,4,4,6,,Feeders
+Kiskunmajsa,100,52,4,4,4,6,,Feeders
+Nagykanizsa,101,54,4,4,4,6,,Feeders
+Veresegyház,88,44,4,4,4,6,,Feeders
