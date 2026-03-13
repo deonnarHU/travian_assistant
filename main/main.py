@@ -219,7 +219,8 @@ def save_template(server, account, template_name, layout: dict):
 
 ACCOUNT_FIELDS = ["server", "account", "tribe", "status", "speed"]
 VILLAGE_FIELDS = ["village_name", "coord_x", "coord_y",
-                  "res_wood", "res_clay", "res_iron", "res_crop", "applied_template"]
+                  "res_wood", "res_clay", "res_iron", "res_crop",
+                  "applied_template", "group"]
 LAYOUT_FIELDS  = ["slot_id", "building", "level"]
 BUILDING_FIELDS_CSV = ["slot_id", "building", "level"]
 
@@ -282,11 +283,12 @@ def _rewrite_villages(server, account, villages):
         w.writeheader(); w.writerows(villages)
 
 def add_village(server, account, name, coord_x="", coord_y="",
-                res_wood=4, res_clay=4, res_iron=4, res_crop=6):
+                res_wood=4, res_clay=4, res_iron=4, res_crop=6, group=""):
     villages = load_villages(server, account)
     villages.append({"village_name": name, "coord_x": coord_x, "coord_y": coord_y,
                      "res_wood": res_wood, "res_clay": res_clay,
-                     "res_iron": res_iron, "res_crop": res_crop})
+                     "res_iron": res_iron, "res_crop": res_crop,
+                     "applied_template": "", "group": group})
     _rewrite_villages(server, account, villages)
 
 def update_village(server, account, name, updates: dict):
@@ -638,6 +640,34 @@ class AddAccountDialog(tk.Toplevel):
 
 
 # ─── Add Village Dialog ───────────────────────────────────────────────────────
+
+class _NameDialog(tk.Toplevel):
+    """Generic single-text-field dialog. Returns result or None."""
+    def __init__(self, master, title: str, prompt: str, default: str = ""):
+        super().__init__(master)
+        self.result = None
+        self.title(title)
+        self.configure(bg=BG_DARK)
+        self.resizable(False, False)
+        self.grab_set()
+        pad = tk.Frame(self, bg=BG_DARK)
+        pad.pack(padx=24, pady=20)
+        tk.Label(pad, text=prompt, font=FONT_SMALL,
+                 bg=BG_DARK, fg=TEXT_SECONDARY).pack(anchor="w")
+        self._var = tk.StringVar(value=default)
+        styled_entry(pad, self._var, width=28).pack(fill="x", pady=(4, 14), ipady=4)
+        br = tk.Frame(pad, bg=BG_DARK); br.pack(fill="x")
+        styled_button(br, "OK", command=self._submit, accent=True).pack(side="left")
+        styled_button(br, "Cancel", command=self.destroy, small=True).pack(side="left", padx=8)
+        self.bind("<Return>", lambda _: self._submit())
+        self.wait_window()
+
+    def _submit(self):
+        v = self._var.get().strip()
+        if v:
+            self.result = v
+        self.destroy()
+
 
 class AddVillageDialog(tk.Toplevel):
     def __init__(self, master):
@@ -1503,7 +1533,6 @@ class MainApp(tk.Frame):
         self.account = account
         self.on_logout = on_logout
         self.selected_village = None
-        self._row_to_village  = {}   # listbox row -> village list index
 
         self.account_data = get_account(server, account) or {}
         self.tribe  = self.account_data.get("tribe", "")
@@ -1717,88 +1746,311 @@ class MainApp(tk.Frame):
         else:
             messagebox.showwarning("Snapshot Failed", "No village data found.", parent=self)
 
-    # ── Right panel: village list ─────────────────────────────────────────────
+    # ── Right panel: village list (drag-and-drop + groups) ───────────────────
 
     def _build_right_panel(self, parent):
         right = tk.Frame(parent, bg=BG_PANEL, width=220)
         right.grid(row=0, column=2, sticky="nsew")
         right.pack_propagate(False)
 
+        # Header bar
         hdr = tk.Frame(right, bg=BG_MID)
         hdr.pack(fill="x")
         tk.Label(hdr, text="VILLAGES", font=("Consolas", 9, "bold"),
                  bg=BG_MID, fg=TEXT_MUTED).pack(side="left", padx=12, pady=8)
         if not self.is_archived:
-            styled_button(hdr, "+", command=self._add_village_dialog,
-                          small=True, accent=True).pack(side="right", padx=8, pady=6)
+            styled_button(hdr, "＋", command=self._add_village_dialog,
+                          small=True, accent=True).pack(side="right", padx=4, pady=6)
+            styled_button(hdr, "⊞", command=self._add_group_dialog,
+                          small=True).pack(side="right", padx=0, pady=6)
         make_separator(right).pack(fill="x")
 
-        vlist_frame = tk.Frame(right, bg=BG_PANEL)
-        vlist_frame.pack(fill="both", expand=True)
-        scroll = tk.Scrollbar(vlist_frame, bg=BG_MID, troughcolor=BG_DARK,
-                               relief="flat", bd=0, width=8)
-        scroll.pack(side="right", fill="y")
-        self.village_listbox = tk.Listbox(
-            vlist_frame, bg=BG_PANEL, fg=TEXT_PRIMARY, font=FONT_BODY,
-            selectbackground=VILLAGE_SEL, selectforeground=ACCENT,
-            relief="flat", bd=0, highlightthickness=0,
-            yscrollcommand=scroll.set, activestyle="none", cursor="hand2")
-        self.village_listbox.pack(fill="both", expand=True)
-        scroll.config(command=self.village_listbox.yview)
-        self.village_listbox.bind("<<ListboxSelect>>", self._on_village_select)
+        # Scrollable canvas for village cards
+        container = tk.Frame(right, bg=BG_PANEL)
+        container.pack(fill="both", expand=True)
+        self._vscroll = tk.Scrollbar(container, bg=BG_MID, troughcolor=BG_DARK,
+                                     relief="flat", bd=0, width=8)
+        self._vscroll.pack(side="right", fill="y")
+        self._vcanvas = tk.Canvas(container, bg=BG_PANEL, bd=0,
+                                  highlightthickness=0,
+                                  yscrollcommand=self._vscroll.set)
+        self._vcanvas.pack(side="left", fill="both", expand=True)
+        self._vscroll.config(command=self._vcanvas.yview)
+
+        self._vcanvas.bind("<MouseWheel>",
+            lambda e: self._vcanvas.yview_scroll(int(-1*(e.delta/120)), "units"))
+        self._vcanvas.bind("<Button-4>",
+            lambda e: self._vcanvas.yview_scroll(-1, "units"))
+        self._vcanvas.bind("<Button-5>",
+            lambda e: self._vcanvas.yview_scroll(1, "units"))
+
+        # Inner frame that holds all group+village frames
+        self._vinner = tk.Frame(self._vcanvas, bg=BG_PANEL)
+        self._vcanvas_window = self._vcanvas.create_window(
+            (0, 0), window=self._vinner, anchor="nw")
+        self._vinner.bind("<Configure>", self._on_vinner_configure)
+        self._vcanvas.bind("<Configure>", self._on_vcanvas_configure)
+
         self._refresh_village_list()
 
         make_separator(right).pack(fill="x")
         styled_button(right, "↺ Refresh", command=self._refresh_village_list,
                       small=True).pack(fill="x", padx=8, pady=6)
 
+    def _on_vinner_configure(self, _event):
+        self._vcanvas.configure(scrollregion=self._vcanvas.bbox("all"))
+
+    def _on_vcanvas_configure(self, event):
+        self._vcanvas.itemconfig(self._vcanvas_window, width=event.width)
+
+    # ── Groups data helpers ───────────────────────────────────────────────────
+
+    def _all_groups(self) -> list:
+        """Sorted list of unique group names present in villages ('' = ungrouped)."""
+        groups = []
+        for v in self.villages:
+            g = v.get("group", "").strip()
+            if g and g not in groups:
+                groups.append(g)
+        return groups
+
+    def _villages_in_group(self, group_name: str) -> list:
+        """Villages belonging to a group, sorted alphabetically."""
+        members = [v for v in self.villages
+                   if v.get("group", "").strip() == group_name]
+        members.sort(key=lambda v: v["village_name"].lower())
+        return members
+
+    def _save_groups(self):
+        """Persist group assignments back to CSV."""
+        _rewrite_villages(self.server, self.account, self.villages)
+
+    # ── Build the scrollable village list ─────────────────────────────────────
+
     def _refresh_village_list(self):
         self.villages = load_villages(self.server, self.account)
-        self.village_listbox.delete(0, tk.END)
-        self._row_to_village = {}   # listbox row index -> village list index
+
+        # Destroy old card frames
+        for w in self._vinner.winfo_children():
+            w.destroy()
+        self._village_cards = {}   # village_name -> card Frame
+
         if not self.villages:
-            self.village_listbox.insert(tk.END, "  (no villages yet)")
+            tk.Label(self._vinner, text="  (no villages yet)",
+                     bg=BG_PANEL, fg=TEXT_MUTED, font=FONT_SMALL).pack(
+                         anchor="w", padx=8, pady=8)
             return
-        for v_idx, v in enumerate(self.villages):
-            x = v.get("coord_x", "?"); y = v.get("coord_y", "?")
-            w = v.get("res_wood", "?"); c = v.get("res_clay", "?")
-            i = v.get("res_iron", "?"); cr = v.get("res_crop", "?")
-            pop  = calculate_population(self.server, self.account, v["village_name"])
-            cp   = calculate_culture_points(self.server, self.account, v["village_name"])
-            prog = calculate_layout_progress(self.server, self.account, v["village_name"])
-            pop_str  = str(pop) if pop > 0 else "—"
-            cp_str   = str(cp)  if cp  > 0 else "—"
-            if prog is None:
-                prog_str = "no layout"
-                prog_col = TEXT_MUTED
-            else:
-                prog_str = f"{int(prog*100)}%"
-                prog_col = progress_color(int(prog * 100), 100)
 
-            base_idx = self.village_listbox.size()
-            tmpl = v.get("applied_template", "").strip()
-            rows = 3 + (1 if tmpl else 0)
-            for r in range(rows):
-                self._row_to_village[base_idx + r] = v_idx
+        groups = self._all_groups()
+        ungrouped = self._villages_in_group("")
 
-            self.village_listbox.insert(tk.END, f"  🏘 {v['village_name']}")
-            self.village_listbox.insert(tk.END, f"      ({x} | {y})  👤{pop_str}  ★{cp_str}")
-            self.village_listbox.insert(tk.END, f"      🌲{w} 🧱{c} ⚙{i} 🌾{cr}  ▶{prog_str}")
-            self.village_listbox.itemconfig(base_idx + 2, fg=prog_col)
-            if tmpl:
-                self.village_listbox.insert(tk.END, f"      📋 {tmpl}")
-                self.village_listbox.itemconfig(base_idx + 3, fg=TEXT_MUTED)
+        # Render ungrouped villages first (no header)
+        for v in ungrouped:
+            self._build_village_card(self._vinner, v)
 
-    def _on_village_select(self, _event):
-        sel = self.village_listbox.curselection()
-        if not sel or not self.villages: return
-        village_idx = self._row_to_village.get(sel[0])
-        if village_idx is None or village_idx >= len(self.villages): return
-        village = self.villages[village_idx]
-        name = village["village_name"]
-        self.selected_village = name
-        self._show_village_submenu(name)
-        self._show_village_layout(name)
+        # Render each named group with a collapsible header
+        for g in groups:
+            self._build_group_section(self._vinner, g)
+
+    def _build_group_section(self, parent, group_name: str):
+        """Build a collapsible group block."""
+        collapsed_key = f"_grp_collapsed_{group_name}"
+        is_collapsed  = getattr(self, collapsed_key, False)
+
+        # Group header row
+        ghdr = tk.Frame(parent, bg=BG_MID, cursor="hand2")
+        ghdr.pack(fill="x", pady=(6, 0))
+
+        arrow = "▶" if is_collapsed else "▼"
+        arrow_lbl = tk.Label(ghdr, text=arrow, font=FONT_SMALL,
+                             bg=BG_MID, fg=ACCENT)
+        arrow_lbl.pack(side="left", padx=(6, 2), pady=4)
+        tk.Label(ghdr, text=group_name, font=("Consolas", 9, "bold"),
+                 bg=BG_MID, fg=ACCENT).pack(side="left", pady=4)
+
+        # Right-click: rename / delete group
+        ctx_menu = tk.Menu(self, tearoff=0, bg=BG_PANEL, fg=TEXT_PRIMARY,
+                           activebackground=BG_HOVER, activeforeground=ACCENT)
+        ctx_menu.add_command(label="Rename group…",
+                             command=lambda g=group_name: self._rename_group(g))
+        ctx_menu.add_command(label="Delete group (ungroup villages)",
+                             command=lambda g=group_name: self._delete_group(g))
+        ghdr.bind("<Button-3>", lambda e, m=ctx_menu: m.tk_popup(e.x_root, e.y_root))
+        arrow_lbl.bind("<Button-3>", lambda e, m=ctx_menu: m.tk_popup(e.x_root, e.y_root))
+
+        # Toggle collapse on click
+        def toggle(g=group_name, key=collapsed_key, ah=arrow_lbl):
+            setattr(self, key, not getattr(self, key, False))
+            self._refresh_village_list()
+        ghdr.bind("<Button-1>", lambda e: toggle())
+        arrow_lbl.bind("<Button-1>", lambda e: toggle())
+
+        if is_collapsed:
+            return
+
+        # Village cards
+        members = self._villages_in_group(group_name)
+        for v in members:
+            self._build_village_card(parent, v, group_name)
+
+    def _build_village_card(self, parent, v: dict, group: str = ""):
+        """Build one village card frame with drag handles."""
+        vname = v["village_name"]
+        is_selected = (self.selected_village == vname)
+        bg = VILLAGE_SEL if is_selected else BG_PANEL
+
+        card = tk.Frame(parent, bg=bg, cursor="hand2")
+        card.pack(fill="x", pady=1)
+        self._village_cards[vname] = card
+
+        # Gather display data
+        x = v.get("coord_x", "?"); y = v.get("coord_y", "?")
+        w = v.get("res_wood", "?"); c_clay = v.get("res_clay", "?")
+        iron = v.get("res_iron", "?"); cr = v.get("res_crop", "?")
+        pop  = calculate_population(self.server, self.account, vname)
+        cp   = calculate_culture_points(self.server, self.account, vname)
+        prog = calculate_layout_progress(self.server, self.account, vname)
+        pop_str = str(pop) if pop > 0 else "—"
+        cp_str  = str(cp)  if cp  > 0 else "—"
+        if prog is None:
+            prog_str = "no layout"; prog_col = TEXT_MUTED
+        else:
+            prog_str = f"{int(prog*100)}%"
+            prog_col = progress_color(int(prog * 100), 100)
+        tmpl = v.get("applied_template", "").strip()
+
+        # Text content
+        content = tk.Frame(card, bg=bg)
+        content.pack(side="left", fill="x", expand=True, padx=8)
+
+        name_lbl = tk.Label(content, text=f"🏘 {vname}", font=FONT_BODY,
+                            bg=bg, fg=ACCENT if is_selected else TEXT_PRIMARY,
+                            anchor="w")
+        name_lbl.pack(fill="x")
+
+        coord_lbl = tk.Label(content,
+                             text=f"  ({x}|{y})  👤{pop_str}  ★{cp_str}",
+                             font=FONT_SMALL, bg=bg, fg=TEXT_SECONDARY, anchor="w")
+        coord_lbl.pack(fill="x")
+
+        res_lbl = tk.Label(content,
+                           text=f"  🌲{w} 🧱{c_clay} ⚙{iron} 🌾{cr}  ▶{prog_str}",
+                           font=FONT_SMALL, bg=bg, fg=prog_col, anchor="w")
+        res_lbl.pack(fill="x")
+
+        if tmpl:
+            tk.Label(content, text=f"  📋 {tmpl}", font=FONT_SMALL,
+                     bg=bg, fg=TEXT_MUTED, anchor="w").pack(fill="x")
+
+        # Thin border separator
+        tk.Frame(card, bg=BORDER, height=1).pack(fill="x", side="bottom")
+
+        # Right-click context menu: move to group
+        ctx = tk.Menu(self, tearoff=0, bg=BG_PANEL, fg=TEXT_PRIMARY,
+                      activebackground=BG_HOVER, activeforeground=ACCENT)
+        ctx.add_command(label="Move to (ungrouped)",
+                        command=lambda vn=vname: self._move_to_group(vn, ""))
+        for g in self._all_groups():
+            if g != group:
+                ctx.add_command(label=f"Move to  {g}",
+                                command=lambda vn=vname, gg=g: self._move_to_group(vn, gg))
+
+        def show_ctx(e, m=ctx):
+            m.tk_popup(e.x_root, e.y_root)
+
+        for widget in (card, content, name_lbl, coord_lbl, res_lbl):
+            widget.bind("<Button-1>", lambda e, vn=vname: self._on_card_click(vn))
+            widget.bind("<Button-3>", show_ctx)
+
+        self._bind_mousewheel(card)
+
+    def _bind_mousewheel(self, widget):
+        """Forward mousewheel events from any card widget to the canvas."""
+        widget.bind("<MouseWheel>",
+            lambda e: self._vcanvas.yview_scroll(int(-1*(e.delta/120)), "units"))
+        widget.bind("<Button-4>",
+            lambda e: self._vcanvas.yview_scroll(-1, "units"))
+        widget.bind("<Button-5>",
+            lambda e: self._vcanvas.yview_scroll(1, "units"))
+
+    # ── Interaction handlers ──────────────────────────────────────────────────
+
+    def _on_card_click(self, vname: str):
+        self.selected_village = vname
+        for v in self.villages:
+            if v["village_name"] == vname:
+                self._show_village_submenu(vname)
+                self._show_village_layout(vname)
+                break
+        # Redraw to update selection highlight without full reload
+        self._refresh_village_list()
+
+    # ── Group management ─────────────────────────────────────────────────────
+
+    def _move_to_group(self, vname: str, group_name: str):
+        for v in self.villages:
+            if v["village_name"] == vname:
+                v["group"] = group_name
+        self._save_groups()
+        self._refresh_village_list()
+
+    def _add_group_dialog(self):
+        dlg = _NameDialog(self, "New Group", "Group name:")
+        if dlg.result:
+            # Just add a placeholder village if needed? No — groups appear
+            # as soon as a village is assigned to them. For now, show a
+            # confirmation and let user right-click a village to assign.
+            messagebox.showinfo(
+                "Group created",
+                f'Group "{dlg.result}" is ready.\n\n'
+                "Right-click any village card to move it into this group.",
+                parent=self)
+            # Pre-create the group by setting it on no villages yet — it will
+            # appear once a village is moved into it. We store the name for
+            # the Move-to menus by keeping a pending list.
+            if not hasattr(self, "_pending_groups"):
+                self._pending_groups = []
+            if dlg.result not in self._pending_groups:
+                self._pending_groups.append(dlg.result)
+
+    def _all_groups(self) -> list:
+        """All named groups from villages + any pending (not yet populated) groups."""
+        seen = []
+        for v in self.villages:
+            g = v.get("group", "").strip()
+            if g and g not in seen:
+                seen.append(g)
+        for g in getattr(self, "_pending_groups", []):
+            if g not in seen:
+                seen.append(g)
+        return seen
+
+    def _rename_group(self, old_name: str):
+        dlg = _NameDialog(self, "Rename Group", "New name:", default=old_name)
+        if not dlg.result or dlg.result == old_name:
+            return
+        for v in self.villages:
+            if v.get("group", "").strip() == old_name:
+                v["group"] = dlg.result
+        # Update pending list
+        if hasattr(self, "_pending_groups") and old_name in self._pending_groups:
+            self._pending_groups[self._pending_groups.index(old_name)] = dlg.result
+        self._save_groups()
+        self._refresh_village_list()
+
+    def _delete_group(self, group_name: str):
+        if not messagebox.askyesno(
+                "Delete group",
+                f'Delete group "{group_name}"?\n\nVillages will become ungrouped.',
+                parent=self):
+            return
+        for v in self.villages:
+            if v.get("group", "").strip() == group_name:
+                v["group"] = ""
+        if hasattr(self, "_pending_groups") and group_name in self._pending_groups:
+            self._pending_groups.remove(group_name)
+        self._save_groups()
+        self._refresh_village_list()
 
     def _add_village_dialog(self):
         dlg = AddVillageDialog(self)

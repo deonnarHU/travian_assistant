@@ -1,4 +1,4 @@
-village_name,coord_x,coord_y,res_wood,res_clay,res_iron,res_crop,applied_template
-kjhkjh,76,67,4,4,4,6,Base Village
-Sajtos,76,67,4,4,4,6,Hammer
-Kolbász,76,67,4,4,4,6,Base Village
+village_name,coord_x,coord_y,res_wood,res_clay,res_iron,res_crop,applied_template,group,sort_order
+kjhkjh,76,67,4,4,4,6,Base Village,Feeders,1
+Sajtos,76,67,4,4,4,6,Hammer,Anvils,1
+Kolbász,76,67,4,4,4,6,Base Village,Feeders,2
