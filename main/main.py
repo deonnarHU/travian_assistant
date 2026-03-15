@@ -773,9 +773,19 @@ def scrollable_frame(parent, bg=BG_DARK):
     inner.bind("<Configure>", _on_configure)
     canvas.bind("<Configure>", lambda e: canvas.itemconfig(inner_id, width=e.width))
 
-    def _on_mousewheel(e):
-        canvas.yview_scroll(int(-1 * (e.delta / 120)), "units")
-    canvas.bind_all("<MouseWheel>", _on_mousewheel)
+    def _bind_wheel(e=None):
+        canvas.bind_all("<MouseWheel>", lambda e: canvas.yview_scroll(int(-1*(e.delta/120)), "units"))
+        canvas.bind_all("<Button-4>",   lambda e: canvas.yview_scroll(-1, "units"))
+        canvas.bind_all("<Button-5>",   lambda e: canvas.yview_scroll(1, "units"))
+    def _unbind_wheel(e=None):
+        canvas.unbind_all("<MouseWheel>")
+        canvas.unbind_all("<Button-4>")
+        canvas.unbind_all("<Button-5>")
+
+    canvas.bind("<Enter>", _bind_wheel)
+    canvas.bind("<Leave>", _unbind_wheel)
+    inner.bind("<Enter>",  _bind_wheel)
+    inner.bind("<Leave>",  _unbind_wheel)
 
     canvas.configure(yscrollcommand=sb.set)
     sb.pack(side="right", fill="y")
@@ -2544,12 +2554,8 @@ class MainApp(tk.Frame):
         self._vcanvas.pack(side="left", fill="both", expand=True)
         self._vscroll.config(command=self._vcanvas.yview)
 
-        self._vcanvas.bind("<MouseWheel>",
-            lambda e: self._vcanvas.yview_scroll(int(-1*(e.delta/120)), "units"))
-        self._vcanvas.bind("<Button-4>",
-            lambda e: self._vcanvas.yview_scroll(-1, "units"))
-        self._vcanvas.bind("<Button-5>",
-            lambda e: self._vcanvas.yview_scroll(1, "units"))
+        self._vcanvas.bind("<Enter>", lambda e: self._vcanvas_bind_wheel())
+        self._vcanvas.bind("<Leave>", lambda e: self._vcanvas_unbind_wheel())
 
         # Inner frame that holds all group+village frames
         self._vinner = tk.Frame(self._vcanvas, bg=BG_PANEL)
@@ -2731,14 +2737,23 @@ class MainApp(tk.Frame):
 
         self._bind_mousewheel(card)
 
-    def _bind_mousewheel(self, widget):
-        """Forward mousewheel events from any card widget to the canvas."""
-        widget.bind("<MouseWheel>",
+    def _vcanvas_bind_wheel(self):
+        self._vcanvas.bind_all("<MouseWheel>",
             lambda e: self._vcanvas.yview_scroll(int(-1*(e.delta/120)), "units"))
-        widget.bind("<Button-4>",
+        self._vcanvas.bind_all("<Button-4>",
             lambda e: self._vcanvas.yview_scroll(-1, "units"))
-        widget.bind("<Button-5>",
+        self._vcanvas.bind_all("<Button-5>",
             lambda e: self._vcanvas.yview_scroll(1, "units"))
+
+    def _vcanvas_unbind_wheel(self):
+        self._vcanvas.unbind_all("<MouseWheel>")
+        self._vcanvas.unbind_all("<Button-4>")
+        self._vcanvas.unbind_all("<Button-5>")
+
+    def _bind_mousewheel(self, widget):
+        """Bind enter/leave on a card widget to activate right-panel scrolling."""
+        widget.bind("<Enter>", lambda e: self._vcanvas_bind_wheel())
+        widget.bind("<Leave>", lambda e: self._vcanvas_unbind_wheel())
 
     # ── Interaction handlers ──────────────────────────────────────────────────
 
