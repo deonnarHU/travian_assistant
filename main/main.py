@@ -274,13 +274,15 @@ def save_resource_layout(server, account, village_name, slots: list):
         "res_crop":  counts["Cropland"],
     })
 
-def calculate_village_production(server, account, village_name) -> dict:
+def calculate_village_production(server, account, village_name,
+                                  gold_bonus: bool = False) -> dict:
     """
-    Return {wood, clay, iron, crop} production/hr from the village resource layout.
-    Falls back to zeros if no layout file exists yet.
+    Return {wood, clay, iron, crop} production/hr for a village.
+    Applies 5% per level bonuses from Sawmill/Brickyard/Iron Foundry/Flour Mill/Bakery.
+    Optionally applies the 25% gold bonus on all resources.
     """
     slots = load_resource_layout(server, account, village_name)
-    prod  = {"wood": 0, "clay": 0, "iron": 0, "crop": 0}
+    base  = {"wood": 0, "clay": 0, "iron": 0, "crop": 0}
     type_to_key = {"Woodcutter": "wood", "Clay Pit": "clay",
                    "Iron Mine": "iron", "Cropland": "crop"}
     for s in slots:
@@ -290,7 +292,31 @@ def calculate_village_production(server, account, village_name) -> dict:
         except ValueError:
             lvl = 0
         lvl = max(0, min(lvl, len(FIELD_PRODUCTION) - 1))
-        prod[key] += FIELD_PRODUCTION[lvl]
+        base[key] += FIELD_PRODUCTION[lvl]
+
+    # Production building bonuses: 5% per level
+    # Sawmill→wood, Brickyard→clay, Iron Foundry→iron, Flour Mill+Bakery→crop
+    PROD_BUILDINGS = {
+        "Sawmill":      "wood",
+        "Brickyard":    "clay",
+        "Iron Foundry": "iron",
+        "Flour Mill":   "crop",
+        "Bakery":       "crop",
+    }
+    buildings = load_current_buildings(server, account, village_name)
+    bonuses   = {"wood": 1.0, "clay": 1.0, "iron": 1.0, "crop": 1.0}
+    for slot_data in buildings.values():
+        bname = slot_data.get("building", "")
+        blvl  = slot_data.get("level", 0)
+        if bname in PROD_BUILDINGS:
+            key = PROD_BUILDINGS[bname]
+            bonuses[key] += 0.05 * blvl
+
+    prod = {k: round(base[k] * bonuses[k]) for k in base}
+
+    if gold_bonus:
+        prod = {k: round(v * 1.25) for k, v in prod.items()}
+
     return prod
 
 # ─── Troop overview paste parser ──────────────────────────────────────────────
@@ -475,6 +501,39 @@ VILLAGE_FIELDS = ["village_name", "coord_x", "coord_y",
                   "applied_template", "group"]
 LAYOUT_FIELDS  = ["slot_id", "building", "level"]
 BUILDING_FIELDS_CSV = ["slot_id", "building", "level"]
+
+OPTIONS_FILE = DATA_DIR / "options.csv"
+
+def load_option(key: str, default=None):
+    """Read a single option value from travian_data/options.csv."""
+    if not OPTIONS_FILE.exists():
+        return default
+    try:
+        with open(OPTIONS_FILE, newline="", encoding="utf-8") as f:
+            for row in csv.DictReader(f):
+                if row.get("key") == key:
+                    return row.get("value", default)
+    except Exception:
+        pass
+    return default
+
+def save_option(key: str, value):
+    """Persist a single option key/value in travian_data/options.csv."""
+    DATA_DIR.mkdir(exist_ok=True)
+    rows = {}
+    if OPTIONS_FILE.exists():
+        try:
+            with open(OPTIONS_FILE, newline="", encoding="utf-8") as f:
+                for row in csv.DictReader(f):
+                    rows[row["key"]] = row["value"]
+        except Exception:
+            pass
+    rows[key] = str(value)
+    with open(OPTIONS_FILE, "w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=["key", "value"])
+        w.writeheader()
+        for k, v in rows.items():
+            w.writerow({"key": k, "value": v})
 
 def ensure_data_dir():
     DATA_DIR.mkdir(exist_ok=True)
@@ -2464,12 +2523,33 @@ class MainApp(tk.Frame):
         outer = tk.Frame(self.center, bg=BG_DARK)
         outer.pack(fill="both", expand=True)
 
+        # ── Header ───────────────────────────────────────────────────────────
         hdr = tk.Frame(outer, bg=BG_DARK)
         hdr.pack(fill="x", padx=24, pady=(24, 0))
         tk.Label(hdr, text="Production Info",
                  font=FONT_TITLE, bg=BG_DARK, fg=TEXT_PRIMARY).pack(side="left")
         tk.Label(hdr, text="  —  hourly resource output per village",
                  font=FONT_BODY, bg=BG_DARK, fg=TEXT_MUTED).pack(side="left", pady=(6, 0))
+
+        # Gold bonus toggle — persisted in options.csv
+        gold_var = tk.BooleanVar(value=load_option("gold_bonus", "False") == "True")
+        gold_frame = tk.Frame(hdr, bg=BG_MID, relief="flat", bd=0,
+                              highlightthickness=1, highlightbackground=BORDER)
+        gold_frame.pack(side="right", padx=(12, 0))
+
+        def _refresh_table(*_):
+            save_option("gold_bonus", gold_var.get())
+            _build_table(gold_var.get())
+
+        gold_cb = tk.Checkbutton(
+            gold_frame, text="💰 +25% Gold Bonus",
+            variable=gold_var, command=_refresh_table,
+            bg=BG_MID, fg=TEXT_PRIMARY, selectcolor=BG_HOVER,
+            activebackground=BG_MID, activeforeground=ACCENT,
+            font=FONT_SMALL, relief="flat", bd=0,
+            highlightthickness=0)
+        gold_cb.pack(padx=8, pady=4)
+
         make_separator(outer).pack(fill="x", padx=24, pady=10)
 
         if not villages:
@@ -2477,25 +2557,9 @@ class MainApp(tk.Frame):
                      font=FONT_BODY, bg=BG_DARK, fg=TEXT_MUTED).pack(padx=24, anchor="w")
             return
 
-        # ── collect production data ───────────────────────────────────────────
-        rows   = []
-        totals = {"wood": 0, "clay": 0, "iron": 0, "crop": 0}
-        for v in villages:
-            vname = v["village_name"]
-            prod  = calculate_village_production(self.server, self.account, vname)
-            rows.append((vname, prod))
-            for k in totals:
-                totals[k] += prod[k]
-
-        # ── grid table ───────────────────────────────────────────────────────
-        scroll_outer, inner = scrollable_frame(outer)
-        scroll_outer.pack(fill="both", expand=True, padx=24, pady=(0, 16))
-
-        tbl = tk.Frame(inner, bg=BG_DARK)
-        tbl.pack(fill="x")
-        tbl.columnconfigure(0, minsize=180)                         # village name
-        for c in range(1, 5):
-            tbl.columnconfigure(c, minsize=90, uniform="res")       # 4 resource cols
+        # ── Table container (rebuilt on toggle) ──────────────────────────────
+        table_container = tk.Frame(outer, bg=BG_DARK)
+        table_container.pack(fill="both", expand=True)
 
         COLS = [
             (1, "🌲 Wood",  "wood",  "#7daa6f"),
@@ -2504,46 +2568,68 @@ class MainApp(tk.Frame):
             (4, "🌾 Crop",  "crop",  "#c8b84a"),
         ]
 
-        def gl(row, col, text, bg, fg, bold=False, anchor="center"):
-            font = ("Consolas", 9, "bold") if bold else FONT_SMALL
-            tk.Label(tbl, text=text, font=font, bg=bg, fg=fg,
-                     anchor=anchor, padx=6, pady=3
-                     ).grid(row=row, column=col, sticky="nsew",
-                            padx=(0, 1), pady=(0, 1))
+        def _build_table(gold_bonus: bool):
+            for w in table_container.winfo_children():
+                w.destroy()
 
-        # header
-        gl(0, 0, "Village",   BG_MID, TEXT_MUTED,  bold=True, anchor="w")
-        for col, label, _, color in COLS:
-            gl(0, col, label, BG_MID, color, bold=True)
-        tk.Frame(tbl, bg=BORDER, height=1).grid(
-            row=1, column=0, columnspan=5, sticky="ew", pady=(0, 1))
+            rows   = []
+            totals = {"wood": 0, "clay": 0, "iron": 0, "crop": 0}
+            for v in villages:
+                vname = v["village_name"]
+                prod  = calculate_village_production(
+                    self.server, self.account, vname, gold_bonus)
+                rows.append((vname, prod))
+                for k in totals:
+                    totals[k] += prod[k]
 
-        # village rows
-        for i, (vname, prod) in enumerate(rows):
-            r  = i + 2
-            bg = BG_MID if i % 2 == 0 else BG_PANEL
-            gl(r, 0, vname, bg, TEXT_PRIMARY, anchor="w")
+            scroll_outer, inner = scrollable_frame(table_container)
+            scroll_outer.pack(fill="both", expand=True, padx=24, pady=(0, 16))
+
+            tbl = tk.Frame(inner, bg=BG_DARK)
+            tbl.pack(fill="x")
+            tbl.columnconfigure(0, minsize=180)
+            for c in range(1, 5):
+                tbl.columnconfigure(c, minsize=90, uniform="res")
+
+            def gl(row, col, text, bg, fg, bold=False, anchor="center"):
+                font = ("Consolas", 9, "bold") if bold else FONT_SMALL
+                tk.Label(tbl, text=text, font=font, bg=bg, fg=fg,
+                         anchor=anchor, padx=6, pady=3
+                         ).grid(row=row, column=col, sticky="nsew",
+                                padx=(0, 1), pady=(0, 1))
+
+            # header
+            gl(0, 0, "Village",   BG_MID, TEXT_MUTED, bold=True, anchor="w")
+            for col, label, _, color in COLS:
+                gl(0, col, label, BG_MID, color, bold=True)
+            tk.Frame(tbl, bg=BORDER, height=1).grid(
+                row=1, column=0, columnspan=5, sticky="ew", pady=(0, 1))
+
+            for i, (vname, prod) in enumerate(rows):
+                r  = i + 2
+                bg = BG_MID if i % 2 == 0 else BG_PANEL
+                gl(r, 0, vname, bg, TEXT_PRIMARY, anchor="w")
+                for col, _, key, color in COLS:
+                    val = prod[key]
+                    fg  = color if val > 0 else TEXT_MUTED
+                    gl(r, col, f"{val:,}" if val else "—", bg, fg)
+
+            total_row = len(rows) + 2
+            tk.Frame(tbl, bg=ACCENT_DIM, height=1).grid(
+                row=total_row, column=0, columnspan=5, sticky="ew", pady=(2, 1))
+            total_row += 1
+            gl(total_row, 0, "Account Total", BG_HOVER, ACCENT, bold=True, anchor="w")
             for col, _, key, color in COLS:
-                val = prod[key]
-                fg  = color if val > 0 else TEXT_MUTED
-                gl(r, col, f"{val:,}" if val else "—", bg, fg)
+                gl(total_row, col, f"{totals[key]:,}", BG_HOVER, COL_FULL_GREEN, bold=True)
 
-        # totals row
-        total_row = len(rows) + 2
-        tk.Frame(tbl, bg=ACCENT_DIM, height=1).grid(
-            row=total_row, column=0, columnspan=5, sticky="ew", pady=(2, 1))
-        total_row += 1
-        gl(total_row, 0, "Account Total", BG_HOVER, ACCENT, bold=True, anchor="w")
-        for col, _, key, color in COLS:
-            val = totals[key]
-            gl(total_row, col, f"{val:,}", BG_HOVER, COL_FULL_GREEN, bold=True)
+            grand = sum(totals.values())
+            bonus_note = "  (incl. 25% gold bonus)" if gold_bonus else ""
+            tk.Label(inner,
+                     text=f"Total production across all villages:  {grand:,} /hr{bonus_note}",
+                     font=("Consolas", 9, "bold"), bg=BG_DARK, fg=ACCENT
+                     ).pack(anchor="w", padx=4, pady=(8, 4))
 
-        # grand total line
-        grand = sum(totals.values())
-        tk.Label(inner,
-                 text=f"Total production across all villages:  {grand:,} /hr",
-                 font=("Consolas", 9, "bold"), bg=BG_DARK, fg=ACCENT
-                 ).pack(anchor="w", padx=4, pady=(8, 4))
+        _build_table(gold_var.get())
 
     def _show_troops_overview(self):
         self._clear_center()
