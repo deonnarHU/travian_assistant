@@ -226,6 +226,10 @@ def get_tribe_troops(tribe: str) -> list:
 # ─── Resource layout per-village ─────────────────────────────────────────────
 # 18 resource field slots per village.  Each slot has a type and level.
 RESOURCE_TYPES  = ["Woodcutter", "Clay Pit", "Iron Mine", "Cropland"]
+
+# Travian production per hour at each field level (levels 0–10, index = level)
+# Source: standard 1x speed values
+FIELD_PRODUCTION = [0, 2, 5, 9, 15, 25, 40, 65, 105, 170, 280]
 RESOURCE_FIELDS = ["slot", "type", "level"]
 
 def resource_file(server, account, village_name) -> Path:
@@ -269,6 +273,25 @@ def save_resource_layout(server, account, village_name, slots: list):
         "res_iron":  counts["Iron Mine"],
         "res_crop":  counts["Cropland"],
     })
+
+def calculate_village_production(server, account, village_name) -> dict:
+    """
+    Return {wood, clay, iron, crop} production/hr from the village resource layout.
+    Falls back to zeros if no layout file exists yet.
+    """
+    slots = load_resource_layout(server, account, village_name)
+    prod  = {"wood": 0, "clay": 0, "iron": 0, "crop": 0}
+    type_to_key = {"Woodcutter": "wood", "Clay Pit": "clay",
+                   "Iron Mine": "iron", "Cropland": "crop"}
+    for s in slots:
+        key = type_to_key.get(s.get("type", "Cropland"), "crop")
+        try:
+            lvl = int(s.get("level", 0))
+        except ValueError:
+            lvl = 0
+        lvl = max(0, min(lvl, len(FIELD_PRODUCTION) - 1))
+        prod[key] += FIELD_PRODUCTION[lvl]
+    return prod
 
 # ─── Troop overview paste parser ──────────────────────────────────────────────
 import re as _re
@@ -1841,88 +1864,79 @@ class VillageTroopsView(tk.Frame):
                      font=FONT_BODY, bg=BG_DARK, fg=TEXT_MUTED).pack(padx=24, anchor="w")
             return
 
-        # Scrollable horizontal table
+        # Scrollable table — single grid frame so columns align perfectly
         outer, inner = scrollable_frame(self)
         outer.pack(fill="both", expand=True, padx=24, pady=(0, 16))
 
-        COL_W   = 11   # character width for troop columns
-        LABEL_W = 20   # character width for row-label column
+        n_troops = len(self._troop_names)
+        tbl = tk.Frame(inner, bg=BG_DARK)
+        tbl.pack(fill="x")
+        tbl.columnconfigure(0, minsize=160)
+        for c in range(1, n_troops + 1):
+            tbl.columnconfigure(c, minsize=90, uniform="troop")
 
         def cell_bg(row_idx):
             return BG_MID if row_idx % 2 == 0 else BG_PANEL
 
         # ── Column header row (troop names) ──
-        hdr_row = tk.Frame(inner, bg=BG_MID)
-        hdr_row.pack(fill="x", pady=(0, 1))
-        tk.Label(hdr_row, text="", width=LABEL_W, bg=BG_MID).pack(side="left")
-        tk.Frame(hdr_row, bg=BORDER, width=1).pack(side="left", fill="y")
-        for tname in self._troop_names:
-            # Abbreviate long names to fit column
-            display = tname if len(tname) <= COL_W else tname[:COL_W - 1] + "…"
-            lbl = tk.Label(hdr_row, text=display, width=COL_W,
-                           font=("Consolas", 8, "bold"),
-                           bg=BG_MID, fg=ACCENT, anchor="center")
-            lbl.pack(side="left")
-            lbl.bind("<Enter>", lambda e, full=tname, w=lbl:
-                     w.config(text=full if len(full) <= COL_W+4 else full))
-            lbl.bind("<Leave>", lambda e, disp=display, w=lbl: w.config(text=disp))
-            tk.Frame(hdr_row, bg=BORDER, width=1).pack(side="left", fill="y")
-        make_separator(inner).pack(fill="x")
+        tk.Label(tbl, text="", bg=BG_MID, padx=6, pady=3).grid(
+            row=0, column=0, sticky="nsew", padx=(0,1), pady=(0,1))
+        for ci, tname in enumerate(self._troop_names):
+            disp = tname if len(tname) <= 12 else tname[:11] + "…"
+            lbl = tk.Label(tbl, text=disp, font=("Consolas", 9, "bold"),
+                           bg=BG_MID, fg=ACCENT, anchor="center", padx=4, pady=3)
+            lbl.grid(row=0, column=ci + 1, sticky="nsew", padx=(0,1), pady=(0,1))
+            lbl.bind("<Enter>", lambda e, w=lbl, full=tname: w.config(text=full))
+            lbl.bind("<Leave>", lambda e, w=lbl, d=disp: w.config(text=d))
+
+        # 1px separator
+        tk.Frame(tbl, bg=BORDER, height=1).grid(
+            row=1, column=0, columnspan=n_troops + 1, sticky="ew", pady=(0,1))
 
         # ── Data rows ──
         state = "disabled" if self.is_archived else "normal"
         for row_idx, (rk, rlabel, _, _) in enumerate(_TROOP_ROW_META):
-            bg = cell_bg(row_idx)
-            row_frame = tk.Frame(inner, bg=bg)
-            row_frame.pack(fill="x", pady=1)
+            gr  = row_idx + 2
+            bg  = cell_bg(row_idx)
+            tk.Label(tbl, text=rlabel, font=FONT_SMALL, bg=bg, fg=TEXT_SECONDARY,
+                     anchor="w", padx=8, pady=2).grid(
+                row=gr, column=0, sticky="nsew", padx=(0,1), pady=(0,1))
 
-            # Row label
-            tk.Label(row_frame, text=rlabel, width=LABEL_W,
-                     font=FONT_SMALL, bg=bg, fg=TEXT_SECONDARY,
-                     anchor="w", padx=6).pack(side="left")
-            tk.Frame(row_frame, bg=BORDER, width=1).pack(side="left", fill="y")
-
-            for tname in self._troop_names:
+            for ci, tname in enumerate(self._troop_names):
                 if rk == "native_out":
-                    # Calculated field — display-only label, no StringVar needed here
-                    lbl = tk.Label(row_frame, text="0", width=COL_W,
-                                   font=FONT_SMALL, bg=bg, fg=TEXT_MUTED,
-                                   anchor="center")
-                    lbl.pack(side="left", padx=1, pady=2)
+                    lbl = tk.Label(tbl, text="0", font=FONT_SMALL,
+                                   bg=bg, fg=TEXT_MUTED, anchor="center", pady=2)
+                    lbl.grid(row=gr, column=ci + 1, sticky="nsew", padx=(0,1), pady=(0,1))
                     self._native_out_lbls[tname] = lbl
                 else:
                     var = tk.StringVar(value=str(data[rk].get(tname, 0)))
                     self._vars[(rk, tname)] = var
                     sb = tk.Spinbox(
-                        row_frame, textvariable=var,
-                        from_=0, to=999999, increment=1, width=COL_W,
+                        tbl, textvariable=var,
+                        from_=0, to=999999, increment=1,
                         bg=BG_MID, fg=TEXT_PRIMARY, buttonbackground=BG_HOVER,
                         insertbackground=ACCENT, relief="flat", bd=0,
                         highlightthickness=0, disabledbackground=bg,
                         disabledforeground=TEXT_MUTED, state=state,
                         font=FONT_SMALL, justify="center")
-                    sb.pack(side="left", padx=1, pady=2)
-                    # Both trained and native_in changes update native_out and net
+                    sb.grid(row=gr, column=ci + 1, sticky="nsew", padx=(0,1), pady=(0,1))
                     var.trace_add("write", lambda *_, t=tname: self._update_derived(t))
-                tk.Frame(row_frame, bg=BORDER, width=1).pack(side="left", fill="y")
 
-        make_separator(inner).pack(fill="x", pady=(4, 0))
+        # 1px separator before net row
+        net_gr = len(_TROOP_ROW_META) + 2
+        tk.Frame(tbl, bg=ACCENT_DIM, height=1).grid(
+            row=net_gr, column=0, columnspan=n_troops + 1, sticky="ew", pady=(2,1))
 
         # ── Net row ──
-        net_frame = tk.Frame(inner, bg=_NET_ROW_BG)
-        net_frame.pack(fill="x", pady=(1, 0))
-        tk.Label(net_frame, text="Net troops in village", width=LABEL_W,
-                 font=("Consolas", 9, "bold"),
-                 bg=_NET_ROW_BG, fg=_NET_ROW_FG,
-                 anchor="w", padx=6).pack(side="left")
-        tk.Frame(net_frame, bg=BORDER, width=1).pack(side="left", fill="y")
-        for tname in self._troop_names:
-            net_lbl = tk.Label(net_frame, text="0", width=COL_W,
-                               font=("Consolas", 9, "bold"),
-                               bg=_NET_ROW_BG, fg=_NET_ROW_FG, anchor="center")
-            net_lbl.pack(side="left")
+        net_gr += 1
+        tk.Label(tbl, text="Net troops in village", font=("Consolas", 9, "bold"),
+                 bg=_NET_ROW_BG, fg=_NET_ROW_FG, anchor="w", padx=8, pady=4).grid(
+            row=net_gr, column=0, sticky="nsew", padx=(0,1), pady=(0,1))
+        for ci, tname in enumerate(self._troop_names):
+            net_lbl = tk.Label(tbl, text="0", font=("Consolas", 9, "bold"),
+                               bg=_NET_ROW_BG, fg=_NET_ROW_FG, anchor="center", pady=4)
+            net_lbl.grid(row=net_gr, column=ci + 1, sticky="nsew", padx=(0,1), pady=(0,1))
             self._net_labels[tname] = net_lbl
-            tk.Frame(net_frame, bg=BORDER, width=1).pack(side="left", fill="y")
 
         # Initial calculation pass
         for tname in self._troop_names:
@@ -2445,9 +2459,91 @@ class MainApp(tk.Frame):
 
     def _show_production_info(self):
         self._clear_center()
-        self._content_header("Production Info", "Resource output across all villages")
-        self._placeholder_card("Production Info",
-            f"Lumber, clay, iron, crop per hour per village. Tribe bonuses for {self.tribe} included.")
+        villages = load_villages(self.server, self.account)
+
+        outer = tk.Frame(self.center, bg=BG_DARK)
+        outer.pack(fill="both", expand=True)
+
+        hdr = tk.Frame(outer, bg=BG_DARK)
+        hdr.pack(fill="x", padx=24, pady=(24, 0))
+        tk.Label(hdr, text="Production Info",
+                 font=FONT_TITLE, bg=BG_DARK, fg=TEXT_PRIMARY).pack(side="left")
+        tk.Label(hdr, text="  —  hourly resource output per village",
+                 font=FONT_BODY, bg=BG_DARK, fg=TEXT_MUTED).pack(side="left", pady=(6, 0))
+        make_separator(outer).pack(fill="x", padx=24, pady=10)
+
+        if not villages:
+            tk.Label(outer, text="No villages found for this account.",
+                     font=FONT_BODY, bg=BG_DARK, fg=TEXT_MUTED).pack(padx=24, anchor="w")
+            return
+
+        # ── collect production data ───────────────────────────────────────────
+        rows   = []
+        totals = {"wood": 0, "clay": 0, "iron": 0, "crop": 0}
+        for v in villages:
+            vname = v["village_name"]
+            prod  = calculate_village_production(self.server, self.account, vname)
+            rows.append((vname, prod))
+            for k in totals:
+                totals[k] += prod[k]
+
+        # ── grid table ───────────────────────────────────────────────────────
+        scroll_outer, inner = scrollable_frame(outer)
+        scroll_outer.pack(fill="both", expand=True, padx=24, pady=(0, 16))
+
+        tbl = tk.Frame(inner, bg=BG_DARK)
+        tbl.pack(fill="x")
+        tbl.columnconfigure(0, minsize=180)                         # village name
+        for c in range(1, 5):
+            tbl.columnconfigure(c, minsize=90, uniform="res")       # 4 resource cols
+
+        COLS = [
+            (1, "🌲 Wood",  "wood",  "#7daa6f"),
+            (2, "🧱 Clay",  "clay",  "#b87c4c"),
+            (3, "⚙ Iron",  "iron",  "#8aabcc"),
+            (4, "🌾 Crop",  "crop",  "#c8b84a"),
+        ]
+
+        def gl(row, col, text, bg, fg, bold=False, anchor="center"):
+            font = ("Consolas", 9, "bold") if bold else FONT_SMALL
+            tk.Label(tbl, text=text, font=font, bg=bg, fg=fg,
+                     anchor=anchor, padx=6, pady=3
+                     ).grid(row=row, column=col, sticky="nsew",
+                            padx=(0, 1), pady=(0, 1))
+
+        # header
+        gl(0, 0, "Village",   BG_MID, TEXT_MUTED,  bold=True, anchor="w")
+        for col, label, _, color in COLS:
+            gl(0, col, label, BG_MID, color, bold=True)
+        tk.Frame(tbl, bg=BORDER, height=1).grid(
+            row=1, column=0, columnspan=5, sticky="ew", pady=(0, 1))
+
+        # village rows
+        for i, (vname, prod) in enumerate(rows):
+            r  = i + 2
+            bg = BG_MID if i % 2 == 0 else BG_PANEL
+            gl(r, 0, vname, bg, TEXT_PRIMARY, anchor="w")
+            for col, _, key, color in COLS:
+                val = prod[key]
+                fg  = color if val > 0 else TEXT_MUTED
+                gl(r, col, f"{val:,}" if val else "—", bg, fg)
+
+        # totals row
+        total_row = len(rows) + 2
+        tk.Frame(tbl, bg=ACCENT_DIM, height=1).grid(
+            row=total_row, column=0, columnspan=5, sticky="ew", pady=(2, 1))
+        total_row += 1
+        gl(total_row, 0, "Account Total", BG_HOVER, ACCENT, bold=True, anchor="w")
+        for col, _, key, color in COLS:
+            val = totals[key]
+            gl(total_row, col, f"{val:,}", BG_HOVER, COL_FULL_GREEN, bold=True)
+
+        # grand total line
+        grand = sum(totals.values())
+        tk.Label(inner,
+                 text=f"Total production across all villages:  {grand:,} /hr",
+                 font=("Consolas", 9, "bold"), bg=BG_DARK, fg=ACCENT
+                 ).pack(anchor="w", padx=4, pady=(8, 4))
 
     def _show_troops_overview(self):
         self._clear_center()
