@@ -2491,66 +2491,65 @@ class MainApp(tk.Frame):
         scroll_outer, inner = scrollable_frame(outer)
         scroll_outer.pack(fill="both", expand=True, padx=24, pady=(0, 16))
 
-        VNAME_W = 22
-        COL_W   = 11
+        # Single grid frame — all rows share the same column geometry
+        tbl = tk.Frame(inner, bg=BG_DARK)
+        tbl.pack(fill="x")
 
-        def cell_label(parent, text, width, bg, fg, bold=False):
+        n_troops = len(troop_names)
+        # Column 0 = village name, columns 1..n = troops
+        tbl.columnconfigure(0, minsize=180)
+        for c in range(1, n_troops + 1):
+            tbl.columnconfigure(c, minsize=90, uniform="troop")
+
+        def grid_label(row, col, text, bg, fg, bold=False, anchor="center"):
             font = ("Consolas", 9, "bold") if bold else FONT_SMALL
-            tk.Label(parent, text=text, width=width, font=font,
-                     bg=bg, fg=fg, anchor="center").pack(side="left")
-            tk.Frame(parent, bg=BORDER, width=1).pack(side="left", fill="y")
+            lbl = tk.Label(tbl, text=text, font=font, bg=bg, fg=fg,
+                           anchor=anchor, padx=6, pady=3)
+            lbl.grid(row=row, column=col, sticky="nsew", padx=(0, 1), pady=(0, 1))
+            return lbl
 
         # ── header row ───────────────────────────────────────────────────────
-        hdr_row = tk.Frame(inner, bg=BG_MID)
-        hdr_row.pack(fill="x", pady=(0, 1))
-        tk.Label(hdr_row, text="Village", width=VNAME_W, font=("Consolas", 8, "bold"),
-                 bg=BG_MID, fg=TEXT_MUTED, anchor="w", padx=4).pack(side="left")
-        tk.Frame(hdr_row, bg=BORDER, width=1).pack(side="left", fill="y")
-        for t in troop_names:
-            disp = t if len(t) <= COL_W else t[:COL_W-1] + "…"
-            lbl = tk.Label(hdr_row, text=disp, width=COL_W,
-                           font=("Consolas", 8, "bold"),
-                           bg=BG_MID, fg=ACCENT, anchor="center")
-            lbl.pack(side="left")
-            if len(t) > COL_W:   # tooltip on hover
-                lbl.bind("<Enter>", lambda e, w=lbl, full=t: w.config(text=full[:COL_W+4]))
+        grid_label(0, 0, "Village", BG_MID, TEXT_MUTED, bold=True, anchor="w")
+        for ci, t in enumerate(troop_names):
+            disp = t if len(t) <= 12 else t[:11] + "…"
+            lbl = grid_label(0, ci + 1, disp, BG_MID, ACCENT, bold=True)
+            if len(t) > 12:
+                lbl.bind("<Enter>", lambda e, w=lbl, full=t: w.config(text=full))
                 lbl.bind("<Leave>", lambda e, w=lbl, d=disp: w.config(text=d))
-            tk.Frame(hdr_row, bg=BORDER, width=1).pack(side="left", fill="y")
-        make_separator(inner).pack(fill="x")
+
+        # 1px separator row
+        sep = tk.Frame(tbl, bg=BORDER, height=1)
+        sep.grid(row=1, column=0, columnspan=n_troops + 1, sticky="ew", pady=(0, 1))
 
         # ── village rows ─────────────────────────────────────────────────────
         for i, (vname, trained) in enumerate(rows):
-            bg = BG_MID if i % 2 == 0 else BG_PANEL
-            row_f = tk.Frame(inner, bg=bg)
-            row_f.pack(fill="x", pady=1)
-            tk.Label(row_f, text=vname, width=VNAME_W, font=FONT_SMALL,
-                     bg=bg, fg=TEXT_PRIMARY, anchor="w", padx=4).pack(side="left")
-            tk.Frame(row_f, bg=BORDER, width=1).pack(side="left", fill="y")
-            for t in troop_names:
+            r   = i + 2
+            bg  = BG_MID if i % 2 == 0 else BG_PANEL
+            grid_label(r, 0, vname, bg, TEXT_PRIMARY, anchor="w")
+            for ci, t in enumerate(troop_names):
                 val = trained.get(t, 0)
                 fg  = TEXT_PRIMARY if val > 0 else TEXT_MUTED
-                cell_label(row_f, str(val) if val else "—", COL_W, bg, fg)
+                grid_label(r, ci + 1, str(val) if val else "—", bg, fg)
+
+        # 1px separator before sum
+        sep2 = tk.Frame(tbl, bg=ACCENT_DIM, height=1)
+        sep2.grid(row=len(rows) + 2, column=0, columnspan=n_troops + 1,
+                  sticky="ew", pady=(2, 1))
 
         # ── sum row ──────────────────────────────────────────────────────────
-        make_separator(inner).pack(fill="x", pady=(4, 0))
-        sum_row = tk.Frame(inner, bg=BG_HOVER)
-        sum_row.pack(fill="x", pady=(1, 0))
-        tk.Label(sum_row, text="Account Total", width=VNAME_W,
-                 font=("Consolas", 9, "bold"),
-                 bg=BG_HOVER, fg=ACCENT, anchor="w", padx=4).pack(side="left")
-        tk.Frame(sum_row, bg=BORDER, width=1).pack(side="left", fill="y")
+        sum_r = len(rows) + 3
         grand_total = sum(totals.values())
-        for t in troop_names:
+        grid_label(sum_r, 0, "Account Total", BG_HOVER, ACCENT, bold=True, anchor="w")
+        for ci, t in enumerate(troop_names):
             val = totals[t]
             fg  = COL_FULL_GREEN if val > 0 else TEXT_MUTED
-            cell_label(sum_row, str(val) if val else "—", COL_W, BG_HOVER, fg, bold=True)
+            grid_label(sum_r, ci + 1, str(val) if val else "—", BG_HOVER, fg, bold=True)
 
         # grand total badge
-        make_separator(inner).pack(fill="x", pady=(4, 0))
         tk.Label(inner,
                  text=f"Total troops across all villages:  {grand_total:,}",
                  font=("Consolas", 9, "bold"), bg=BG_DARK,
-                 fg=ACCENT).pack(anchor="w", padx=4, pady=(6, 4))
+                 fg=ACCENT).pack(anchor="w", padx=4, pady=(8, 4))
 
     def _show_troop_locations(self):
         self._clear_center()
