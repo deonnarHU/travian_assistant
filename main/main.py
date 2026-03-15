@@ -2351,7 +2351,7 @@ class MainApp(tk.Frame):
         section_label(pad, "Account Overview").pack(fill="x", padx=12, pady=(14, 4))
         for label, cmd in [
             ("📊  Production Info",  self._show_production_info),
-            ("⚔   Deployed Troops", self._show_deployed_troops),
+            ("⚔   Troops Overview",  self._show_troops_overview),
             ("🗺   Troop Locations", self._show_troop_locations),
             ("⚡  Net Production",   self._show_net_production),
         ]:
@@ -2449,10 +2449,108 @@ class MainApp(tk.Frame):
         self._placeholder_card("Production Info",
             f"Lumber, clay, iron, crop per hour per village. Tribe bonuses for {self.tribe} included.")
 
-    def _show_deployed_troops(self):
+    def _show_troops_overview(self):
         self._clear_center()
-        self._content_header("Deployed Troops", "Troops currently away from home")
-        self._placeholder_card("Deployed Troops", f"All {self.tribe} troops on the move.")
+        troop_names = get_tribe_troops(self.tribe)
+        villages    = load_villages(self.server, self.account)
+
+        # ── outer frame ──────────────────────────────────────────────────────
+        outer = tk.Frame(self.center, bg=BG_DARK)
+        outer.pack(fill="both", expand=True)
+
+        hdr = tk.Frame(outer, bg=BG_DARK)
+        hdr.pack(fill="x", padx=24, pady=(24, 0))
+        tk.Label(hdr, text="Troops Overview",
+                 font=FONT_TITLE, bg=BG_DARK, fg=TEXT_PRIMARY).pack(side="left")
+        tk.Label(hdr, text=f"  —  trained troops per village",
+                 font=FONT_BODY, bg=BG_DARK, fg=TEXT_MUTED).pack(side="left", pady=(6, 0))
+        make_separator(outer).pack(fill="x", padx=24, pady=10)
+
+        if not villages:
+            tk.Label(outer, text="No villages found for this account.",
+                     font=FONT_BODY, bg=BG_DARK, fg=TEXT_MUTED).pack(padx=24, anchor="w")
+            return
+
+        if not troop_names:
+            tk.Label(outer, text=f"No troop data found for tribe '{self.tribe}'.",
+                     font=FONT_BODY, bg=BG_DARK, fg=TEXT_MUTED).pack(padx=24, anchor="w")
+            return
+
+        # ── load all village troop data ───────────────────────────────────────
+        rows = []   # list of (village_name, {troop: count})
+        totals = {t: 0 for t in troop_names}
+        for v in villages:
+            vname = v["village_name"]
+            data  = load_troop_data(self.server, self.account, vname, troop_names)
+            trained = data.get("trained", {})
+            rows.append((vname, trained))
+            for t in troop_names:
+                totals[t] += trained.get(t, 0)
+
+        # ── scrollable table ─────────────────────────────────────────────────
+        scroll_outer, inner = scrollable_frame(outer)
+        scroll_outer.pack(fill="both", expand=True, padx=24, pady=(0, 16))
+
+        VNAME_W = 22
+        COL_W   = 11
+
+        def cell_label(parent, text, width, bg, fg, bold=False):
+            font = ("Consolas", 9, "bold") if bold else FONT_SMALL
+            tk.Label(parent, text=text, width=width, font=font,
+                     bg=bg, fg=fg, anchor="center").pack(side="left")
+            tk.Frame(parent, bg=BORDER, width=1).pack(side="left", fill="y")
+
+        # ── header row ───────────────────────────────────────────────────────
+        hdr_row = tk.Frame(inner, bg=BG_MID)
+        hdr_row.pack(fill="x", pady=(0, 1))
+        tk.Label(hdr_row, text="Village", width=VNAME_W, font=("Consolas", 8, "bold"),
+                 bg=BG_MID, fg=TEXT_MUTED, anchor="w", padx=4).pack(side="left")
+        tk.Frame(hdr_row, bg=BORDER, width=1).pack(side="left", fill="y")
+        for t in troop_names:
+            disp = t if len(t) <= COL_W else t[:COL_W-1] + "…"
+            lbl = tk.Label(hdr_row, text=disp, width=COL_W,
+                           font=("Consolas", 8, "bold"),
+                           bg=BG_MID, fg=ACCENT, anchor="center")
+            lbl.pack(side="left")
+            if len(t) > COL_W:   # tooltip on hover
+                lbl.bind("<Enter>", lambda e, w=lbl, full=t: w.config(text=full[:COL_W+4]))
+                lbl.bind("<Leave>", lambda e, w=lbl, d=disp: w.config(text=d))
+            tk.Frame(hdr_row, bg=BORDER, width=1).pack(side="left", fill="y")
+        make_separator(inner).pack(fill="x")
+
+        # ── village rows ─────────────────────────────────────────────────────
+        for i, (vname, trained) in enumerate(rows):
+            bg = BG_MID if i % 2 == 0 else BG_PANEL
+            row_f = tk.Frame(inner, bg=bg)
+            row_f.pack(fill="x", pady=1)
+            tk.Label(row_f, text=vname, width=VNAME_W, font=FONT_SMALL,
+                     bg=bg, fg=TEXT_PRIMARY, anchor="w", padx=4).pack(side="left")
+            tk.Frame(row_f, bg=BORDER, width=1).pack(side="left", fill="y")
+            for t in troop_names:
+                val = trained.get(t, 0)
+                fg  = TEXT_PRIMARY if val > 0 else TEXT_MUTED
+                cell_label(row_f, str(val) if val else "—", COL_W, bg, fg)
+
+        # ── sum row ──────────────────────────────────────────────────────────
+        make_separator(inner).pack(fill="x", pady=(4, 0))
+        sum_row = tk.Frame(inner, bg=BG_HOVER)
+        sum_row.pack(fill="x", pady=(1, 0))
+        tk.Label(sum_row, text="Account Total", width=VNAME_W,
+                 font=("Consolas", 9, "bold"),
+                 bg=BG_HOVER, fg=ACCENT, anchor="w", padx=4).pack(side="left")
+        tk.Frame(sum_row, bg=BORDER, width=1).pack(side="left", fill="y")
+        grand_total = sum(totals.values())
+        for t in troop_names:
+            val = totals[t]
+            fg  = COL_FULL_GREEN if val > 0 else TEXT_MUTED
+            cell_label(sum_row, str(val) if val else "—", COL_W, BG_HOVER, fg, bold=True)
+
+        # grand total badge
+        make_separator(inner).pack(fill="x", pady=(4, 0))
+        tk.Label(inner,
+                 text=f"Total troops across all villages:  {grand_total:,}",
+                 font=("Consolas", 9, "bold"), bg=BG_DARK,
+                 fg=ACCENT).pack(anchor="w", padx=4, pady=(6, 4))
 
     def _show_troop_locations(self):
         self._clear_center()
