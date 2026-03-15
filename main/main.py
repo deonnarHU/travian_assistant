@@ -229,7 +229,10 @@ RESOURCE_TYPES  = ["Woodcutter", "Clay Pit", "Iron Mine", "Cropland"]
 
 # Travian production per hour at each field level (levels 0–10, index = level)
 # Source: standard 1x speed values
-FIELD_PRODUCTION = [0, 2, 5, 9, 15, 25, 40, 65, 105, 170, 280]
+# Travian production per hour at each field level (levels 0–20, index = level)
+# Levels 0–10 apply to all villages; levels 11–20 only in the capital.
+FIELD_PRODUCTION = [0, 2, 5, 9, 15, 25, 40, 65, 105, 170, 280,
+                    455, 740, 1200, 1950, 3170, 5145, 8350, 13555, 22010, 35745]
 RESOURCE_FIELDS = ["slot", "type", "level"]
 
 def resource_file(server, account, village_name) -> Path:
@@ -498,7 +501,7 @@ def save_template(server, account, template_name, layout: dict):
 ACCOUNT_FIELDS = ["server", "account", "tribe", "status", "speed"]
 VILLAGE_FIELDS = ["village_name", "coord_x", "coord_y",
                   "res_wood", "res_clay", "res_iron", "res_crop",
-                  "applied_template", "group"]
+                  "applied_template", "group", "is_capital"]
 LAYOUT_FIELDS  = ["slot_id", "building", "level"]
 BUILDING_FIELDS_CSV = ["slot_id", "building", "level"]
 
@@ -621,6 +624,13 @@ def update_village(server, account, name, updates: dict):
     for v in villages:
         if v["village_name"] == name:
             v.update(updates)
+    _rewrite_villages(server, account, villages)
+
+def set_capital(server, account, village_name: str):
+    """Mark village_name as capital; clear is_capital on all others."""
+    villages = load_villages(server, account)
+    for v in villages:
+        v["is_capital"] = "1" if v["village_name"] == village_name else ""
     _rewrite_villages(server, account, villages)
 
 def take_snapshot(server, account):
@@ -2060,15 +2070,16 @@ class VillageResourceLayoutView(tk.Frame):
     """18 resource field slots, each with a type and level selector."""
 
     def __init__(self, master, server, account, village_name, is_archived=False,
-                 on_save=None):
+                 on_save=None, is_capital=False):
         super().__init__(master, bg=BG_DARK)
         self.server       = server
         self.account      = account
         self.village_name = village_name
         self.is_archived  = is_archived
+        self.is_capital   = is_capital
         self._on_save     = on_save
-        self._type_vars   = {}   # slot_str -> StringVar
-        self._level_vars  = {}   # slot_str -> StringVar
+        self._type_vars   = {}
+        self._level_vars  = {}
         self._load_and_build()
 
     def _load_and_build(self):
@@ -2086,8 +2097,11 @@ class VillageResourceLayoutView(tk.Frame):
                           accent=True).pack(side="left")
 
         make_separator(self).pack(fill="x", padx=24, pady=10)
-        tk.Label(self, text="Set the type and level for each of the 18 resource fields.",
-                 font=FONT_SMALL, bg=BG_DARK, fg=TEXT_MUTED).pack(anchor="w", padx=24, pady=(0, 10))
+        cap_note = "  👑 Capital — fields can reach level 20" if self.is_capital else \
+                   "  Fields max level 10  (set as capital to unlock lvl 11–20)"
+        tk.Label(self, text=cap_note,
+                 font=FONT_SMALL, bg=BG_DARK,
+                 fg=ACCENT if self.is_capital else TEXT_MUTED).pack(anchor="w", padx=24, pady=(0, 10))
 
         outer, inner = scrollable_frame(self)
         outer.pack(fill="both", expand=True, padx=24, pady=(0, 16))
@@ -2100,8 +2114,9 @@ class VillageResourceLayoutView(tk.Frame):
                      bg=BG_PANEL, fg=TEXT_MUTED, width=w, anchor="w").pack(side="left", padx=4)
         make_separator(inner, bg=BORDER).pack(fill="x", pady=(0, 4))
 
-        state = "disabled" if self.is_archived else "readonly"
-        level_opts = [str(i) for i in range(0, 11)]
+        state      = "disabled" if self.is_archived else "readonly"
+        max_level  = 20 if self.is_capital else 10
+        level_opts = [str(i) for i in range(0, max_level + 1)]
 
         for i, slot in enumerate(slots):
             skey = slot["slot"]
@@ -2423,10 +2438,11 @@ class MainApp(tk.Frame):
 
         section_label(pad, "Account Overview").pack(fill="x", padx=12, pady=(14, 4))
         for label, cmd in [
-            ("📊  Production Info",  self._show_production_info),
-            ("⚔   Troops Overview",  self._show_troops_overview),
-            ("🗺   Troop Locations", self._show_troop_locations),
-            ("⚡  Net Production",   self._show_net_production),
+            ("🏠  Account Overview",  self._show_account_overview),
+            ("📊  Production Info",   self._show_production_info),
+            ("⚔   Troops Overview",   self._show_troops_overview),
+            ("🗺   Troop Locations",  self._show_troop_locations),
+            ("⚡  Net Production",    self._show_net_production),
         ]:
             nav_button(pad, label, command=cmd).pack(fill="x")
 
@@ -2515,6 +2531,150 @@ class MainApp(tk.Frame):
         )
 
     # ── Account-wide views ────────────────────────────────────────────────────
+
+    def _show_account_overview(self):
+        self._clear_center()
+        villages  = load_villages(self.server, self.account)
+        templates = list_templates(self.server, self.account)
+
+        outer = tk.Frame(self.center, bg=BG_DARK)
+        outer.pack(fill="both", expand=True)
+
+        hdr = tk.Frame(outer, bg=BG_DARK)
+        hdr.pack(fill="x", padx=24, pady=(24, 0))
+        tk.Label(hdr, text="Account Overview",
+                 font=FONT_TITLE, bg=BG_DARK, fg=TEXT_PRIMARY).pack(side="left")
+        tk.Label(hdr, text=f"  —  {len(villages)} villages",
+                 font=FONT_BODY, bg=BG_DARK, fg=TEXT_MUTED).pack(side="left", pady=(6, 0))
+        status_lbl = tk.Label(hdr, text="", font=FONT_SMALL,
+                              bg=BG_DARK, fg=COL_FULL_GREEN, width=28, anchor="w")
+        status_lbl.pack(side="left", padx=(16, 0))
+        if not self.is_archived:
+            styled_button(hdr, "💾  Apply Templates",
+                          command=lambda: _save_templates(),
+                          accent=True).pack(side="left")
+        make_separator(outer).pack(fill="x", padx=24, pady=10)
+
+        if not villages:
+            tk.Label(outer, text="No villages yet. Use Import Overview or add manually.",
+                     font=FONT_BODY, bg=BG_DARK, fg=TEXT_MUTED).pack(padx=24, anchor="w")
+            return
+
+        # ── state tracking ────────────────────────────────────────────────────
+        # Find current capital
+        cap_var   = tk.StringVar(value=next(
+            (v["village_name"] for v in villages if v.get("is_capital") == "1"), ""))
+        t_var_map = {}   # vname -> StringVar for template dropdown
+
+        def _save_templates():
+            applied = 0
+            skipped = 0
+            for vname, tvar in t_var_map.items():
+                chosen = tvar.get()
+                if chosen and chosen != "— None —":
+                    layout = load_template(self.server, self.account, chosen)
+                    if layout:
+                        save_layout(self.server, self.account, vname, layout)
+                        update_village(self.server, self.account, vname,
+                                       {"applied_template": chosen})
+                        applied += 1
+                    else:
+                        skipped += 1
+                else:
+                    # Explicitly clear the template assignment
+                    update_village(self.server, self.account, vname,
+                                   {"applied_template": ""})
+            msg = f"✓ Applied {applied} template(s)"
+            if skipped:
+                msg += f"  ({skipped} not found)"
+            status_lbl.config(text=msg,
+                              fg=COL_FULL_GREEN if not skipped else COL_ORANGE)
+            fade_label(status_lbl, after_ms=4000)
+
+        def _on_capital_click(vname: str):
+            """Toggle capital: if already capital, deselect; else set as new capital."""
+            current = cap_var.get()
+            new_cap = "" if current == vname else vname
+            cap_var.set(new_cap)
+            if new_cap:
+                set_capital(self.server, self.account, new_cap)
+            else:
+                # Clear all
+                for v in load_villages(self.server, self.account):
+                    v["is_capital"] = ""
+                _rewrite_villages(self.server, self.account,
+                                  load_villages(self.server, self.account))
+                update_village(self.server, self.account, vname, {"is_capital": ""})
+            _rebuild()
+
+        # ── table container (rebuilt after capital toggle) ─────────────────────
+        table_container = tk.Frame(outer, bg=BG_DARK)
+        table_container.pack(fill="both", expand=True)
+
+        def _rebuild():
+            for w in table_container.winfo_children():
+                w.destroy()
+
+            cur_villages = load_villages(self.server, self.account)
+            scroll_outer, inner = scrollable_frame(table_container)
+            scroll_outer.pack(fill="both", expand=True, padx=24, pady=(0, 16))
+
+            tbl = tk.Frame(inner, bg=BG_DARK)
+            tbl.pack(fill="x")
+            tbl.columnconfigure(0, minsize=180)   # village name
+            tbl.columnconfigure(1, minsize=50)    # capital toggle
+            tbl.columnconfigure(2, minsize=200)   # template
+
+            def gh(col, text, bg=BG_MID):
+                tk.Label(tbl, text=text, font=("Consolas", 9, "bold"),
+                         bg=bg, fg=TEXT_MUTED, anchor="w" if col == 0 else "center",
+                         padx=6, pady=3
+                         ).grid(row=0, column=col, sticky="nsew", padx=(0,1), pady=(0,1))
+
+            gh(0, "Village")
+            gh(1, "👑 Capital")
+            gh(2, "Layout Template")
+            tk.Frame(tbl, bg=BORDER, height=1).grid(
+                row=1, column=0, columnspan=3, sticky="ew", pady=(0,1))
+
+            tmpl_opts = ["— None —"] + templates
+
+            for i, v in enumerate(cur_villages):
+                r      = i + 2
+                bg     = BG_MID if i % 2 == 0 else BG_PANEL
+                vname  = v["village_name"]
+                is_cap = v.get("is_capital", "") == "1"
+
+                # Village name
+                tk.Label(tbl, text=("👑 " if is_cap else "   ") + vname,
+                         font=FONT_SMALL, bg=bg,
+                         fg=ACCENT if is_cap else TEXT_PRIMARY,
+                         anchor="w", padx=6, pady=3
+                         ).grid(row=r, column=0, sticky="nsew", padx=(0,1), pady=(0,1))
+
+                # Capital toggle button
+                cap_btn = tk.Button(
+                    tbl,
+                    text="★ Capital" if is_cap else "☆ Set",
+                    font=FONT_SMALL,
+                    bg=ACCENT_DIM if is_cap else bg,
+                    fg=ACCENT if is_cap else TEXT_MUTED,
+                    activebackground=BG_HOVER, activeforeground=ACCENT,
+                    relief="flat", bd=0, cursor="hand2",
+                    command=lambda vn=vname: _on_capital_click(vn))
+                if self.is_archived:
+                    cap_btn.config(state="disabled")
+                cap_btn.grid(row=r, column=1, sticky="nsew", padx=(0,1), pady=(0,1))
+
+                # Template dropdown
+                cur_tmpl = v.get("applied_template", "") or "— None —"
+                t_var = tk.StringVar(value=cur_tmpl if cur_tmpl in tmpl_opts else "— None —")
+                t_var_map[vname] = t_var
+                state = "disabled" if self.is_archived else "readonly"
+                cb = styled_combo(tbl, t_var, tmpl_opts, width=22, state=state)
+                cb.grid(row=r, column=2, sticky="nsew", padx=(0,1), pady=(0,1))
+
+        _rebuild()
 
     def _show_production_info(self):
         self._clear_center()
@@ -2780,10 +2940,14 @@ class MainApp(tk.Frame):
 
     def _show_resource_layout(self, village):
         self._clear_center()
+        vdata      = next((v for v in load_villages(self.server, self.account)
+                           if v["village_name"] == village), {})
+        is_capital = vdata.get("is_capital", "") == "1"
         view = VillageResourceLayoutView(
             self.center, self.server, self.account,
             village, self.is_archived,
-            on_save=lambda: self._refresh_village_list())
+            on_save=lambda: self._refresh_village_list(),
+            is_capital=is_capital)
         view.pack(fill="both", expand=True)
 
     def _open_troops_import(self):

@@ -1,14 +1,14 @@
 village_name,coord_x,coord_y,res_wood,res_clay,res_iron,res_crop,applied_template,group,is_capital
-Vigántpetend,89,53,4,4,4,6,Base Village,WW Feed,
-Balatoncsicsó,78,50,4,4,4,6,Base Village,WW Feed,
-Taliándörögd,67,50,4,4,4,6,Base Village,WW Feed,
-Szentbékkálla,56,49,4,4,4,6,Hammer,WW Feed,
-Sülysáp,101,56,4,4,4,6,Base Village,Anvils,
-Tápiószecső,96,50,1,1,1,15,,Anvils,1
-Alsóbélatelep,97,51,4,4,4,6,Base Village,Anvils,
-Alsómocsolád,95,50,4,4,4,6,Base Village,Anvils,
+Vigántpetend,89,53,4,4,4,6,aaa,WW Feed,
+Balatoncsicsó,78,50,4,4,4,6,aaa,WW Feed,
+Taliándörögd,67,50,4,4,4,6,aaa,WW Feed,
+Szentbékkálla,56,49,4,4,4,6,aaa,WW Feed,
+Sülysáp,101,56,4,4,4,6,bbb,Anvils,
+Tápiószecső,96,50,4,4,4,6,bbb,Anvils,1
+Alsóbélatelep,97,51,4,4,4,6,,Anvils,
+Alsómocsolád,95,50,4,4,4,6,,Anvils,
 Vácrátót,98,50,4,4,4,6,,Anvils,
-Felsoszölnök,,,4,4,4,6,,,
+Felsoszölnök,,,4,4,4,6,aaa,,
 Nagykálló,88,49,4,4,4,6,,Anvils,
 Kehidakustány,97,49,4,4,4,6,,Anvils,
 Solymár,98,51,4,4,4,6,,Feeders,

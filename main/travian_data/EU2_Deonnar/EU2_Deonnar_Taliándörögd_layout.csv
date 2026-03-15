@@ -3,5 +3,5 @@ slot_id,building,level
 2,Academy,10
 3,Barracks,15
 4,Smithy,20
-19,Rally Point,0
-20,City Wall,0
+19,Rally Point,15
+20,City Wall,20

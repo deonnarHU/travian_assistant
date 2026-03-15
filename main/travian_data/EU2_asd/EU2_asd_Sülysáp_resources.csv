@@ -1,14 +1,14 @@
 slot,type,level
-1,Woodcutter,16
-2,Clay Pit,14
-3,Iron Mine,11
-4,Cropland,17
+1,Woodcutter,4
+2,Woodcutter,5
+3,Cropland,0
+4,Cropland,0
 5,Cropland,0
 6,Cropland,0
 7,Cropland,0
 8,Cropland,0
 9,Cropland,0
-10,Cropland,0
+10,Clay Pit,5
 11,Cropland,0
 12,Cropland,0
 13,Cropland,0
