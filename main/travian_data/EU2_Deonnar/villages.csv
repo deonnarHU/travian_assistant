@@ -1,19 +1,25 @@
 village_name,coord_x,coord_y,res_wood,res_clay,res_iron,res_crop,applied_template,group
-Vig·ntpetend,89,53,4,4,4,6,,WW Feed
-BalatoncsicsÛ,78,50,4,4,4,6,,WW Feed
-Tali·ndˆrˆgd,67,50,4,4,4,6,,WW Feed
-SzentbÈkk·lla,56,49,4,4,4,6,,WW Feed
-S¸lys·p,101,56,4,4,4,6,,Anvils
-T·piÛszecso,,,4,4,4,6,,
-AlsÛbÈlatelep,97,51,4,4,4,6,,Anvils
-AlsÛmocsol·d,95,50,4,4,4,6,,Anvils
-V·cr·tÛt,98,50,4,4,4,6,,Anvils
-Felsoszˆlnˆk,,,4,4,4,6,,
-Nagyk·llÛ,88,49,4,4,4,6,,Anvils
-Kehidakust·ny,97,49,4,4,4,6,,Anvils
-Solym·r,98,51,4,4,4,6,,Feeders
-B·tonyterenye,100,50,4,4,4,6,,Feeders
-Balmaz˙jv·ros,97,52,4,4,4,6,,Feeders
+Vig√°ntpetend,89,53,4,4,4,6,,WW Feed
+Balatoncsics√≥,78,50,4,4,4,6,,WW Feed
+Tali√°nd√∂r√∂gd,67,50,4,4,4,6,Base Village,WW Feed
+Szentb√©kk√°lla,56,49,4,4,4,6,,WW Feed
+S√ºlys√°p,101,56,4,4,4,6,,Anvils
+T√°pi√≥szecs≈ë,96,50,4,4,4,6,,Anvils
+Als√≥b√©latelep,97,51,4,4,4,6,,Anvils
+Als√≥mocsol√°d,95,50,4,4,4,6,,Anvils
+V√°cr√°t√≥t,98,50,4,4,4,6,,Anvils
+Felsosz√∂ln√∂k,,,4,4,4,6,,
+Nagyk√°ll√≥,88,49,4,4,4,6,,Anvils
+Kehidakust√°ny,97,49,4,4,4,6,,Anvils
+Solym√°r,98,51,4,4,4,6,,Feeders
+B√°tonyterenye,100,50,4,4,4,6,,Feeders
+Balmaz√∫jv√°ros,97,52,4,4,4,6,,Feeders
 Kiskunmajsa,100,52,4,4,4,6,,Feeders
 Nagykanizsa,101,54,4,4,4,6,,Feeders
-Veresegyh·z,88,44,4,4,4,6,,Feeders
+Veresegyh√°z,88,44,4,4,4,6,,Feeders
+Gyomaendr≈ëd,97,53,4,4,4,6,,Feeders
+Homokb√∂d√∂ge,92,56,4,4,4,6,,Feeders
+Makkoshotyka,88,51,4,4,4,6,,Feeders
+Tarnazsad√°ny,95,45,4,4,4,6,,Feeders
+Csan√°dap√°ca,130,61,4,4,4,6,,Feeders
+Fels≈ëk√∂rtv√©lyes,96,52,4,4,4,6,,Feeders

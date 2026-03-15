@@ -182,28 +182,29 @@ def troops_file(server, account, village_name):
 TROOP_ROWS = ["trained", "native_in", "native_out", "foreign_in"]
 
 def load_troop_data(server, account, village_name, troop_names: list) -> dict:
-    """
-    Return dict: row_key -> {troop_name: int}.
-    Initialises to 0 for any missing entry.
-    """
     fpath = troops_file(server, account, village_name)
     data = {row: {t: 0 for t in troop_names} for row in TROOP_ROWS}
     if fpath.exists():
-        with open(fpath, newline="") as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                rk = row.get("row", "")
-                if rk in data:
-                    for t in troop_names:
-                        try:
-                            data[rk][t] = int(row.get(t, 0) or 0)
-                        except ValueError:
-                            data[rk][t] = 0
+        for enc in ("utf-8", "utf-8-sig", "cp1250", "cp1252", "latin-1"):
+            try:
+                with open(fpath, newline="", encoding=enc) as f:
+                    reader = csv.DictReader(f)
+                    for row in reader:
+                        rk = row.get("row", "")
+                        if rk in data:
+                            for t in troop_names:
+                                try:
+                                    data[rk][t] = int(row.get(t, 0) or 0)
+                                except ValueError:
+                                    data[rk][t] = 0
+                break
+            except (UnicodeDecodeError, UnicodeError):
+                continue
     return data
 
 def save_troop_data(server, account, village_name, troop_names: list, data: dict):
     fpath = troops_file(server, account, village_name)
-    with open(fpath, "w", newline="") as f:
+    with open(fpath, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=["row"] + troop_names)
         w.writeheader()
         for rk in TROOP_ROWS:
@@ -502,17 +503,21 @@ def get_account(server, account):
 def load_villages(server, account):
     vfile = villages_file(server, account)
     if not vfile.exists(): return []
-    with open(vfile, newline="") as f:
-        return list(csv.DictReader(f))
+    for enc in ("utf-8", "utf-8-sig", "cp1250", "cp1252", "latin-1"):
+        try:
+            with open(vfile, newline="", encoding=enc) as f:
+                return list(csv.DictReader(f))
+        except (UnicodeDecodeError, UnicodeError):
+            continue
+    return []
 
 def _rewrite_villages(server, account, villages):
     vfile = villages_file(server, account)
     vfile.parent.mkdir(parents=True, exist_ok=True)
-    with open(vfile, "w", newline="") as f:
+    with open(vfile, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=VILLAGE_FIELDS, extrasaction="ignore")
         w.writeheader()
         for v in villages:
-            # Ensure all required fields are present with sensible defaults
             row = {k: v.get(k, "") for k in VILLAGE_FIELDS}
             if not row["res_wood"]: row["res_wood"] = 4
             if not row["res_clay"]: row["res_clay"] = 4
@@ -2186,64 +2191,75 @@ class TroopOverviewImportDialog(tk.Toplevel):
 
         # Load once, work in memory, write once at the end
         # Ensure account directory exists before writing any files
-        account_dir(self.server, self.account).mkdir(parents=True, exist_ok=True)
-        snapshots_dir(self.server, self.account).mkdir(exist_ok=True)
+        try:
+            account_dir(self.server, self.account).mkdir(parents=True, exist_ok=True)
+            snapshots_dir(self.server, self.account).mkdir(exist_ok=True)
 
-        existing_villages = load_villages(self.server, self.account)
-        existing_map      = {v["village_name"]: v for v in existing_villages}
+            existing_villages = load_villages(self.server, self.account)
+            existing_map      = {v["village_name"]: v for v in existing_villages}
 
-        added = 0
-        tribe_troops = get_tribe_troops(self.tribe)
-        errors = []
+            output_villages = []
+            added = 0
+            tribe_troops = get_tribe_troops(self.tribe)
+            troop_errors = []
 
-        for vname, troop_counts in vt.items():
-            try:
+            for vname, troop_counts in vt.items():
                 cx, cy = coords.get(vname, ("", ""))
                 grp    = groups.get(vname, "")
 
-                if vname not in existing_map:
-                    new_v = {"village_name": vname,
-                             "coord_x": cx, "coord_y": cy,
-                             "res_wood": 4, "res_clay": 4,
-                             "res_iron": 4, "res_crop": 6,
-                             "applied_template": "", "group": grp}
-                    existing_map[vname] = new_v
-                    existing_villages.append(new_v)
-                    added += 1
-                else:
+                if vname in existing_map:
                     v = existing_map[vname]
                     if not v.get("coord_x") and cx:  v["coord_x"] = cx
                     if not v.get("coord_y") and cy:  v["coord_y"] = cy
                     if not v.get("group")   and grp: v["group"]   = grp
+                    output_villages.append(v)
+                else:
+                    output_villages.append({
+                        "village_name":     vname,
+                        "coord_x":          cx,
+                        "coord_y":          cy,
+                        "res_wood":         4,
+                        "res_clay":         4,
+                        "res_iron":         4,
+                        "res_crop":         6,
+                        "applied_template": "",
+                        "group":            grp,
+                    })
+                    added += 1
 
-                troop_data = load_troop_data(self.server, self.account, vname, tribe_troops)
-                for t in tribe_troops:
-                    for col in cols:
-                        if col.lower() == t.lower():
-                            troop_data["trained"][t] = troop_counts.get(col, 0)
-                            break
-                for t in tribe_troops:
-                    troop_data["native_out"][t] = max(
-                        0, troop_data["trained"].get(t, 0) - troop_data["native_in"].get(t, 0))
-                save_troop_data(self.server, self.account, vname, tribe_troops, troop_data)
+                try:
+                    troop_data = load_troop_data(self.server, self.account, vname, tribe_troops)
+                    for t in tribe_troops:
+                        for col in cols:
+                            if col.lower() == t.lower():
+                                troop_data["trained"][t] = troop_counts.get(col, 0)
+                                break
+                    for t in tribe_troops:
+                        troop_data["native_out"][t] = max(
+                            0, troop_data["trained"].get(t, 0) - troop_data["native_in"].get(t, 0))
+                    save_troop_data(self.server, self.account, vname, tribe_troops, troop_data)
+                except Exception as e:
+                    troop_errors.append(f"{vname}: {e}")
 
-            except Exception as e:
-                errors.append(f"{vname}: {e}")
+            _rewrite_villages(self.server, self.account, output_villages)
 
-        # Single bulk write of all village records
-        _rewrite_villages(self.server, self.account, existing_villages)
+            if self._on_complete:
+                self._on_complete()
 
-        if errors:
-            # Write to a log file so the user can inspect
-            log_path = account_dir(self.server, self.account) / "import_errors.txt"
-            with open(log_path, "w") as lf:
-                lf.write("\n".join(errors))
-            msg = (f"⚠  {len(existing_villages)} villages written ({added} new), "
-                   f"{len(errors)} errors — see import_errors.txt")
-            self._status_lbl.config(text=msg, fg=COL_ORANGE)
-        else:
-            msg = f"✅  Imported {len(vt)} villages ({added} new). Troop data updated."
-            self._status_lbl.config(text=msg, fg=COL_FULL_GREEN)
+            if troop_errors:
+                log_path = account_dir(self.server, self.account) / "import_errors.txt"
+                with open(log_path, "w", encoding="utf-8") as lf:
+                    lf.write("\n".join(troop_errors))
+                msg = (f"⚠  {len(output_villages)} villages written ({added} new), "
+                       f"{len(troop_errors)} troop errors — see import_errors.txt")
+                self._status_lbl.config(text=msg, fg=COL_ORANGE)
+            else:
+                msg = f"✅  Imported {len(output_villages)} villages ({added} new). Troop data updated."
+                self._status_lbl.config(text=msg, fg=COL_FULL_GREEN)
+
+        except Exception as fatal:
+            self._status_lbl.config(
+                text=f"❌ Fatal error: {fatal}", fg=COL_RED)
 
         if self._on_complete:
             self._on_complete()
