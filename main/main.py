@@ -2439,6 +2439,7 @@ class MainApp(tk.Frame):
         section_label(pad, "Account Overview").pack(fill="x", padx=12, pady=(14, 4))
         for label, cmd in [
             ("🏠  Account Overview",  self._show_account_overview),
+            ("🗺   Map",              self._show_map),
             ("📊  Production Info",   self._show_production_info),
             ("⚔   Troops Overview",   self._show_troops_overview),
             ("🗺   Troop Locations",  self._show_troop_locations),
@@ -2892,6 +2893,273 @@ class MainApp(tk.Frame):
                  text=f"Total troops across all villages:  {grand_total:,}",
                  font=("Consolas", 9, "bold"), bg=BG_DARK,
                  fg=ACCENT).pack(anchor="w", padx=4, pady=(8, 4))
+
+    def _show_map(self):
+        self._clear_center()
+        villages = load_villages(self.server, self.account)
+
+        outer = tk.Frame(self.center, bg=BG_DARK)
+        outer.pack(fill="both", expand=True)
+
+        # ── Header ────────────────────────────────────────────────────────────
+        hdr = tk.Frame(outer, bg=BG_DARK)
+        hdr.pack(fill="x", padx=24, pady=(18, 0))
+        tk.Label(hdr, text="Map", font=FONT_TITLE,
+                 bg=BG_DARK, fg=TEXT_PRIMARY).pack(side="left")
+        tk.Label(hdr, text="  scroll to zoom  ·  drag to pan  ·  hover for village name",
+                 font=FONT_SMALL, bg=BG_DARK, fg=TEXT_MUTED).pack(side="left", pady=(6, 0))
+
+        # coord display in top-right
+        coord_lbl = tk.Label(hdr, text="", font=FONT_SMALL,
+                             bg=BG_DARK, fg=TEXT_SECONDARY)
+        coord_lbl.pack(side="right", padx=8)
+
+        make_separator(outer).pack(fill="x", padx=24, pady=8)
+
+        # ── Canvas ────────────────────────────────────────────────────────────
+        map_frame = tk.Frame(outer, bg=BG_DARK)
+        map_frame.pack(fill="both", expand=True, padx=24, pady=(0, 16))
+
+        canvas = tk.Canvas(map_frame, bg="#0a0e1a", highlightthickness=1,
+                           highlightbackground=BORDER, cursor="crosshair")
+        canvas.pack(fill="both", expand=True)
+
+        # ── State ─────────────────────────────────────────────────────────────
+        # Travian map: coords range roughly -400..+400 on both axes
+        MAP_HALF   = 200          # world spans -200..+200  (401 coords wide)
+        MAP_SIZE   = 401          # total world width in game coords
+        CELL_BASE  = 4.0          # base pixels per game coord unit at zoom=1
+        MIN_ZOOM   = 0.5
+        MAX_ZOOM   = 8.0
+
+        state = {
+            "zoom":    1.0,
+            "pan_x":  0.0,   # offset in canvas pixels
+            "pan_y":  0.0,
+            "drag_x": None,
+            "drag_y": None,
+        }
+
+        # Parse village coords
+        vdata = []
+        for v in villages:
+            try:
+                cx = int(v["coord_x"]); cy = int(v["coord_y"])
+                vdata.append({"name": v["village_name"], "x": cx, "y": cy,
+                               "capital": v.get("is_capital", "") == "1"})
+            except (ValueError, TypeError, KeyError):
+                pass
+
+        # ── Coordinate transforms ──────────────────────────────────────────────
+        def world_pixels():
+            """Total pixel width/height of one world copy at current zoom."""
+            return MAP_SIZE * CELL_BASE * state["zoom"]
+
+        def game_to_canvas(gx, gy):
+            """Convert game coord → canvas pixel (no wrapping — raw)."""
+            w = canvas.winfo_width()  or 800
+            h = canvas.winfo_height() or 600
+            cell = CELL_BASE * state["zoom"]
+            px = w / 2 + (gx * cell) + state["pan_x"]
+            py = h / 2 + (-gy * cell) + state["pan_y"]   # y-flip
+            return px, py
+
+        def canvas_to_game(cx, cy):
+            """Convert canvas pixel → game coord, wrapped to [-200, +200]."""
+            w = canvas.winfo_width()  or 800
+            h = canvas.winfo_height() or 600
+            cell = CELL_BASE * state["zoom"]
+            raw_x = (cx - w / 2 - state["pan_x"]) / cell
+            raw_y = -((cy - h / 2 - state["pan_y"]) / cell)
+            # Wrap into [-200, +200]
+            gx = (raw_x + MAP_HALF) % MAP_SIZE - MAP_HALF
+            gy = (raw_y + MAP_HALF) % MAP_SIZE - MAP_HALF
+            return gx, gy
+
+        # ── Draw ──────────────────────────────────────────────────────────────
+        _GRID_COL       = "#151c2e"
+        _AXIS_COL       = "#1e2d4a"
+        _VILLAGE_COL    = "#27ae60"
+        _CAPITAL_COL    = "#c8963e"
+        _VILLAGE_HOVER  = "#58d68d"
+        _LABEL_BG       = "#0f1520"
+        _TOOLTIP_ID     = [None, None]   # [rect_id, text_id]
+
+        def _clear_tooltip():
+            for tid in _TOOLTIP_ID:
+                if tid:
+                    canvas.delete(tid)
+            _TOOLTIP_ID[0] = _TOOLTIP_ID[1] = None
+
+        def draw():
+            canvas.delete("all")
+            _TOOLTIP_ID[0] = _TOOLTIP_ID[1] = None
+            w = canvas.winfo_width()  or 800
+            h = canvas.winfo_height() or 600
+            cell  = CELL_BASE * state["zoom"]
+            wpx   = world_pixels()   # pixel width of one world copy
+
+            # How many tile copies do we need to cover the canvas?
+            # At minimum zoom the world is ~401*0.5*4 ≈ 802px, always enough
+            # for ±1 copies to cover any reasonable canvas.
+            copies = range(-2, 3)
+
+            # ── Grid lines (drawn once per visible tile copy) ─────────────────
+            if cell >= 20:   step = 10
+            elif cell >= 8:  step = 25
+            elif cell >= 3:  step = 50
+            else:            step = 100
+
+            for tx in copies:
+                for ty in copies:
+                    # Origin pixel of this tile copy
+                    ox, oy = game_to_canvas(tx * MAP_SIZE, -ty * MAP_SIZE)
+
+                    # Only draw tile if it overlaps the canvas
+                    if ox + wpx < 0 or ox > w: continue
+                    if oy + wpx < 0 or oy > h: continue
+
+                    # Vertical grid lines within this tile
+                    for gx in range(-MAP_HALF, MAP_HALF + 1, step):
+                        px = ox + (gx + MAP_HALF) * cell
+                        if px < 0 or px > w: continue
+                        col = _AXIS_COL if gx == 0 else _GRID_COL
+                        lw  = 2 if gx == 0 else 1
+                        canvas.create_line(px, 0, px, h, fill=col, width=lw)
+                        if cell >= 4 and tx == 0 and abs(gx) % (step * 2) == 0:
+                            canvas.create_text(px + 2, 4, text=str(gx),
+                                               font=FONT_TINY, fill=TEXT_MUTED, anchor="nw")
+
+                    # Horizontal grid lines within this tile
+                    for gy in range(-MAP_HALF, MAP_HALF + 1, step):
+                        py = oy + (MAP_HALF - gy) * cell
+                        if py < 0 or py > h: continue
+                        col = _AXIS_COL if gy == 0 else _GRID_COL
+                        lw  = 2 if gy == 0 else 1
+                        canvas.create_line(0, py, w, py, fill=col, width=lw)
+                        if cell >= 4 and ty == 0 and abs(gy) % (step * 2) == 0:
+                            canvas.create_text(4, py - 2, text=str(gy),
+                                               font=FONT_TINY, fill=TEXT_MUTED, anchor="sw")
+
+                    # World border rectangle
+                    x0 = ox + 0          * cell
+                    y0 = oy + 0          * cell
+                    x1 = ox + MAP_SIZE   * cell
+                    y1 = oy + MAP_SIZE   * cell
+                    canvas.create_rectangle(x0, y0, x1, y1,
+                                            outline="#2a4060", width=2, fill="")
+
+            # ── Village dots (also drawn for each tile copy) ──────────────────
+            r = max(3, min(10, cell * 0.4))
+            for v in vdata:
+                for tx in copies:
+                    for ty in copies:
+                        raw_px = game_to_canvas(v["x"] + tx * MAP_SIZE,
+                                                v["y"] + ty * MAP_SIZE)
+                        px, py = raw_px
+                        if -r * 2 < px < w + r * 2 and -r * 2 < py < h + r * 2:
+                            col = _CAPITAL_COL if v["capital"] else _VILLAGE_COL
+                            # Tag only the canonical copy (tx=0, ty=0) for tooltip
+                            tag = ("village", v["name"]) if tx == 0 and ty == 0 else ("village_ghost",)
+                            canvas.create_oval(px - r, py - r, px + r, py + r,
+                                               fill=col, outline="#000", width=1,
+                                               tags=tag)
+                            if cell >= 10:
+                                canvas.create_text(px, py - r - 3, text=v["name"],
+                                                   font=FONT_TINY,
+                                                   fill=_CAPITAL_COL if v["capital"] else TEXT_SECONDARY,
+                                                   anchor="s", tags=("vlabel",))
+
+        # ── Tooltip ───────────────────────────────────────────────────────────
+        def show_tooltip(px, py, text):
+            _clear_tooltip()
+            pad = 4
+            t = canvas.create_text(px + 12, py - 12, text=text,
+                                   font=FONT_SMALL, fill=TEXT_PRIMARY, anchor="sw")
+            bb = canvas.bbox(t)
+            if bb:
+                r = canvas.create_rectangle(bb[0]-pad, bb[1]-pad,
+                                            bb[2]+pad, bb[3]+pad,
+                                            fill=_LABEL_BG, outline=BORDER)
+                canvas.tag_raise(t, r)
+                _TOOLTIP_ID[0] = r
+                _TOOLTIP_ID[1] = t
+
+        # ── Event handlers ────────────────────────────────────────────────────
+        def on_configure(e):
+            draw()
+
+        def on_scroll(e):
+            # Windows: e.delta = ±120; Linux: Button-4/5
+            factor = 1.15 if (e.delta > 0 or e.num == 4) else (1 / 1.15)
+            new_zoom = max(MIN_ZOOM, min(MAX_ZOOM, state["zoom"] * factor))
+            if new_zoom == state["zoom"]:
+                return
+            # Zoom toward the cursor position
+            gx, gy  = canvas_to_game(e.x, e.y)
+            state["zoom"] = new_zoom
+            nx, ny  = game_to_canvas(gx, gy)
+            state["pan_x"] += e.x - nx
+            state["pan_y"] += e.y - ny
+            draw()
+
+        def on_drag_start(e):
+            state["drag_x"] = e.x
+            state["drag_y"] = e.y
+            canvas.config(cursor="fleur")
+
+        def on_drag(e):
+            if state["drag_x"] is None:
+                return
+            state["pan_x"] += e.x - state["drag_x"]
+            state["pan_y"] += e.y - state["drag_y"]
+            state["drag_x"] = e.x
+            state["drag_y"] = e.y
+            draw()
+
+        def on_drag_end(e):
+            state["drag_x"] = None
+            state["drag_y"] = None
+            canvas.config(cursor="crosshair")
+
+        def on_motion(e):
+            gx, gy = canvas_to_game(e.x, e.y)
+            coord_lbl.config(text=f"({int(round(gx))} | {int(round(gy))})")
+            # Check village hover
+            items = canvas.find_overlapping(e.x - 8, e.y - 8, e.x + 8, e.y + 8)
+            hit = None
+            for item in items:
+                tags = canvas.gettags(item)
+                if "village" in tags:
+                    hit = tags[1] if len(tags) > 1 else None
+                    break
+            if hit:
+                show_tooltip(e.x, e.y, hit)
+            else:
+                _clear_tooltip()
+
+        canvas.bind("<Configure>",        on_configure)
+        canvas.bind("<MouseWheel>",        on_scroll)
+        canvas.bind("<Button-4>",          on_scroll)
+        canvas.bind("<Button-5>",          on_scroll)
+        canvas.bind("<ButtonPress-1>",     on_drag_start)
+        canvas.bind("<B1-Motion>",         on_drag)
+        canvas.bind("<ButtonRelease-1>",   on_drag_end)
+        canvas.bind("<Motion>",            on_motion)
+
+        # Auto-center on our villages if we have any
+        def _initial_center():
+            if vdata:
+                avg_x = sum(v["x"] for v in vdata) / len(vdata)
+                avg_y = sum(v["y"] for v in vdata) / len(vdata)
+                w = canvas.winfo_width()  or 800
+                h = canvas.winfo_height() or 600
+                cell = CELL_BASE * state["zoom"]
+                state["pan_x"] = -(avg_x * cell)
+                state["pan_y"] = avg_y * cell
+            draw()
+
+        canvas.after(50, _initial_center)
 
     def _show_troop_locations(self):
         self._clear_center()
