@@ -2938,7 +2938,7 @@ class MainApp(tk.Frame):
         MAP_SIZE   = 401          # total world width in game coords
         CELL_BASE  = 4.0          # base pixels per game coord unit at zoom=1
         MIN_ZOOM   = 0.5
-        MAX_ZOOM   = 8.0
+        MAX_ZOOM   = 24.0
 
         state = {
             "zoom":    1.0,
@@ -2985,8 +2985,9 @@ class MainApp(tk.Frame):
             return gx, gy
 
         # ── Draw ──────────────────────────────────────────────────────────────
-        _GRID_COL       = "#151c2e"
-        _AXIS_COL       = "#1e2d4a"
+        _GRID_COL       = "#1a2540"   # slightly brighter minor grid
+        _CELL_COL       = "#111829"   # very subtle per-cell grid (high zoom only)
+        _AXIS_COL       = "#2a4060"
         _VILLAGE_COL    = "#27ae60"
         _CAPITAL_COL    = "#c8963e"
         _VILLAGE_HOVER  = "#58d68d"
@@ -3027,7 +3028,20 @@ class MainApp(tk.Frame):
                     if ox + wpx < 0 or ox > w: continue
                     if oy + wpx < 0 or oy > h: continue
 
-                    # Vertical grid lines within this tile
+                    # Per-cell grid (every 1 coord unit) — only when zoomed in enough
+                    if cell >= 8:
+                        for gx in range(-MAP_HALF, MAP_HALF + 1):
+                            px = ox + (gx + MAP_HALF) * cell
+                            if px < 0 or px > w: continue
+                            canvas.create_line(px, max(0, oy), px, min(h, oy + wpx),
+                                               fill=_CELL_COL, width=1)
+                        for gy in range(-MAP_HALF, MAP_HALF + 1):
+                            py = oy + (MAP_HALF - gy) * cell
+                            if py < 0 or py > h: continue
+                            canvas.create_line(max(0, ox), py, min(w, ox + wpx), py,
+                                               fill=_CELL_COL, width=1)
+
+                    # Major grid lines
                     for gx in range(-MAP_HALF, MAP_HALF + 1, step):
                         px = ox + (gx + MAP_HALF) * cell
                         if px < 0 or px > w: continue
@@ -3038,7 +3052,6 @@ class MainApp(tk.Frame):
                             canvas.create_text(px + 2, 4, text=str(gx),
                                                font=FONT_TINY, fill=TEXT_MUTED, anchor="nw")
 
-                    # Horizontal grid lines within this tile
                     for gy in range(-MAP_HALF, MAP_HALF + 1, step):
                         py = oy + (MAP_HALF - gy) * cell
                         if py < 0 or py > h: continue
@@ -3057,21 +3070,19 @@ class MainApp(tk.Frame):
                     canvas.create_rectangle(x0, y0, x1, y1,
                                             outline="#2a4060", width=2, fill="")
 
-            # ── Village dots (also drawn for each tile copy) ──────────────────
-            r = max(3, min(10, cell * 0.4))
+            # ── Village squares (also drawn for each tile copy) ───────────────
+            r = max(2, min(9, cell * 0.38))   # half-size scales with zoom
             for v in vdata:
                 for tx in copies:
                     for ty in copies:
-                        raw_px = game_to_canvas(v["x"] + tx * MAP_SIZE,
+                        px, py = game_to_canvas(v["x"] + tx * MAP_SIZE,
                                                 v["y"] + ty * MAP_SIZE)
-                        px, py = raw_px
                         if -r * 2 < px < w + r * 2 and -r * 2 < py < h + r * 2:
                             col = _CAPITAL_COL if v["capital"] else _VILLAGE_COL
-                            # Tag only the canonical copy (tx=0, ty=0) for tooltip
                             tag = ("village", v["name"]) if tx == 0 and ty == 0 else ("village_ghost",)
-                            canvas.create_oval(px - r, py - r, px + r, py + r,
-                                               fill=col, outline="#000", width=1,
-                                               tags=tag)
+                            canvas.create_rectangle(px - r, py - r, px + r, py + r,
+                                                    fill=col, outline="#000", width=1,
+                                                    tags=tag)
                             if cell >= 10:
                                 canvas.create_text(px, py - r - 3, text=v["name"],
                                                    font=FONT_TINY,
