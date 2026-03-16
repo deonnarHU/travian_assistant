@@ -367,10 +367,18 @@ def parse_troop_overview(raw_text: str, tribe: str) -> dict:
             continue
         if _clean(parts[0]).lower() == "village" and len(parts) > 1:
             cols = [_clean(p) for p in parts[1:]]
-            # Accept if at least one column matches a known troop
-            if any(c in valid_cols for c in cols):
+            # Build a case-insensitive lookup: lower_name -> canonical_name
+            ci_lookup = {t.lower(): t for t in valid_cols}
+            if any(c.lower() in ci_lookup for c in cols):
                 header_idx = i
-                troop_columns = [c for c in cols if c in valid_cols]
+                # troop_columns: list of (col_index_in_parts, canonical_name)
+                # We keep every column that case-insensitively matches a known troop,
+                # excluding "Hero" which is not a trainable troop unit.
+                troop_columns = [
+                    (ci + 1, ci_lookup[c.lower()])   # ci+1 because parts[0] is village name
+                    for ci, c in enumerate(cols)
+                    if c.lower() in ci_lookup and ci_lookup[c.lower()] != "Hero"
+                ]
                 break
 
     if header_idx is None:
@@ -390,14 +398,14 @@ def parse_troop_overview(raw_text: str, tribe: str) -> dict:
         if not vname:
             continue
         counts = {}
-        for j, col in enumerate(troop_columns):
-            raw_val = parts[j + 1] if j + 1 < len(parts) else "0"
+        for part_idx, canonical in troop_columns:
+            raw_val = parts[part_idx] if part_idx < len(parts) else "0"
             # Remove thousand separators (commas or non-breaking thin spaces)
             raw_val = _re.sub(r'[,\u202f\u00a0]', '', raw_val)
             try:
-                counts[col] = int(raw_val)
+                counts[canonical] = int(raw_val)
             except ValueError:
-                counts[col] = 0
+                counts[canonical] = 0
         village_troops[vname] = counts
 
     # ── Parse sidebar: group names and coordinates ─────────────────────────
@@ -450,7 +458,7 @@ def parse_troop_overview(raw_text: str, tribe: str) -> dict:
         i += 1
 
     return {
-        "troop_columns":   troop_columns,
+        "troop_columns":   [canonical for _, canonical in troop_columns],
         "village_troops":  village_troops,
         "village_coords":  village_coords,
         "village_groups":  village_groups,
