@@ -322,6 +322,151 @@ def calculate_village_production(server, account, village_name,
 
     return prod
 
+# ─── Trade route data layer ───────────────────────────────────────────────────
+
+TRADE_ROUTE_FIELDS = [
+    "route_id", "target", "wood", "clay", "iron", "crop",
+    "merchants", "frequency_min", "departure_time",
+    "travel_minutes", "active",
+]
+
+def trade_routes_file(server, account, village_name) -> Path:
+    return Path(str(_vkey(server, account, village_name)) + "_traderoutes.csv")
+
+def load_trade_routes(server, account, village_name) -> list:
+    fpath = trade_routes_file(server, account, village_name)
+    if not fpath.exists():
+        return []
+    for enc in ("utf-8", "utf-8-sig", "cp1250", "latin-1"):
+        try:
+            with open(fpath, newline="", encoding=enc) as f:
+                return list(csv.DictReader(f))
+        except (UnicodeDecodeError, UnicodeError):
+            continue
+    return []
+
+def save_trade_routes(server, account, village_name, routes: list):
+    fpath = trade_routes_file(server, account, village_name)
+    fpath.parent.mkdir(parents=True, exist_ok=True)
+    with open(fpath, "w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=TRADE_ROUTE_FIELDS, extrasaction="ignore")
+        w.writeheader()
+        for r in routes:
+            row = {k: r.get(k, "") for k in TRADE_ROUTE_FIELDS}
+            w.writerow(row)
+
+def _next_route_id(routes: list) -> str:
+    if not routes:
+        return "1"
+    try:
+        return str(max(int(r.get("route_id", 0)) for r in routes) + 1)
+    except ValueError:
+        return str(len(routes) + 1)
+
+def get_merchant_stats(tribe: str, speed_mult: str = "1x") -> dict:
+    """Return {speed, carry_capacity} for tribe's merchant. Speed adjusted for server speed."""
+    csv_path = DATA_DIR / "general" / "1x" / "merchants.csv"
+    try:
+        mult = float(speed_mult.replace("x", ""))
+    except ValueError:
+        mult = 1.0
+    if csv_path.exists():
+        with open(csv_path, newline="", encoding="utf-8") as f:
+            for row in csv.DictReader(f):
+                if row["tribe"].strip().lower() == tribe.strip().lower():
+                    return {
+                        "speed":    float(row["speed"]) * mult,
+                        "carry":    int(row["carry_capacity"]),
+                    }
+    return {"speed": 16.0, "carry": 500}
+
+def travel_minutes_for_distance(dist: float, tribe: str, speed_mult: str = "1x") -> float:
+    """Minutes for merchant to travel given distance in Travian field units."""
+    stats = get_merchant_stats(tribe, speed_mult)
+    if stats["speed"] <= 0:
+        return 0.0
+    # Travian: 1 field/hr at speed 1. travel_time_hr = dist / speed_fields_per_hr
+    # speed is in fields/hr
+    return (dist / stats["speed"]) * 60.0
+
+def parse_trade_routes(raw_text: str) -> list:
+    """
+    Parse raw paste from Travian's Trade Routes page.
+    Returns list of dicts matching TRADE_ROUTE_FIELDS (without route_id).
+    Extracts data between "Create new trade route" and "Add route to village".
+    """
+    import re as _re2
+
+    def _cl(s):
+        return _re2.sub(r'[\u200e\u200f\u202a-\u202e\u2066-\u2069\xad\xa0,]', '', s).strip()
+
+    lines = [_cl(ln) for ln in raw_text.splitlines()]
+    lines = [ln for ln in lines if ln]
+
+    # Find bounds
+    start = end = None
+    for i, ln in enumerate(lines):
+        if ln.lower().startswith("create new trade route"):
+            start = i + 1
+        if ln.lower().startswith("add route to village") and start is not None:
+            end = i
+            break
+    if start is None or end is None:
+        return []
+
+    block = lines[start:end]
+
+    routes = []
+    i = 0
+    while i < len(block):
+        ln = block[i]
+
+        # "To: X" starts a route
+        m = _re2.match(r'^To:\s*(.+)$', ln, _re2.IGNORECASE)
+        if m:
+            target = m.group(1).strip()
+            route  = {"target": target, "wood": "0", "clay": "0",
+                      "iron": "0", "crop": "0", "merchants": "1",
+                      "frequency_min": "60", "departure_time": "",
+                      "travel_minutes": "0", "active": "1"}
+
+            # Travel time on next line: "Travel time: H:MM:SSh"
+            if i + 1 < len(block):
+                tm = _re2.match(r'Travel time:\s*(\d+):(\d+):(\d+)', block[i + 1], _re2.IGNORECASE)
+                if tm:
+                    mins = int(tm.group(1)) * 60 + int(tm.group(2)) + round(int(tm.group(3)) / 60)
+                    route["travel_minutes"] = str(mins)
+                    i += 1
+
+            # Scan following lines for resources, time, merchant count
+            j = i + 1
+            res_found = []
+            while j < len(block) and j < i + 10:
+                candidate = block[j]
+                # pure integer → resource value
+                if _re2.fullmatch(r'\d+', candidate):
+                    res_found.append(candidate)
+                # HH:MM → departure time
+                elif _re2.fullmatch(r'\d{1,2}:\d{2}', candidate):
+                    route["departure_time"] = candidate
+                j += 1
+
+            # First 4 integers are wood, clay, iron, crop
+            res_keys = ["wood", "clay", "iron", "crop"]
+            for ki, val in enumerate(res_found[:4]):
+                route[res_keys[ki]] = val
+            # 5th integer (if present) is merchant count
+            if len(res_found) >= 5:
+                route["merchants"] = res_found[4]
+
+            routes.append(route)
+            i = j
+        else:
+            i += 1
+
+    return routes
+
+
 # ─── Troop overview paste parser ──────────────────────────────────────────────
 import re as _re
 import unicodedata as _ud
@@ -2371,6 +2516,349 @@ class TroopOverviewImportDialog(tk.Toplevel):
             self._on_complete()
 
 
+# ─── Trade Routes View ────────────────────────────────────────────────────────
+
+class TradeRoutesView(tk.Frame):
+    """Village-level trade routes table with add/import buttons."""
+
+    def __init__(self, master, server, account, village_name,
+                 tribe, speed, is_archived=False):
+        super().__init__(master, bg=BG_DARK)
+        self.server       = server
+        self.account      = account
+        self.village_name = village_name
+        self.tribe        = tribe
+        self.speed        = speed
+        self.is_archived  = is_archived
+        self._build()
+
+    def _build(self):
+        for w in self.winfo_children():
+            w.destroy()
+
+        routes = load_trade_routes(self.server, self.account, self.village_name)
+
+        # ── Header ────────────────────────────────────────────────────────────
+        hdr = tk.Frame(self, bg=BG_DARK)
+        hdr.pack(fill="x", padx=24, pady=(24, 0))
+        tk.Label(hdr, text=f"{self.village_name}  —  Trade Routes",
+                 font=FONT_TITLE, bg=BG_DARK, fg=TEXT_PRIMARY).pack(side="left")
+        if not self.is_archived:
+            styled_button(hdr, "📥  Import Routes",
+                          command=self._open_import, small=True
+                          ).pack(side="right", padx=(4, 0))
+            styled_button(hdr, "➕  Add Manually",
+                          command=self._open_add, small=True, accent=True
+                          ).pack(side="right", padx=(4, 0))
+            # Remove Selected wired up after sel_vars is built — stored as instance ref
+            self._rm_btn_cmd = None
+            rm_hdr_btn = styled_button(hdr, "🗑  Remove Selected",
+                                       command=lambda: self._rm_btn_cmd and self._rm_btn_cmd(),
+                                       small=True)
+            rm_hdr_btn.pack(side="right", padx=(4, 0))
+            self._rm_hdr_btn = rm_hdr_btn
+
+        make_separator(self).pack(fill="x", padx=24, pady=10)
+
+        if not routes:
+            tk.Label(self, text="No trade routes yet. Use 'Add Manually' or 'Import Routes'.",
+                     font=FONT_BODY, bg=BG_DARK, fg=TEXT_MUTED).pack(padx=24, anchor="w")
+            return
+
+        # ── Grid table ────────────────────────────────────────────────────────
+        scroll_outer, inner = scrollable_frame(self)
+        scroll_outer.pack(fill="both", expand=True, padx=24, pady=(0, 16))
+
+        # Selection state: route_id -> BooleanVar
+        sel_vars = {}
+
+        def _remove_selected():
+            selected = {rid for rid, var in sel_vars.items() if var.get()}
+            if not selected:
+                return
+            rts = load_trade_routes(self.server, self.account, self.village_name)
+            rts = [rt for rt in rts if rt.get("route_id") not in selected]
+            save_trade_routes(self.server, self.account, self.village_name, rts)
+            self._build()
+
+        # Wire the header button's command now that _remove_selected is defined
+        if not self.is_archived:
+            self._rm_btn_cmd = _remove_selected
+
+        COLS = [
+            (0,  "☐",           30, "center"),   # selection
+            (1,  "Target",      180, "w"),
+            (2,  "🌲 Wood",      70, "center"),
+            (3,  "🧱 Clay",      70, "center"),
+            (4,  "⚙ Iron",      70, "center"),
+            (5,  "🌾 Crop",      70, "center"),
+            (6,  "Merchants",    80, "center"),
+            (7,  "Frequency",    80, "center"),
+            (8,  "Departure",    80, "center"),
+            (9,  "→ Arrive",     80, "center"),
+            (10, "↩ Return",     80, "center"),
+            (11, "Active",       60, "center"),
+        ]
+        tbl = tk.Frame(inner, bg=BG_DARK)
+        tbl.pack(fill="x")
+        for ci, label, minw, anchor in COLS:
+            tbl.columnconfigure(ci, minsize=minw)
+
+        def gh(row, col, text, bg=BG_MID, fg=TEXT_MUTED, bold=True, anchor="center"):
+            tk.Label(tbl, text=text, font=("Consolas", 9, "bold") if bold else FONT_SMALL,
+                     bg=bg, fg=fg, anchor=anchor, padx=4, pady=3
+                     ).grid(row=row, column=col, sticky="nsew", padx=(0,1), pady=(0,1))
+
+        # Header row
+        for ci, label, _, anchor in COLS:
+            gh(0, ci, label, anchor=anchor)
+        tk.Frame(tbl, bg=BORDER, height=1).grid(
+            row=1, column=0, columnspan=len(COLS), sticky="ew", pady=(0,1))
+
+        RES_COLS = {"🌲 Wood": ("#7daa6f","wood"), "🧱 Clay": ("#b87c4c","clay"),
+                    "⚙ Iron": ("#8aabcc","iron"), "🌾 Crop": ("#c8b84a","crop")}
+
+        def _fmt_time(minutes_str):
+            try:
+                m = int(float(minutes_str))
+                return f"{m//60}h {m%60:02d}m" if m >= 60 else f"{m}m"
+            except (ValueError, TypeError):
+                return "—"
+
+        def _fmt_freq(freq_str):
+            try:
+                m = int(float(freq_str))
+                return f"{m//60}h" if m % 60 == 0 else f"{m}m"
+            except (ValueError, TypeError):
+                return "—"
+
+        for i, route in enumerate(routes):
+            r   = i + 2
+            bg  = BG_MID if i % 2 == 0 else BG_PANEL
+            rid = route.get("route_id", str(i))
+
+            def gl(row, col, text, fg=TEXT_PRIMARY, bold=False, anchor="center"):
+                tk.Label(tbl, text=text, font=("Consolas",9,"bold") if bold else FONT_SMALL,
+                         bg=bg, fg=fg, anchor=anchor, padx=4, pady=3
+                         ).grid(row=row, column=col, sticky="nsew", padx=(0,1), pady=(0,1))
+
+            # Selection checkbox
+            sel_var = tk.BooleanVar(value=False)
+            sel_vars[rid] = sel_var
+            sel_cb = tk.Checkbutton(tbl, variable=sel_var,
+                                    bg=bg, activebackground=bg,
+                                    selectcolor=BG_HOVER,
+                                    fg=TEXT_MUTED, activeforeground=TEXT_MUTED,
+                                    relief="flat", bd=0)
+            if self.is_archived:
+                sel_cb.config(state="disabled")
+            sel_cb.grid(row=r, column=0, sticky="nsew", padx=(0,1), pady=(0,1))
+
+            gl(r, 1,  route.get("target","—"), anchor="w")
+            # Resources
+            for ci, (label, (col, key)) in enumerate(RES_COLS.items(), start=2):
+                val = route.get(key, "0")
+                try:   ival = int(val)
+                except: ival = 0
+                gl(r, ci, f"{ival:,}" if ival else "—",
+                   fg=col if ival else TEXT_MUTED)
+            gl(r, 6, route.get("merchants","1"))
+            gl(r, 7, _fmt_freq(route.get("frequency_min","60")))
+            gl(r, 8, route.get("departure_time","—"))
+            travel = route.get("travel_minutes","0")
+            gl(r, 9,  _fmt_time(travel))
+            try:    ret_min = str(int(float(travel)) * 2)
+            except: ret_min = "0"
+            gl(r, 10, _fmt_time(ret_min))
+
+            # Active toggle — bright green tick
+            is_active = route.get("active","1") not in ("0","false","False","")
+            act_var = tk.BooleanVar(value=is_active)
+            def _toggle(var=act_var, route_id=rid):
+                rts = load_trade_routes(self.server, self.account, self.village_name)
+                for rt in rts:
+                    if rt.get("route_id") == route_id:
+                        rt["active"] = "1" if var.get() else "0"
+                save_trade_routes(self.server, self.account, self.village_name, rts)
+            act_cb = tk.Checkbutton(tbl, variable=act_var, command=_toggle,
+                                    bg=bg, activebackground=bg,
+                                    fg=COL_FULL_GREEN, activeforeground=COL_FULL_GREEN,
+                                    selectcolor=bg,          # bg behind tick = row colour
+                                    relief="flat", bd=0)
+            if self.is_archived:
+                act_cb.config(state="disabled")
+            act_cb.grid(row=r, column=11, sticky="nsew", padx=(0,1), pady=(0,1))
+
+    def _open_add(self):
+        dlg = AddTradeRouteDialog(self, self.server, self.account,
+                                  self.village_name, self.tribe, self.speed)
+        self.wait_window(dlg)
+        self._build()
+
+    def _open_import(self):
+        dlg = ImportTradeRoutesDialog(self, self.server, self.account, self.village_name)
+        self.wait_window(dlg)
+        self._build()
+
+
+# ─── Add Trade Route Dialog ────────────────────────────────────────────────────
+
+class AddTradeRouteDialog(tk.Toplevel):
+    def __init__(self, master, server, account, village_name, tribe, speed):
+        super().__init__(master)
+        self.server       = server
+        self.account      = account
+        self.village_name = village_name
+        self.tribe        = tribe
+        self.speed        = speed
+        self.title("Add Trade Route")
+        self.configure(bg=BG_DARK)
+        self.geometry("420x460")
+        self.grab_set()
+        self._build()
+
+    def _build(self):
+        pad = tk.Frame(self, bg=BG_DARK)
+        pad.pack(fill="both", expand=True, padx=20, pady=16)
+
+        tk.Label(pad, text="Add Trade Route", font=FONT_HEADING,
+                 bg=BG_DARK, fg=TEXT_PRIMARY).pack(anchor="w", pady=(0,10))
+
+        fields = {}
+
+        def row(label, key, default="0", width=14):
+            f = tk.Frame(pad, bg=BG_DARK)
+            f.pack(fill="x", pady=3)
+            tk.Label(f, text=label, width=18, font=FONT_SMALL,
+                     bg=BG_DARK, fg=TEXT_SECONDARY, anchor="w").pack(side="left")
+            var = tk.StringVar(value=default)
+            styled_entry(f, var, width=width).pack(side="left")
+            fields[key] = var
+
+        row("Target village",    "target",         default="",  width=18)
+        row("🌲 Wood",           "wood",           default="0")
+        row("🧱 Clay",           "clay",           default="0")
+        row("⚙  Iron",          "iron",           default="0")
+        row("🌾 Crop",           "crop",           default="0")
+        row("Merchants",         "merchants",      default="1")
+        row("Frequency (min)",   "frequency_min",  default="60")
+        row("Departure (HH:MM)", "departure_time", default="00:00")
+        row("Travel time (min)", "travel_minutes", default="0")
+
+        # Active checkbox
+        act_frame = tk.Frame(pad, bg=BG_DARK)
+        act_frame.pack(fill="x", pady=3)
+        tk.Label(act_frame, text="Active", width=18, font=FONT_SMALL,
+                 bg=BG_DARK, fg=TEXT_SECONDARY, anchor="w").pack(side="left")
+        act_var = tk.BooleanVar(value=True)
+        tk.Checkbutton(act_frame, variable=act_var, bg=BG_DARK,
+                       activebackground=BG_DARK, selectcolor=BG_HOVER,
+                       relief="flat").pack(side="left")
+
+        status = tk.Label(pad, text="", font=FONT_SMALL,
+                          bg=BG_DARK, fg=COL_RED)
+        status.pack(anchor="w", pady=(6,0))
+
+        def _save():
+            target = fields["target"].get().strip()
+            if not target:
+                status.config(text="Target village is required.")
+                return
+            routes = load_trade_routes(self.server, self.account, self.village_name)
+            new_route = {k: fields[k].get().strip() for k in fields}
+            new_route["route_id"] = _next_route_id(routes)
+            new_route["active"]   = "1" if act_var.get() else "0"
+            routes.append(new_route)
+            save_trade_routes(self.server, self.account, self.village_name, routes)
+            self.destroy()
+
+        btn_row = tk.Frame(pad, bg=BG_DARK)
+        btn_row.pack(fill="x", pady=(12,0))
+        styled_button(btn_row, "💾  Save", command=_save, accent=True).pack(side="left")
+        styled_button(btn_row, "Cancel",   command=self.destroy, small=True).pack(side="left", padx=8)
+
+
+# ─── Import Trade Routes Dialog ────────────────────────────────────────────────
+
+class ImportTradeRoutesDialog(tk.Toplevel):
+    def __init__(self, master, server, account, village_name):
+        super().__init__(master)
+        self.server       = server
+        self.account      = account
+        self.village_name = village_name
+        self.title("Import Trade Routes")
+        self.configure(bg=BG_DARK)
+        self.geometry("700x520")
+        self.grab_set()
+        self._parsed = []
+        self._build()
+
+    def _build(self):
+        pad = tk.Frame(self, bg=BG_DARK)
+        pad.pack(fill="both", expand=True, padx=20, pady=16)
+
+        tk.Label(pad, text="Import Trade Routes", font=FONT_HEADING,
+                 bg=BG_DARK, fg=TEXT_PRIMARY).pack(anchor="w", pady=(0,4))
+        tk.Label(pad,
+                 text="Paste the full Trade Routes page. Data between\n"
+                      "'Create new trade route' and 'Add route to village' will be parsed.",
+                 font=FONT_SMALL, bg=BG_DARK, fg=TEXT_MUTED,
+                 justify="left").pack(anchor="w", pady=(0,8))
+
+        txt_frame = tk.Frame(pad, bg=BORDER)
+        txt_frame.pack(fill="both", expand=True)
+        self._txt = tk.Text(txt_frame, bg=BG_MID, fg=TEXT_PRIMARY,
+                            insertbackground=ACCENT, font=("Consolas", 9),
+                            relief="flat", bd=6, wrap="none",
+                            selectbackground=BG_HOVER)
+        sb = tk.Scrollbar(txt_frame, command=self._txt.yview,
+                          bg=BG_MID, troughcolor=BG_DARK, relief="flat", bd=0, width=8)
+        self._txt.config(yscrollcommand=sb.set)
+        sb.pack(side="right", fill="y")
+        self._txt.pack(fill="both", expand=True)
+
+        self._preview = tk.Label(pad, text="", font=FONT_SMALL,
+                                 bg=BG_DARK, fg=COL_FULL_GREEN, justify="left")
+        self._preview.pack(anchor="w", pady=(6,0))
+
+        btn_row = tk.Frame(pad, bg=BG_DARK)
+        btn_row.pack(fill="x", pady=(8,0))
+        styled_button(btn_row, "🔍  Parse",  command=self._parse,  accent=True).pack(side="left")
+        styled_button(btn_row, "✅  Import", command=self._import, small=True).pack(side="left", padx=6)
+        self._status = tk.Label(btn_row, text="", font=FONT_SMALL,
+                                bg=BG_DARK, fg=COL_FULL_GREEN)
+        self._status.pack(side="left", padx=8)
+        styled_button(btn_row, "Close", command=self.destroy, small=True).pack(side="right")
+
+    def _parse(self):
+        raw = self._txt.get("1.0", "end")
+        self._parsed = parse_trade_routes(raw)
+        if not self._parsed:
+            self._preview.config(
+                text="❌  No trade routes found. Make sure the paste includes\n"
+                     "   'Create new trade route' and 'Add route to village'.",
+                fg=COL_RED)
+        else:
+            lines = [f"✔  Found {len(self._parsed)} route(s):"]
+            for rt in self._parsed:
+                res = ", ".join(f"{k}:{rt[k]}" for k in ("wood","clay","iron","crop") if rt.get(k,"0") != "0")
+                lines.append(f"  → {rt['target']}  travel:{rt['travel_minutes']}min  {res or 'no resources?'}  dep:{rt['departure_time']}")
+            self._preview.config(text="\n".join(lines), fg=COL_FULL_GREEN)
+
+    def _import(self):
+        if not self._parsed:
+            self._parse()
+        if not self._parsed:
+            return
+        routes = load_trade_routes(self.server, self.account, self.village_name)
+        for rt in self._parsed:
+            rt["route_id"] = _next_route_id(routes)
+            routes.append(rt)
+        save_trade_routes(self.server, self.account, self.village_name, routes)
+        self._status.config(text=f"✅  Imported {len(self._parsed)} route(s).", fg=COL_FULL_GREEN)
+        self._parsed = []
+
+
 # ─── Main Application Window ──────────────────────────────────────────────────
 
 class MainApp(tk.Frame):
@@ -2484,7 +2972,6 @@ class MainApp(tk.Frame):
             ("🏗   Buildings",         lambda: self._show_village_buildings(vn)),
             ("🌾  Resource Layout",    lambda: self._show_resource_layout(vn)),
             ("🔄  Trade Routes",       lambda: self._show_trade_routes(vn)),
-            ("📋  Set Trade Route",    lambda: self._show_set_trade_route(vn)),
             ("🪖  Troops",             lambda: self._show_troops(vn)),
         ]:
             nav_button(self.village_nav_frame, label, command=cmd).pack(fill="x")
@@ -3209,14 +3696,10 @@ class MainApp(tk.Frame):
 
     def _show_trade_routes(self, village):
         self._clear_center()
-        self._content_header(f"{village}  —  Trade Routes", "Active trade routes")
-        self._placeholder_card("Trade Routes", "List of active resource routes to/from this village.")
-
-    def _show_set_trade_route(self, village):
-        self._clear_center()
-        self._content_header(f"{village}  —  Set Trade Route", "Configure a trade route")
-        self._placeholder_card("Set Trade Route",
-            "Destination village by X/Y coordinates, resource type, amount, and interval.")
+        view = TradeRoutesView(
+            self.center, self.server, self.account,
+            village, self.tribe, self.speed, self.is_archived)
+        view.pack(fill="both", expand=True)
 
     def _show_troops(self, village):
         self._clear_center()
