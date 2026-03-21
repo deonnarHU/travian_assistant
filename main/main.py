@@ -3501,6 +3501,7 @@ class MainApp(tk.Frame):
             ("🌾  Resource Layout",    lambda: self._show_resource_layout(vn)),
             ("🔄  Trade Routes",       lambda: self._show_trade_routes(vn)),
             ("🪖  Troops",             lambda: self._show_troops(vn)),
+            ("📊  Net Resources",      lambda: self._show_net_resources(vn)),
         ]:
             nav_button(self.village_nav_frame, label, command=cmd).pack(fill="x")
 
@@ -4808,6 +4809,155 @@ class MainApp(tk.Frame):
             on_save=lambda: self._refresh_village_list(),
             is_capital=is_capital)
         view.pack(fill="both", expand=True)
+
+    def _show_net_resources(self, village):
+        self._clear_center()
+        outer = tk.Frame(self.center, bg=BG_DARK)
+        outer.pack(fill="both", expand=True)
+
+        # ── Header ────────────────────────────────────────────────────────────
+        hdr = tk.Frame(outer, bg=BG_DARK)
+        hdr.pack(fill="x", padx=24, pady=(24, 0))
+        tk.Label(hdr, text=f"{village}  —  Net Resources",
+                 font=FONT_TITLE, bg=BG_DARK, fg=TEXT_PRIMARY).pack(side="left")
+        src_note = load_option("prod_data_source", "Village Data")
+        tk.Label(hdr, text=f"  (production: {src_note})",
+                 font=FONT_SMALL, bg=BG_DARK, fg=TEXT_MUTED).pack(side="left", pady=(8, 0))
+        make_separator(outer).pack(fill="x", padx=24, pady=10)
+
+        # ── Gather data ───────────────────────────────────────────────────────
+
+        # 1. Production
+        use_parsed = src_note == "Parsed"
+        if use_parsed:
+            parsed = load_parsed_production(self.server, self.account)
+            raw_prod = parsed.get(village, {"wood": 0, "clay": 0, "iron": 0, "crop": 0})
+            prod = {k: raw_prod[k] for k in ("wood", "clay", "iron", "crop")}
+        else:
+            prod = calculate_village_production(self.server, self.account, village,
+                                                gold_bonus=False)
+
+        # 2. Trade (normalised to /hr)
+        trade = {"wood": 0, "clay": 0, "iron": 0, "crop": 0}
+        all_villages = {v["village_name"] for v in load_villages(self.server, self.account)}
+        for route in load_trade_routes(self.server, self.account, village):
+            if route.get("active", "1") in ("0", "false", "False", ""):
+                continue
+            try:
+                freq_min = max(1, int(route.get("frequency_min", 60) or 60))
+            except ValueError:
+                freq_min = 60
+            factor = 60.0 / freq_min   # normalise to per-hour
+            for key in ("wood", "clay", "iron", "crop"):
+                try:
+                    trade[key] -= round(int(route.get(key, 0) or 0) * factor)
+                except ValueError:
+                    pass
+
+        # Incoming: routes from other villages whose target == this village
+        for vname in all_villages:
+            if vname == village:
+                continue
+            for route in load_trade_routes(self.server, self.account, vname):
+                if route.get("target", "") != village:
+                    continue
+                if route.get("active", "1") in ("0", "false", "False", ""):
+                    continue
+                try:
+                    freq_min = max(1, int(route.get("frequency_min", 60) or 60))
+                except ValueError:
+                    freq_min = 60
+                factor = 60.0 / freq_min
+                for key in ("wood", "clay", "iron", "crop"):
+                    try:
+                        trade[key] += round(int(route.get(key, 0) or 0) * factor)
+                    except ValueError:
+                        pass
+
+        # 3. Consumption: troops in village eat crop based on crop_upkeep
+        # Load crop upkeep per troop type from troops.csv
+        upkeep_map = {}
+        troops_csv = DATA_DIR / "general" / "1x" / "troops.csv"
+        if troops_csv.exists():
+            with open(troops_csv, newline="", encoding="utf-8") as f:
+                for row in csv.DictReader(f):
+                    if row["tribe"].strip().lower() == self.tribe.lower():
+                        try:
+                            upkeep_map[row["name"].strip()] = int(row["crop_upkeep"])
+                        except ValueError:
+                            upkeep_map[row["name"].strip()] = 1
+
+        troop_names = get_tribe_troops(self.tribe)
+        troop_data  = load_troop_data(self.server, self.account, village, troop_names)
+        # Net troops physically present = native_in + foreign_in
+        consumption = {"wood": 0, "clay": 0, "iron": 0, "crop": 0}
+        for t in troop_names:
+            present = (troop_data["native_in"].get(t, 0) +
+                       troop_data["foreign_in"].get(t, 0))
+            upkeep  = upkeep_map.get(t, 1)
+            consumption["crop"] -= present * upkeep   # crop only
+
+        # 4. SUM
+        totals = {k: prod[k] + trade[k] + consumption[k] for k in ("wood","clay","iron","crop")}
+
+        # ── Table ─────────────────────────────────────────────────────────────
+        scroll_outer, inner = scrollable_frame(outer)
+        scroll_outer.pack(fill="both", expand=True, padx=24, pady=(0, 16))
+
+        COLS = [
+            (1, "🌲 Wood", "wood",  "#7daa6f"),
+            (2, "🧱 Clay", "clay",  "#b87c4c"),
+            (3, "⚙ Iron",  "iron",  "#8aabcc"),
+            (4, "🌾 Crop", "crop",  "#c8b84a"),
+        ]
+        ROWS = [
+            ("Production",   prod,        BG_PANEL),
+            ("Trade",        trade,       BG_MID),
+            ("Consumption",  consumption, BG_PANEL),
+        ]
+
+        tbl = tk.Frame(inner, bg=BG_DARK)
+        tbl.pack(fill="x")
+        tbl.columnconfigure(0, minsize=140)
+        for c in range(1, 5):
+            tbl.columnconfigure(c, minsize=110, uniform="res")
+
+        def gl(row, col, text, bg, fg, bold=False, anchor="center"):
+            tk.Label(tbl, text=text,
+                     font=("Consolas", 9, "bold") if bold else FONT_SMALL,
+                     bg=bg, fg=fg, anchor=anchor, padx=8, pady=5
+                     ).grid(row=row, column=col, sticky="nsew",
+                            padx=(0, 1), pady=(0, 1))
+
+        # Header
+        gl(0, 0, "",       BG_MID, TEXT_MUTED, bold=True, anchor="w")
+        for ci, label, _, color in COLS:
+            gl(0, ci, label, BG_MID, color, bold=True)
+        tk.Frame(tbl, bg=BORDER, height=1).grid(
+            row=1, column=0, columnspan=5, sticky="ew", pady=(0, 1))
+
+        # Data rows
+        for ri, (row_label, data, bg) in enumerate(ROWS):
+            r = ri + 2
+            gl(r, 0, row_label, bg, TEXT_SECONDARY, anchor="w")
+            for ci, _, key, color in COLS:
+                val = data[key]
+                if val == 0:
+                    gl(r, ci, "—", bg, TEXT_MUTED)
+                elif val > 0:
+                    gl(r, ci, f"+{val:,}" if row_label != "Production" else f"{val:,}",
+                       bg, color)
+                else:
+                    gl(r, ci, f"{val:,}", bg, COL_RED)
+
+        # SUM row — highlighted
+        tk.Frame(tbl, bg=ACCENT_DIM, height=1).grid(
+            row=5, column=0, columnspan=5, sticky="ew", pady=(2, 1))
+        gl(6, 0, "SUM /hr", BG_HOVER, ACCENT, bold=True, anchor="w")
+        for ci, _, key, color in COLS:
+            val = totals[key]
+            fg  = COL_FULL_GREEN if val > 0 else COL_RED if val < 0 else TEXT_MUTED
+            gl(6, ci, f"{val:+,}" if val != 0 else "0", BG_HOVER, fg, bold=True)
 
     def _open_troops_import(self):
         if self.is_archived:
