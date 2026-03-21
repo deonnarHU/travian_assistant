@@ -200,6 +200,15 @@ def load_troop_data(server, account, village_name, troop_names: list) -> dict:
                 break
             except (UnicodeDecodeError, UnicodeError):
                 continue
+        # If troops are trained but native_in was never set, assume all at home
+        for t in troop_names:
+            if data["trained"][t] > 0 and data["native_in"][t] == 0 and data["native_out"][t] == 0:
+                data["native_in"][t] = data["trained"][t]
+    else:
+        # No file yet: default assumption is all troops are at home
+        # native_in = trained (= 0 for new villages), native_out = 0
+        for t in troop_names:
+            data["native_in"][t] = data["trained"][t]
     return data
 
 def save_troop_data(server, account, village_name, troop_names: list, data: dict):
@@ -645,8 +654,8 @@ def parse_troop_overview(raw_text: str, tribe: str) -> dict:
         name_raw = _clean(parts[0])
         if name_raw.lower() == "sum":
             break
-        # Village names are like "19. Vigántpetend" — strip the prefix number
-        vname = _re.sub(r'^\d+\.\s*', '', name_raw).strip()
+        # Village names include the number prefix, e.g. "19. Vigántpetend"
+        vname = name_raw
         if not vname:
             continue
         counts = {}
@@ -681,22 +690,20 @@ def parse_troop_overview(raw_text: str, tribe: str) -> dict:
         # Coord line right after a village name line
         coord_m = coord_pat.search(ln)
         if coord_m and i > 0:
-            # The village name should be the previous line (may have a number prefix)
             prev = _clean(lines[i - 1])
-            vname_candidate = _re.sub(r'^\d+\.\s*', '', prev).strip()
-            if vname_candidate in village_troops:
-                village_coords[vname_candidate] = (coord_m.group(1), coord_m.group(2))
+            # Village names now include the number prefix (e.g. "19. Vigántpetend")
+            if prev in village_troops:
+                village_coords[prev] = (coord_m.group(1), coord_m.group(2))
                 if current_group:
-                    village_groups[vname_candidate] = current_group
+                    village_groups[prev] = current_group
             i += 1
             continue
 
-        # Check if this looks like a group header (no number prefix, no coords,
-        # not a village name, doesn't match skip patterns)
+        # Check if this looks like a group header
         lln = ln.lower()
         is_skip = any(lln.startswith(s) for s in skip_prefixes)
         has_number_prefix = bool(_re.match(r'^\d+\.', ln))
-        is_known_village = _re.sub(r'^\d+\.\s*', '', ln).strip() in village_troops
+        is_known_village = ln in village_troops
 
         if (not is_skip and not has_number_prefix and not is_known_village
                 and len(ln) > 2 and len(ln) < 60
@@ -704,7 +711,7 @@ def parse_troop_overview(raw_text: str, tribe: str) -> dict:
             # Candidate group header — accept if next non-blank is a village line
             for j in range(i + 1, min(i + 4, len(lines))):
                 nxt = lines[j]
-                if _re.match(r'^\d+\.', nxt) or _re.sub(r'^\d+\.\s*','',nxt).strip() in village_troops:
+                if _re.match(r'^\d+\.', nxt) or nxt in village_troops:
                     current_group = ln
                     break
         i += 1
@@ -2710,9 +2717,10 @@ class TroopOverviewImportDialog(tk.Toplevel):
                             if col.lower() == t.lower():
                                 troop_data["trained"][t] = troop_counts.get(col, 0)
                                 break
+                    # Default: all trained troops are at home
                     for t in tribe_troops:
-                        troop_data["native_out"][t] = max(
-                            0, troop_data["trained"].get(t, 0) - troop_data["native_in"].get(t, 0))
+                        troop_data["native_in"][t]  = troop_data["trained"].get(t, 0)
+                        troop_data["native_out"][t] = 0
                     save_troop_data(self.server, self.account, vname, tribe_troops, troop_data)
                 except Exception as e:
                     troop_errors.append(f"{vname}: {e}")
