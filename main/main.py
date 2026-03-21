@@ -322,6 +322,104 @@ def calculate_village_production(server, account, village_name,
 
     return prod
 
+# ─── Parsed production data layer ────────────────────────────────────────────
+
+PARSED_PROD_FIELDS = ["village_name", "wood", "clay", "iron", "crop"]
+
+def parsed_production_file(server, account) -> Path:
+    return account_dir(server, account) / "production.csv"
+
+def load_parsed_production(server, account) -> dict:
+    """Return {village_name: {wood, clay, iron, crop}} from production.csv."""
+    fpath = parsed_production_file(server, account)
+    result = {}
+    if not fpath.exists():
+        return result
+    for enc in ("utf-8", "utf-8-sig", "cp1250", "latin-1"):
+        try:
+            with open(fpath, newline="", encoding=enc) as f:
+                for row in csv.DictReader(f):
+                    vname = row.get("village_name", "").strip()
+                    if vname:
+                        result[vname] = {
+                            "wood": int(row.get("wood", 0) or 0),
+                            "clay": int(row.get("clay", 0) or 0),
+                            "iron": int(row.get("iron", 0) or 0),
+                            "crop": int(row.get("crop", 0) or 0),
+                        }
+            break
+        except (UnicodeDecodeError, UnicodeError):
+            continue
+    return result
+
+def save_parsed_production(server, account, data: dict):
+    """Write {village_name: {wood,clay,iron,crop}} to production.csv."""
+    fpath = parsed_production_file(server, account)
+    fpath.parent.mkdir(parents=True, exist_ok=True)
+    with open(fpath, "w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=PARSED_PROD_FIELDS)
+        w.writeheader()
+        for vname, prod in data.items():
+            w.writerow({"village_name": vname,
+                        "wood": prod.get("wood", 0),
+                        "clay": prod.get("clay", 0),
+                        "iron": prod.get("iron", 0),
+                        "crop": prod.get("crop", 0)})
+
+def parse_production_overview(raw_text: str) -> dict:
+    """
+    Parse raw paste from Travian Village Overview → Resources → Production.
+    Format: tab-separated table.  Header row starts with "Village".
+    Each data row: village_name TAB wood TAB clay TAB iron TAB crop
+    Stops at a row whose first cell starts with "Sum".
+    Returns {village_name: {wood, clay, iron, crop}}.
+    """
+    import re as _re2
+
+    def _cl(s: str) -> str:
+        """Strip unicode directional marks, separators, commas, and whitespace."""
+        return _re2.sub(
+            r'[\u200e\u200f\u202a-\u202e\u2066-\u2069\xad\xa0,]', '', s
+        ).strip()
+
+    lines = raw_text.splitlines()
+
+    # Find the "Village" header row — it starts with "Village" and has tabs
+    header_idx = None
+    for i, ln in enumerate(lines):
+        first = _cl(ln.split('\t')[0]) if '\t' in ln else _cl(ln)
+        if first.lower() == 'village':
+            header_idx = i
+            break
+
+    if header_idx is None:
+        return {}
+
+    result = {}
+    for ln in lines[header_idx + 1:]:
+        parts = [_cl(p) for p in ln.split('\t')]
+        if not parts or not parts[0]:
+            continue
+        name = parts[0]
+        if name.lower().startswith('sum'):
+            break
+        # Need at least 4 numeric columns after the name
+        nums = []
+        for p in parts[1:]:
+            if p:
+                try:
+                    nums.append(int(p))
+                except ValueError:
+                    pass
+        if len(nums) >= 4:
+            result[name] = {
+                "wood": nums[0], "clay": nums[1],
+                "iron": nums[2], "crop": nums[3],
+            }
+
+    return result
+
+
 # ─── Trade route data layer ───────────────────────────────────────────────────
 
 TRADE_ROUTE_FIELDS = [
@@ -363,22 +461,31 @@ def _next_route_id(routes: list) -> str:
     except ValueError:
         return str(len(routes) + 1)
 
-def get_merchant_stats(tribe: str, speed_mult: str = "1x") -> dict:
-    """Return {speed, carry_capacity} for tribe's merchant. Speed adjusted for server speed."""
+def get_merchant_stats(tribe: str, speed_mult: str = "1x",
+                       commerce_level: int = 0) -> dict:
+    """Return {speed, carry} for tribe's merchant.
+    Speed adjusted for server speed; carry boosted by Commerce alliance bonus."""
     csv_path = DATA_DIR / "general" / "1x" / "merchants.csv"
     try:
         mult = float(speed_mult.replace("x", ""))
     except ValueError:
         mult = 1.0
+    base_carry = 500
+    base_speed = 16.0
     if csv_path.exists():
         with open(csv_path, newline="", encoding="utf-8") as f:
             for row in csv.DictReader(f):
                 if row["tribe"].strip().lower() == tribe.strip().lower():
-                    return {
-                        "speed":    float(row["speed"]) * mult,
-                        "carry":    int(row["carry_capacity"]),
-                    }
-    return {"speed": 16.0, "carry": 500}
+                    base_speed = float(row["speed"])
+                    base_carry = int(row["carry_capacity"])
+                    break
+    # Commerce bonus: +10% per level (levels 0-5)
+    commerce_pct = max(0, min(5, commerce_level)) * 10
+    carry = round(base_carry * (1 + commerce_pct / 100))
+    return {
+        "speed": base_speed * mult,
+        "carry": carry,
+    }
 
 def travel_minutes_for_distance(dist: float, tribe: str, speed_mult: str = "1x") -> float:
     """Minutes for merchant to travel given distance in Travian field units."""
@@ -690,6 +797,124 @@ def save_option(key: str, value):
         w.writeheader()
         for k, v in rows.items():
             w.writerow({"key": k, "value": v})
+
+# ─── Alliance data layer ───────────────────────────────────────────────────────
+
+ALLIANCE_BONUS_TYPES = ["Recruitment", "Philosophy", "Metallurgy", "Commerce"]
+
+def alliance_file(server, account) -> Path:
+    return account_dir(server, account) / "alliance.csv"
+
+def known_villages_dir(server, account) -> Path:
+    return account_dir(server, account) / "Known_Villages"
+
+def known_villages_file(server, account) -> Path:
+    return known_villages_dir(server, account) / "known_villages.csv"
+
+def known_village_types_file(server, account) -> Path:
+    return known_villages_dir(server, account) / "types.csv"
+
+ALLIANCE_FIELDS       = ["key", "value"]
+KNOWN_VILLAGE_FIELDS  = ["village_id", "name", "coord_x", "coord_y", "vtype"]
+KNOWN_TYPE_FIELDS     = ["vtype"]
+
+def load_alliance_info(server, account) -> dict:
+    """Return dict with alliance_name and bonus levels (Recruitment→int, etc.)."""
+    fpath = alliance_file(server, account)
+    result = {"alliance_name": ""}
+    for bt in ALLIANCE_BONUS_TYPES:
+        result[bt] = 0
+    if not fpath.exists():
+        return result
+    try:
+        with open(fpath, newline="", encoding="utf-8") as f:
+            for row in csv.DictReader(f):
+                k, v = row.get("key", ""), row.get("value", "")
+                if k == "alliance_name":
+                    result["alliance_name"] = v
+                elif k in ALLIANCE_BONUS_TYPES:
+                    try:
+                        result[k] = int(v)
+                    except ValueError:
+                        result[k] = 0
+    except Exception:
+        pass
+    return result
+
+def save_alliance_info(server, account, info: dict):
+    fpath = alliance_file(server, account)
+    fpath.parent.mkdir(parents=True, exist_ok=True)
+    rows = [{"key": "alliance_name", "value": info.get("alliance_name", "")}]
+    for bt in ALLIANCE_BONUS_TYPES:
+        rows.append({"key": bt, "value": str(info.get(bt, 0))})
+    with open(fpath, "w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=ALLIANCE_FIELDS)
+        w.writeheader()
+        w.writerows(rows)
+
+def load_alliance_bonus_table() -> dict:
+    """Return {bonus_type: {level(int): {value, description}}} from general CSV."""
+    csv_path = DATA_DIR / "general" / "1x" / "alliance_bonuses.csv"
+    result = {bt: {} for bt in ALLIANCE_BONUS_TYPES}
+    if not csv_path.exists():
+        return result
+    with open(csv_path, newline="", encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            bt  = row["bonus_type"].strip()
+            lvl = int(row["level"])
+            if bt in result:
+                result[bt][lvl] = {
+                    "value":       row["value"],
+                    "description": row["description"],
+                }
+    return result
+
+def load_known_village_types(server, account) -> list:
+    fpath = known_village_types_file(server, account)
+    if not fpath.exists():
+        return []
+    try:
+        with open(fpath, newline="", encoding="utf-8") as f:
+            return [row["vtype"] for row in csv.DictReader(f) if row.get("vtype")]
+    except Exception:
+        return []
+
+def save_known_village_types(server, account, types: list):
+    fpath = known_village_types_file(server, account)
+    fpath.parent.mkdir(parents=True, exist_ok=True)
+    with open(fpath, "w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=KNOWN_TYPE_FIELDS)
+        w.writeheader()
+        for t in types:
+            w.writerow({"vtype": t})
+
+def load_known_villages(server, account) -> list:
+    fpath = known_villages_file(server, account)
+    if not fpath.exists():
+        return []
+    try:
+        with open(fpath, newline="", encoding="utf-8") as f:
+            return list(csv.DictReader(f))
+    except Exception:
+        return []
+
+def save_known_villages(server, account, villages: list):
+    fpath = known_villages_file(server, account)
+    fpath.parent.mkdir(parents=True, exist_ok=True)
+    with open(fpath, "w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=KNOWN_VILLAGE_FIELDS, extrasaction="ignore")
+        w.writeheader()
+        for v in villages:
+            row = {k: v.get(k, "") for k in KNOWN_VILLAGE_FIELDS}
+            w.writerow(row)
+
+def _next_village_id(villages: list) -> str:
+    if not villages:
+        return "1"
+    try:
+        return str(max(int(v.get("village_id", 0)) for v in villages) + 1)
+    except ValueError:
+        return str(len(villages) + 1)
 
 def ensure_data_dir():
     DATA_DIR.mkdir(exist_ok=True)
@@ -2530,6 +2755,8 @@ class TradeRoutesView(tk.Frame):
         self.tribe        = tribe
         self.speed        = speed
         self.is_archived  = is_archived
+        alliance          = load_alliance_info(server, account)
+        self.commerce_lvl = int(alliance.get("Commerce", 0))
         self._build()
 
     def _build(self):
@@ -2549,6 +2776,9 @@ class TradeRoutesView(tk.Frame):
                           ).pack(side="right", padx=(4, 0))
             styled_button(hdr, "➕  Add Manually",
                           command=self._open_add, small=True, accent=True
+                          ).pack(side="right", padx=(4, 0))
+            styled_button(hdr, "🔁  Recalc Merchants",
+                          command=self._recalc_merchants, small=True
                           ).pack(side="right", padx=(4, 0))
             # Remove Selected wired up after sel_vars is built — stored as instance ref
             self._rm_btn_cmd = None
@@ -2598,6 +2828,7 @@ class TradeRoutesView(tk.Frame):
             (9,  "→ Arrive",     80, "center"),
             (10, "↩ Return",     80, "center"),
             (11, "Active",       60, "center"),
+            (12, "",             40, "center"),   # edit button
         ]
         tbl = tk.Frame(inner, bg=BG_DARK)
         tbl.pack(fill="x")
@@ -2689,9 +2920,27 @@ class TradeRoutesView(tk.Frame):
                 act_cb.config(state="disabled")
             act_cb.grid(row=r, column=11, sticky="nsew", padx=(0,1), pady=(0,1))
 
+            # Edit button
+            def _edit(route=route):
+                dlg = TradeRouteFormDialog(
+                    self, self.server, self.account, self.village_name,
+                    self.tribe, self.speed, existing_route=route,
+                    commerce_level=self.commerce_lvl)
+                self.wait_window(dlg)
+                self._build()
+            edit_btn = tk.Button(tbl, text="✏", font=FONT_TINY,
+                                 bg=bg, fg=TEXT_SECONDARY,
+                                 activeforeground=ACCENT, activebackground=BG_HOVER,
+                                 relief="flat", bd=0, cursor="hand2",
+                                 command=_edit)
+            if self.is_archived:
+                edit_btn.config(state="disabled")
+            edit_btn.grid(row=r, column=12, sticky="nsew", padx=(0,1), pady=(0,1))
+
     def _open_add(self):
-        dlg = AddTradeRouteDialog(self, self.server, self.account,
-                                  self.village_name, self.tribe, self.speed)
+        dlg = TradeRouteFormDialog(self, self.server, self.account,
+                                   self.village_name, self.tribe, self.speed,
+                                   commerce_level=self.commerce_lvl)
         self.wait_window(dlg)
         self._build()
 
@@ -2700,82 +2949,259 @@ class TradeRoutesView(tk.Frame):
         self.wait_window(dlg)
         self._build()
 
+    def _recalc_merchants(self):
+        """Recalculate merchant count for every route based on resources and carry capacity."""
+        stats = get_merchant_stats(self.tribe, self.speed, self.commerce_lvl)
+        carry = stats["carry"]
+        routes = load_trade_routes(self.server, self.account, self.village_name)
+        for rt in routes:
+            total = 0
+            for key in ("wood", "clay", "iron", "crop"):
+                try:
+                    total += max(0, int(rt.get(key, 0) or 0))
+                except ValueError:
+                    pass
+            rt["merchants"] = str(max(1, -(-total // carry)))
+        save_trade_routes(self.server, self.account, self.village_name, routes)
+        self._build()
 
-# ─── Add Trade Route Dialog ────────────────────────────────────────────────────
 
-class AddTradeRouteDialog(tk.Toplevel):
-    def __init__(self, master, server, account, village_name, tribe, speed):
+# ─── Trade Route Form Dialog (Add + Edit) ─────────────────────────────────────
+
+_SEP = "────────────────────"   # visual separator in dropdown
+
+class TradeRouteFormDialog(tk.Toplevel):
+    """
+    Shared dialog for adding and editing trade routes.
+    Pass existing_route=dict to edit; omit (or None) to add new.
+    """
+    def __init__(self, master, server, account, village_name,
+                 tribe, speed, existing_route=None, commerce_level=0):
         super().__init__(master)
-        self.server       = server
-        self.account      = account
-        self.village_name = village_name
-        self.tribe        = tribe
-        self.speed        = speed
-        self.title("Add Trade Route")
+        self.server         = server
+        self.account        = account
+        self.village_name   = village_name
+        self.tribe          = tribe
+        self.speed          = speed
+        self.existing_route = existing_route
+        self.commerce_level = commerce_level
+        self.title("Edit Trade Route" if existing_route else "Add Trade Route")
         self.configure(bg=BG_DARK)
-        self.geometry("420x460")
+        self.geometry("460x500")
         self.grab_set()
         self._build()
 
+    # ── helpers ───────────────────────────────────────────────────────────────
+
+    def _get_source_coords(self):
+        """Return (x, y) ints for this village, or (None, None)."""
+        for v in load_villages(self.server, self.account):
+            if v["village_name"] == self.village_name:
+                try:
+                    return int(v["coord_x"]), int(v["coord_y"])
+                except (ValueError, TypeError):
+                    return None, None
+        return None, None
+
+    def _get_target_coords(self, target_name: str):
+        """Return (x, y) ints for target from own or known villages."""
+        for v in load_villages(self.server, self.account):
+            if v["village_name"] == target_name:
+                try:
+                    return int(v["coord_x"]), int(v["coord_y"])
+                except (ValueError, TypeError):
+                    return None, None
+        for v in load_known_villages(self.server, self.account):
+            if v["name"] == target_name:
+                try:
+                    return int(v["coord_x"]), int(v["coord_y"])
+                except (ValueError, TypeError):
+                    return None, None
+        return None, None
+
+    @staticmethod
+    def _travian_distance(x1, y1, x2, y2, map_size=401):
+        """Travian wrapping distance (shortest path on torus)."""
+        dx = abs(x2 - x1)
+        dy = abs(y2 - y1)
+        dx = min(dx, map_size - dx)
+        dy = min(dy, map_size - dy)
+        return (dx**2 + dy**2) ** 0.5
+
+    def _calc_travel(self, target_name: str) -> int:
+        """Return travel minutes, or 0 if coords unavailable."""
+        sx, sy = self._get_source_coords()
+        tx, ty = self._get_target_coords(target_name)
+        if None in (sx, sy, tx, ty):
+            return 0
+        dist = self._travian_distance(sx, sy, tx, ty)
+        stats = get_merchant_stats(self.tribe, self.speed)
+        if stats["speed"] <= 0:
+            return 0
+        return round((dist / stats["speed"]) * 60)
+
+    # ── build ─────────────────────────────────────────────────────────────────
+
     def _build(self):
+        ex  = self.existing_route or {}
+        stats = get_merchant_stats(self.tribe, self.speed, self.commerce_level)
+        carry = stats["carry"]
+
         pad = tk.Frame(self, bg=BG_DARK)
         pad.pack(fill="both", expand=True, padx=20, pady=16)
 
-        tk.Label(pad, text="Add Trade Route", font=FONT_HEADING,
-                 bg=BG_DARK, fg=TEXT_PRIMARY).pack(anchor="w", pady=(0,10))
+        tk.Label(pad,
+                 text="Edit Trade Route" if self.existing_route else "Add Trade Route",
+                 font=FONT_HEADING, bg=BG_DARK, fg=TEXT_PRIMARY
+                 ).pack(anchor="w", pady=(0, 10))
 
         fields = {}
 
-        def row(label, key, default="0", width=14):
+        def field_row(label, key, default="0", width=14):
             f = tk.Frame(pad, bg=BG_DARK)
             f.pack(fill="x", pady=3)
             tk.Label(f, text=label, width=18, font=FONT_SMALL,
                      bg=BG_DARK, fg=TEXT_SECONDARY, anchor="w").pack(side="left")
-            var = tk.StringVar(value=default)
+            var = tk.StringVar(value=str(ex.get(key, default)))
             styled_entry(f, var, width=width).pack(side="left")
             fields[key] = var
+            return var
 
-        row("Target village",    "target",         default="",  width=18)
-        row("🌲 Wood",           "wood",           default="0")
-        row("🧱 Clay",           "clay",           default="0")
-        row("⚙  Iron",          "iron",           default="0")
-        row("🌾 Crop",           "crop",           default="0")
-        row("Merchants",         "merchants",      default="1")
-        row("Frequency (min)",   "frequency_min",  default="60")
-        row("Departure (HH:MM)", "departure_time", default="00:00")
-        row("Travel time (min)", "travel_minutes", default="0")
+        # ── Target village dropdown ────────────────────────────────────────────
+        own     = [v["village_name"] for v in load_villages(self.server, self.account)]
+        known   = [v["name"] for v in load_known_villages(self.server, self.account)]
+        options = own + ([_SEP] + known if known else [])
 
-        # Active checkbox
-        act_frame = tk.Frame(pad, bg=BG_DARK)
-        act_frame.pack(fill="x", pady=3)
-        tk.Label(act_frame, text="Active", width=18, font=FONT_SMALL,
+        cur_target = ex.get("target", "")
+        tgt_var = tk.StringVar(value=cur_target if cur_target in options else
+                               (own[0] if own else ""))
+
+        tf = tk.Frame(pad, bg=BG_DARK)
+        tf.pack(fill="x", pady=3)
+        tk.Label(tf, text="Target village", width=18, font=FONT_SMALL,
                  bg=BG_DARK, fg=TEXT_SECONDARY, anchor="w").pack(side="left")
-        act_var = tk.BooleanVar(value=True)
-        tk.Checkbutton(act_frame, variable=act_var, bg=BG_DARK,
-                       activebackground=BG_DARK, selectcolor=BG_HOVER,
-                       relief="flat").pack(side="left")
+        tgt_cb = styled_combo(tf, tgt_var, options, width=22, state="readonly")
+        tgt_cb.pack(side="left")
 
-        status = tk.Label(pad, text="", font=FONT_SMALL,
-                          bg=BG_DARK, fg=COL_RED)
-        status.pack(anchor="w", pady=(6,0))
+        # Travel time — auto-calculated, but still editable override
+        travel_tf = tk.Frame(pad, bg=BG_DARK)
+        travel_tf.pack(fill="x", pady=3)
+        tk.Label(travel_tf, text="Travel time (min)", width=18, font=FONT_SMALL,
+                 bg=BG_DARK, fg=TEXT_SECONDARY, anchor="w").pack(side="left")
+        travel_var = tk.StringVar(value=ex.get("travel_minutes", "0"))
+        travel_entry = styled_entry(travel_tf, travel_var, width=8)
+        travel_entry.pack(side="left")
+        travel_note = tk.Label(travel_tf, text="", font=FONT_SMALL,
+                               bg=BG_DARK, fg=TEXT_MUTED)
+        travel_note.pack(side="left", padx=(8, 0))
+
+        def _on_target_change(*_):
+            t = tgt_var.get()
+            if t == _SEP:
+                # Don't allow selecting the separator
+                tgt_var.set(own[0] if own else "")
+                return
+            mins = self._calc_travel(t)
+            travel_var.set(str(mins))
+            if mins:
+                travel_note.config(text=f"auto  ({mins}m)")
+            else:
+                travel_note.config(text="coords unknown")
+
+        tgt_var.trace_add("write", _on_target_change)
+        # Run once on open to populate travel time if adding new
+        if not self.existing_route:
+            _on_target_change()
+
+        # Resources
+        wood_var = field_row("🌲 Wood",  "wood",  default="0")
+        clay_var = field_row("🧱 Clay",  "clay",  default="0")
+        iron_var = field_row("⚙  Iron",  "iron",  default="0")
+        crop_var = field_row("🌾 Crop",  "crop",  default="0")
+
+        # Merchants — calculated
+        mf = tk.Frame(pad, bg=BG_DARK)
+        mf.pack(fill="x", pady=3)
+        tk.Label(mf, text="Merchants", width=18, font=FONT_SMALL,
+                 bg=BG_DARK, fg=TEXT_SECONDARY, anchor="w").pack(side="left")
+        merch_lbl = tk.Label(mf, text="1", font=("Consolas", 9, "bold"),
+                             bg=BG_DARK, fg=ACCENT)
+        merch_lbl.pack(side="left")
+        tk.Label(mf, text=f"  (carry {carry:,} each)",
+                 font=FONT_SMALL, bg=BG_DARK, fg=TEXT_MUTED).pack(side="left")
+
+        def _update_merchants(*_):
+            total = sum(max(0, int(v.get() or 0))
+                        for v in (wood_var, clay_var, iron_var, crop_var)
+                        if v.get().lstrip("-").isdigit())
+            merch_lbl.config(text=str(max(1, -(-total // carry))))
+
+        for v in (wood_var, clay_var, iron_var, crop_var):
+            v.trace_add("write", _update_merchants)
+        _update_merchants()
+
+        freq_var = field_row("Frequency (min)",   "frequency_min",  default="60")
+        dep_var  = field_row("Departure (HH:MM)", "departure_time", default="00:00")
+
+        # Active
+        af = tk.Frame(pad, bg=BG_DARK)
+        af.pack(fill="x", pady=3)
+        tk.Label(af, text="Active", width=18, font=FONT_SMALL,
+                 bg=BG_DARK, fg=TEXT_SECONDARY, anchor="w").pack(side="left")
+        act_var = tk.BooleanVar(value=ex.get("active","1") not in ("0","false","False",""))
+        tk.Checkbutton(af, variable=act_var, bg=BG_DARK, activebackground=BG_DARK,
+                       selectcolor=BG_HOVER, fg=COL_FULL_GREEN,
+                       activeforeground=COL_FULL_GREEN, relief="flat").pack(side="left")
+
+        status = tk.Label(pad, text="", font=FONT_SMALL, bg=BG_DARK, fg=COL_RED)
+        status.pack(anchor="w", pady=(4, 0))
 
         def _save():
-            target = fields["target"].get().strip()
-            if not target:
-                status.config(text="Target village is required.")
+            target = tgt_var.get().strip()
+            if not target or target == _SEP:
+                status.config(text="Please select a target village.")
                 return
+            total = sum(max(0, int(fields[k].get() or 0))
+                        for k in ("wood","clay","iron","crop")
+                        if fields[k].get().lstrip("-").isdigit())
+            merchants = max(1, -(-total // carry))
+            try:
+                travel = int(travel_var.get() or 0)
+            except ValueError:
+                travel = 0
+
+            new_rt = {
+                "target":         target,
+                "wood":           fields["wood"].get().strip(),
+                "clay":           fields["clay"].get().strip(),
+                "iron":           fields["iron"].get().strip(),
+                "crop":           fields["crop"].get().strip(),
+                "merchants":      str(merchants),
+                "frequency_min":  fields["frequency_min"].get().strip(),
+                "departure_time": fields["departure_time"].get().strip(),
+                "travel_minutes": str(travel),
+                "active":         "1" if act_var.get() else "0",
+            }
+
             routes = load_trade_routes(self.server, self.account, self.village_name)
-            new_route = {k: fields[k].get().strip() for k in fields}
-            new_route["route_id"] = _next_route_id(routes)
-            new_route["active"]   = "1" if act_var.get() else "0"
-            routes.append(new_route)
+            if self.existing_route:
+                rid = self.existing_route.get("route_id")
+                for i, rt in enumerate(routes):
+                    if rt.get("route_id") == rid:
+                        new_rt["route_id"] = rid
+                        routes[i] = new_rt
+                        break
+            else:
+                new_rt["route_id"] = _next_route_id(routes)
+                routes.append(new_rt)
+
             save_trade_routes(self.server, self.account, self.village_name, routes)
             self.destroy()
 
-        btn_row = tk.Frame(pad, bg=BG_DARK)
-        btn_row.pack(fill="x", pady=(12,0))
-        styled_button(btn_row, "💾  Save", command=_save, accent=True).pack(side="left")
-        styled_button(btn_row, "Cancel",   command=self.destroy, small=True).pack(side="left", padx=8)
+        br = tk.Frame(pad, bg=BG_DARK)
+        br.pack(fill="x", pady=(10, 0))
+        styled_button(br, "💾  Save", command=_save, accent=True).pack(side="left")
+        styled_button(br, "Cancel", command=self.destroy, small=True).pack(side="left", padx=8)
 
 
 # ─── Import Trade Routes Dialog ────────────────────────────────────────────────
@@ -2859,6 +3285,98 @@ class ImportTradeRoutesDialog(tk.Toplevel):
         self._parsed = []
 
 
+# ─── Import Production Dialog ─────────────────────────────────────────────────
+
+class ImportProductionDialog(tk.Toplevel):
+    """Paste the Travian Village Overview → Resources → Production page."""
+
+    def __init__(self, master, server, account, village_names: list):
+        super().__init__(master)
+        self.server        = server
+        self.account       = account
+        self.village_names = village_names
+        self.title("Import Production Data")
+        self.configure(bg=BG_DARK)
+        self.geometry("700x520")
+        self.grab_set()
+        self._parsed = {}
+        self._build()
+
+    def _build(self):
+        pad = tk.Frame(self, bg=BG_DARK)
+        pad.pack(fill="both", expand=True, padx=20, pady=16)
+
+        tk.Label(pad, text="Import Production Data", font=FONT_HEADING,
+                 bg=BG_DARK, fg=TEXT_PRIMARY).pack(anchor="w", pady=(0, 4))
+        tk.Label(pad,
+                 text="Paste the full page from Village Overview → Resources → Production.\n"
+                      "Village names in the paste must match your village names.",
+                 font=FONT_SMALL, bg=BG_DARK, fg=TEXT_MUTED,
+                 justify="left").pack(anchor="w", pady=(0, 8))
+
+        txt_frame = tk.Frame(pad, bg=BORDER)
+        txt_frame.pack(fill="both", expand=True)
+        self._txt = tk.Text(txt_frame, bg=BG_MID, fg=TEXT_PRIMARY,
+                            insertbackground=ACCENT, font=("Consolas", 9),
+                            relief="flat", bd=6, wrap="none",
+                            selectbackground=BG_HOVER)
+        sb = tk.Scrollbar(txt_frame, command=self._txt.yview,
+                          bg=BG_MID, troughcolor=BG_DARK, relief="flat", bd=0, width=8)
+        self._txt.config(yscrollcommand=sb.set)
+        sb.pack(side="right", fill="y")
+        self._txt.pack(fill="both", expand=True)
+
+        self._preview = tk.Label(pad, text="", font=FONT_SMALL,
+                                 bg=BG_DARK, fg=COL_FULL_GREEN, justify="left",
+                                 wraplength=640)
+        self._preview.pack(anchor="w", pady=(6, 0))
+
+        btn_row = tk.Frame(pad, bg=BG_DARK)
+        btn_row.pack(fill="x", pady=(8, 0))
+        styled_button(btn_row, "🔍  Parse",  command=self._parse,  accent=True).pack(side="left")
+        styled_button(btn_row, "✅  Import", command=self._import, small=True).pack(side="left", padx=6)
+        self._status = tk.Label(btn_row, text="", font=FONT_SMALL,
+                                bg=BG_DARK, fg=COL_FULL_GREEN)
+        self._status.pack(side="left", padx=8)
+        styled_button(btn_row, "Close", command=self.destroy, small=True).pack(side="right")
+
+    def _parse(self):
+        raw = self._txt.get("1.0", "end")
+        self._parsed = parse_production_overview(raw)
+        if not self._parsed:
+            self._preview.config(
+                text="❌  No production data found. Make sure the paste includes the "
+                     "production table with village names and numeric values.",
+                fg=COL_RED)
+            return
+
+        lines = [f"✔  Found {len(self._parsed)} village(s):"]
+        for vname, prod in self._parsed.items():
+            lines.append(f"  {vname}:  🌲{prod['wood']:,}  🧱{prod['clay']:,}"
+                         f"  ⚙{prod['iron']:,}  🌾{prod['crop']:,}")
+
+        # Warn about unmatched names
+        unmatched = [vn for vn in self._parsed if vn not in self.village_names]
+        if unmatched:
+            lines.append(f"⚠  {len(unmatched)} name(s) not in your village list: "
+                         + ", ".join(unmatched))
+
+        self._preview.config(text="\n".join(lines), fg=COL_FULL_GREEN)
+
+    def _import(self):
+        if not self._parsed:
+            self._parse()
+        if not self._parsed:
+            return
+        # Merge with existing (preserve villages not in this paste)
+        existing = load_parsed_production(self.server, self.account)
+        existing.update(self._parsed)
+        save_parsed_production(self.server, self.account, existing)
+        self._status.config(
+            text=f"✅  Saved {len(self._parsed)} village(s) to production.csv",
+            fg=COL_FULL_GREEN)
+
+
 # ─── Main Application Window ──────────────────────────────────────────────────
 
 class MainApp(tk.Frame):
@@ -2935,7 +3453,9 @@ class MainApp(tk.Frame):
         section_label(pad, "Account Overview").pack(fill="x", padx=12, pady=(14, 4))
         for label, cmd in [
             ("🏠  Account Overview",  self._show_account_overview),
+            ("🤝  Alliance Info",     self._show_alliance_info),
             ("🗺   Map",              self._show_map),
+            ("🔄  Trade Route Summary", self._show_trade_route_summary),
             ("📊  Production Info",   self._show_production_info),
             ("⚔   Troops Overview",   self._show_troops_overview),
             ("🗺   Troop Locations",  self._show_troop_locations),
@@ -3172,6 +3692,388 @@ class MainApp(tk.Frame):
 
         _rebuild()
 
+    def _show_alliance_info(self):
+        self._clear_center()
+
+        outer = tk.Frame(self.center, bg=BG_DARK)
+        outer.pack(fill="both", expand=True)
+
+        # ── Scrollable container for the whole page ───────────────────────────
+        scroll_outer, page = scrollable_frame(outer)
+        scroll_outer.pack(fill="both", expand=True)
+
+        info        = load_alliance_info(self.server, self.account)
+        bonus_table = load_alliance_bonus_table()
+
+        # ══ Header ════════════════════════════════════════════════════════════
+        hdr = tk.Frame(page, bg=BG_DARK)
+        hdr.pack(fill="x", padx=24, pady=(24, 0))
+        tk.Label(hdr, text="Alliance Info",
+                 font=FONT_TITLE, bg=BG_DARK, fg=TEXT_PRIMARY).pack(side="left")
+        if not self.is_archived:
+            styled_button(hdr, "💾  Save All", command=lambda: _save_all(),
+                          accent=True).pack(side="left", padx=(16, 0))
+        status_lbl = tk.Label(hdr, text="", font=FONT_SMALL,
+                              bg=BG_DARK, fg=COL_FULL_GREEN)
+        status_lbl.pack(side="left", padx=12)
+        make_separator(page).pack(fill="x", padx=24, pady=10)
+
+        # ══ Alliance name ═════════════════════════════════════════════════════
+        name_frame = tk.Frame(page, bg=BG_DARK)
+        name_frame.pack(fill="x", padx=24, pady=(0, 16))
+        tk.Label(name_frame, text="Alliance name:", font=FONT_SMALL,
+                 bg=BG_DARK, fg=TEXT_SECONDARY, width=16, anchor="w").pack(side="left")
+        name_var = tk.StringVar(value=info.get("alliance_name", ""))
+        state = "disabled" if self.is_archived else "normal"
+        styled_entry(name_frame, name_var, width=30).pack(side="left")
+
+        # ══ Alliance Bonuses table ════════════════════════════════════════════
+        tk.Label(page, text="Alliance Bonuses", font=FONT_HEADING,
+                 bg=BG_DARK, fg=TEXT_PRIMARY).pack(anchor="w", padx=24, pady=(0, 6))
+
+        bonus_frame = tk.Frame(page, bg=BG_DARK)
+        bonus_frame.pack(fill="x", padx=24, pady=(0, 20))
+        bonus_frame.columnconfigure(0, minsize=160)
+        bonus_frame.columnconfigure(1, minsize=80)
+        bonus_frame.columnconfigure(2, minsize=80)
+        bonus_frame.columnconfigure(3, minsize=260)
+
+        # Header
+        for ci, text in enumerate(["Bonus Type", "Level", "Value", "Description"]):
+            tk.Label(bonus_frame, text=text, font=("Consolas", 9, "bold"),
+                     bg=BG_MID, fg=TEXT_MUTED, anchor="w", padx=6, pady=3
+                     ).grid(row=0, column=ci, sticky="nsew", padx=(0,1), pady=(0,1))
+        tk.Frame(bonus_frame, bg=BORDER, height=1).grid(
+            row=1, column=0, columnspan=4, sticky="ew", pady=(0,1))
+
+        bonus_level_vars = {}
+
+        for bi, bt in enumerate(ALLIANCE_BONUS_TYPES):
+            r  = bi + 2
+            bg = BG_MID if bi % 2 == 0 else BG_PANEL
+            tk.Label(bonus_frame, text=bt, font=FONT_SMALL,
+                     bg=bg, fg=TEXT_PRIMARY, anchor="w", padx=6, pady=3
+                     ).grid(row=r, column=0, sticky="nsew", padx=(0,1), pady=(0,1))
+
+            lvl_var = tk.StringVar(value=str(info.get(bt, 0)))
+            bonus_level_vars[bt] = lvl_var
+
+            val_lbl  = tk.Label(bonus_frame, text="", font=("Consolas", 9, "bold"),
+                                bg=bg, fg=ACCENT, anchor="w", padx=6, pady=3)
+            val_lbl.grid(row=r, column=2, sticky="nsew", padx=(0,1), pady=(0,1))
+
+            desc_lbl = tk.Label(bonus_frame, text="", font=FONT_SMALL,
+                                bg=bg, fg=TEXT_SECONDARY, anchor="w", padx=6, pady=3)
+            desc_lbl.grid(row=r, column=3, sticky="nsew", padx=(0,1), pady=(0,1))
+
+            def _update_row(bt=bt, var=lvl_var, vl=val_lbl, dl=desc_lbl):
+                try:
+                    lvl = int(var.get())
+                except ValueError:
+                    lvl = 0
+                entry = bonus_table.get(bt, {}).get(lvl, {})
+                vl.config(text=entry.get("value", ""))
+                dl.config(text=entry.get("description", ""))
+
+            cb = styled_combo(bonus_frame, lvl_var,
+                              [str(i) for i in range(6)], width=8,
+                              state="disabled" if self.is_archived else "readonly")
+            cb.grid(row=r, column=1, sticky="nsew", padx=(0,1), pady=(0,1))
+            lvl_var.trace_add("write", lambda *_, bt=bt, v=lvl_var, vl=val_lbl, dl=desc_lbl:
+                              _update_row(bt, v, vl, dl))
+            _update_row(bt, lvl_var, val_lbl, desc_lbl)
+
+        # ══ Known Villages section ════════════════════════════════════════════
+        make_separator(page).pack(fill="x", padx=24, pady=(4, 12))
+
+        kv_hdr = tk.Frame(page, bg=BG_DARK)
+        kv_hdr.pack(fill="x", padx=24, pady=(0, 8))
+        tk.Label(kv_hdr, text="Known Villages", font=FONT_HEADING,
+                 bg=BG_DARK, fg=TEXT_PRIMARY).pack(side="left")
+        if not self.is_archived:
+            styled_button(kv_hdr, "➕ Add Village",
+                          command=lambda: _add_village_dialog(), small=True,
+                          accent=True).pack(side="right", padx=(4,0))
+            styled_button(kv_hdr, "🏷 Add Type",
+                          command=lambda: _add_type_dialog(), small=True
+                          ).pack(side="right", padx=(4,0))
+
+        kv_container = tk.Frame(page, bg=BG_DARK)
+        kv_container.pack(fill="x", padx=24, pady=(0, 24))
+
+        def _rebuild_kv_table():
+            for w in kv_container.winfo_children():
+                w.destroy()
+
+            known   = load_known_villages(self.server, self.account)
+            types   = load_known_village_types(self.server, self.account)
+            sel_vars_kv = {}
+
+            if not self.is_archived:
+                rm_row = tk.Frame(kv_container, bg=BG_DARK)
+                rm_row.pack(anchor="e", pady=(0, 4))
+                styled_button(rm_row, "🗑 Remove Selected",
+                              command=lambda: _remove_kv(sel_vars_kv), small=True
+                              ).pack(side="right")
+
+            tbl = tk.Frame(kv_container, bg=BG_DARK)
+            tbl.pack(fill="x")
+            tbl.columnconfigure(0, minsize=30)   # select
+            tbl.columnconfigure(1, minsize=200)  # name
+            tbl.columnconfigure(2, minsize=70)   # x
+            tbl.columnconfigure(3, minsize=70)   # y
+            tbl.columnconfigure(4, minsize=180)  # type
+
+            for ci, text in enumerate(["", "Name", "X", "Y", "Type"]):
+                tk.Label(tbl, text=text, font=("Consolas",9,"bold"),
+                         bg=BG_MID, fg=TEXT_MUTED, anchor="w" if ci > 0 else "center",
+                         padx=4, pady=3
+                         ).grid(row=0, column=ci, sticky="nsew", padx=(0,1), pady=(0,1))
+            tk.Frame(tbl, bg=BORDER, height=1).grid(
+                row=1, column=0, columnspan=5, sticky="ew", pady=(0,1))
+
+            if not known:
+                tk.Label(tbl, text="No known villages yet.",
+                         font=FONT_SMALL, bg=BG_PANEL, fg=TEXT_MUTED,
+                         anchor="w", padx=8, pady=6
+                         ).grid(row=2, column=0, columnspan=5, sticky="ew")
+                return
+
+            type_opts = [""] + types
+            for i, v in enumerate(known):
+                r   = i + 2
+                bg  = BG_MID if i % 2 == 0 else BG_PANEL
+                vid = v.get("village_id", str(i))
+
+                sel = tk.BooleanVar(value=False)
+                sel_vars_kv[vid] = sel
+                tk.Checkbutton(tbl, variable=sel, bg=bg, activebackground=bg,
+                               selectcolor=BG_HOVER, relief="flat", bd=0
+                               ).grid(row=r, column=0, sticky="nsew", padx=(0,1), pady=(0,1))
+
+                for ci, (key, anchor) in enumerate([("name","w"),("coord_x","center"),("coord_y","center")], start=1):
+                    tk.Label(tbl, text=v.get(key,"—"), font=FONT_SMALL,
+                             bg=bg, fg=TEXT_PRIMARY, anchor=anchor, padx=4, pady=3
+                             ).grid(row=r, column=ci, sticky="nsew", padx=(0,1), pady=(0,1))
+
+                t_var = tk.StringVar(value=v.get("vtype",""))
+                cb = styled_combo(tbl, t_var, type_opts, width=20,
+                                  state="disabled" if self.is_archived else "readonly")
+                cb.grid(row=r, column=4, sticky="nsew", padx=(0,1), pady=(0,1))
+                def _on_type(vid=vid, tv=t_var):
+                    kv = load_known_villages(self.server, self.account)
+                    for entry in kv:
+                        if entry.get("village_id") == vid:
+                            entry["vtype"] = tv.get()
+                    save_known_villages(self.server, self.account, kv)
+                t_var.trace_add("write", lambda *_, vid=vid, tv=t_var: _on_type(vid, tv))
+
+        def _remove_kv(sel_vars_kv):
+            selected = {vid for vid, var in sel_vars_kv.items() if var.get()}
+            if not selected:
+                return
+            kv = load_known_villages(self.server, self.account)
+            kv = [v for v in kv if v.get("village_id") not in selected]
+            save_known_villages(self.server, self.account, kv)
+            _rebuild_kv_table()
+
+        def _add_village_dialog():
+            dlg = tk.Toplevel(self)
+            dlg.title("Add Known Village")
+            dlg.configure(bg=BG_DARK)
+            dlg.geometry("360x240")
+            dlg.grab_set()
+            pad2 = tk.Frame(dlg, bg=BG_DARK)
+            pad2.pack(fill="both", expand=True, padx=16, pady=14)
+            tk.Label(pad2, text="Add Known Village", font=FONT_HEADING,
+                     bg=BG_DARK, fg=TEXT_PRIMARY).pack(anchor="w", pady=(0,10))
+            fvars = {}
+            for label, key, default in [("Village name","name",""),
+                                         ("X coord","coord_x","0"),
+                                         ("Y coord","coord_y","0")]:
+                f = tk.Frame(pad2, bg=BG_DARK)
+                f.pack(fill="x", pady=2)
+                tk.Label(f, text=label, width=14, font=FONT_SMALL,
+                         bg=BG_DARK, fg=TEXT_SECONDARY, anchor="w").pack(side="left")
+                var = tk.StringVar(value=default)
+                styled_entry(f, var, width=16).pack(side="left")
+                fvars[key] = var
+
+            types = load_known_village_types(self.server, self.account)
+            tf = tk.Frame(pad2, bg=BG_DARK)
+            tf.pack(fill="x", pady=2)
+            tk.Label(tf, text="Type", width=14, font=FONT_SMALL,
+                     bg=BG_DARK, fg=TEXT_SECONDARY, anchor="w").pack(side="left")
+            t_var = tk.StringVar(value="")
+            styled_combo(tf, t_var, [""] + types, width=16).pack(side="left")
+
+            err = tk.Label(pad2, text="", font=FONT_SMALL, bg=BG_DARK, fg=COL_RED)
+            err.pack(anchor="w", pady=(4,0))
+
+            def _do_add():
+                name = fvars["name"].get().strip()
+                if not name:
+                    err.config(text="Name is required.")
+                    return
+                kv = load_known_villages(self.server, self.account)
+                kv.append({"village_id": _next_village_id(kv),
+                           "name": name,
+                           "coord_x": fvars["coord_x"].get().strip(),
+                           "coord_y": fvars["coord_y"].get().strip(),
+                           "vtype":   t_var.get().strip()})
+                save_known_villages(self.server, self.account, kv)
+                dlg.destroy()
+                _rebuild_kv_table()
+
+            br = tk.Frame(pad2, bg=BG_DARK)
+            br.pack(fill="x", pady=(10,0))
+            styled_button(br, "Add", command=_do_add, accent=True).pack(side="left")
+            styled_button(br, "Cancel", command=dlg.destroy, small=True).pack(side="left", padx=8)
+
+        def _add_type_dialog():
+            dlg = tk.Toplevel(self)
+            dlg.title("Add Village Type")
+            dlg.configure(bg=BG_DARK)
+            dlg.geometry("340x180")
+            dlg.grab_set()
+            pad2 = tk.Frame(dlg, bg=BG_DARK)
+            pad2.pack(fill="both", expand=True, padx=16, pady=14)
+            tk.Label(pad2, text="Add Village Type", font=FONT_HEADING,
+                     bg=BG_DARK, fg=TEXT_PRIMARY).pack(anchor="w", pady=(0,10))
+            f = tk.Frame(pad2, bg=BG_DARK)
+            f.pack(fill="x", pady=2)
+            tk.Label(f, text="Type name", width=12, font=FONT_SMALL,
+                     bg=BG_DARK, fg=TEXT_SECONDARY, anchor="w").pack(side="left")
+            t_var = tk.StringVar()
+            styled_entry(f, t_var, width=20).pack(side="left")
+
+            # Show existing types
+            existing = load_known_village_types(self.server, self.account)
+            if existing:
+                tk.Label(pad2, text="Existing: " + ", ".join(existing),
+                         font=FONT_SMALL, bg=BG_DARK, fg=TEXT_MUTED,
+                         wraplength=280, justify="left").pack(anchor="w", pady=(4,0))
+
+            err = tk.Label(pad2, text="", font=FONT_SMALL, bg=BG_DARK, fg=COL_RED)
+            err.pack(anchor="w", pady=(4,0))
+
+            def _do_add():
+                name = t_var.get().strip()
+                if not name:
+                    err.config(text="Type name is required.")
+                    return
+                types = load_known_village_types(self.server, self.account)
+                if name in types:
+                    err.config(text="Type already exists.")
+                    return
+                types.append(name)
+                save_known_village_types(self.server, self.account, types)
+                dlg.destroy()
+                _rebuild_kv_table()
+
+            br = tk.Frame(pad2, bg=BG_DARK)
+            br.pack(fill="x", pady=(10,0))
+            styled_button(br, "Add", command=_do_add, accent=True).pack(side="left")
+            styled_button(br, "Cancel", command=dlg.destroy, small=True).pack(side="left", padx=8)
+
+        def _save_all():
+            info_new = {
+                "alliance_name": name_var.get().strip(),
+            }
+            for bt in ALLIANCE_BONUS_TYPES:
+                try:
+                    info_new[bt] = int(bonus_level_vars[bt].get())
+                except ValueError:
+                    info_new[bt] = 0
+            save_alliance_info(self.server, self.account, info_new)
+            status_lbl.config(text="✓ Saved", fg=COL_FULL_GREEN)
+            fade_label(status_lbl, after_ms=3000)
+
+        _rebuild_kv_table()
+
+    def _show_trade_route_summary(self):
+        self._clear_center()
+        villages = load_villages(self.server, self.account)
+
+        outer = tk.Frame(self.center, bg=BG_DARK)
+        outer.pack(fill="both", expand=True)
+
+        hdr = tk.Frame(outer, bg=BG_DARK)
+        hdr.pack(fill="x", padx=24, pady=(24, 0))
+        tk.Label(hdr, text="Trade Route Summary",
+                 font=FONT_TITLE, bg=BG_DARK, fg=TEXT_PRIMARY).pack(side="left")
+        tk.Label(hdr, text="  —  outgoing and incoming routes per village",
+                 font=FONT_BODY, bg=BG_DARK, fg=TEXT_MUTED).pack(side="left", pady=(6, 0))
+        make_separator(outer).pack(fill="x", padx=24, pady=10)
+
+        if not villages:
+            tk.Label(outer, text="No villages found.",
+                     font=FONT_BODY, bg=BG_DARK, fg=TEXT_MUTED).pack(padx=24, anchor="w")
+            return
+
+        # ── Count outgoing per village ────────────────────────────────────────
+        outgoing = {}   # village_name -> count
+        incoming = {}   # village_name -> count
+        for v in villages:
+            outgoing[v["village_name"]] = 0
+            incoming[v["village_name"]] = 0
+
+        for v in villages:
+            vname = v["village_name"]
+            routes = load_trade_routes(self.server, self.account, vname)
+            outgoing[vname] = len(routes)
+            for rt in routes:
+                target = rt.get("target", "")
+                if target in incoming:
+                    incoming[target] += 1
+
+        total_out = sum(outgoing.values())
+        total_in  = sum(incoming.values())
+
+        # ── Grid table ────────────────────────────────────────────────────────
+        scroll_outer, inner = scrollable_frame(outer)
+        scroll_outer.pack(fill="both", expand=True, padx=24, pady=(0, 16))
+
+        tbl = tk.Frame(inner, bg=BG_DARK)
+        tbl.pack(fill="x")
+        tbl.columnconfigure(0, minsize=200)
+        tbl.columnconfigure(1, minsize=120, uniform="counts")
+        tbl.columnconfigure(2, minsize=120, uniform="counts")
+
+        def gl(row, col, text, bg, fg, bold=False, anchor="center"):
+            tk.Label(tbl, text=text,
+                     font=("Consolas", 9, "bold") if bold else FONT_SMALL,
+                     bg=bg, fg=fg, anchor=anchor, padx=8, pady=4
+                     ).grid(row=row, column=col, sticky="nsew",
+                            padx=(0, 1), pady=(0, 1))
+
+        # Header
+        gl(0, 0, "Village",   BG_MID, TEXT_MUTED, bold=True, anchor="w")
+        gl(0, 1, "↑ Outgoing", BG_MID, "#e07820",  bold=True)
+        gl(0, 2, "↓ Incoming", BG_MID, "#4090d8",  bold=True)
+        tk.Frame(tbl, bg=BORDER, height=1).grid(
+            row=1, column=0, columnspan=3, sticky="ew", pady=(0, 1))
+
+        for i, v in enumerate(villages):
+            r    = i + 2
+            bg   = BG_MID if i % 2 == 0 else BG_PANEL
+            vn   = v["village_name"]
+            out  = outgoing[vn]
+            inc  = incoming[vn]
+            gl(r, 0, vn,         bg, TEXT_PRIMARY, anchor="w")
+            gl(r, 1, str(out) if out else "—", bg,
+               "#e07820" if out else TEXT_MUTED)
+            gl(r, 2, str(inc) if inc else "—", bg,
+               "#4090d8" if inc else TEXT_MUTED)
+
+        # Totals row
+        tk.Frame(tbl, bg=ACCENT_DIM, height=1).grid(
+            row=len(villages) + 2, column=0, columnspan=3, sticky="ew", pady=(2, 1))
+        tr = len(villages) + 3
+        gl(tr, 0, "Total",         BG_HOVER, ACCENT,    bold=True, anchor="w")
+        gl(tr, 1, str(total_out),  BG_HOVER, "#e07820", bold=True)
+        gl(tr, 2, str(total_in),   BG_HOVER, "#4090d8", bold=True)
+
     def _show_production_info(self):
         self._clear_center()
         villages = load_villages(self.server, self.account)
@@ -3184,26 +4086,35 @@ class MainApp(tk.Frame):
         hdr.pack(fill="x", padx=24, pady=(24, 0))
         tk.Label(hdr, text="Production Info",
                  font=FONT_TITLE, bg=BG_DARK, fg=TEXT_PRIMARY).pack(side="left")
-        tk.Label(hdr, text="  —  hourly resource output per village",
-                 font=FONT_BODY, bg=BG_DARK, fg=TEXT_MUTED).pack(side="left", pady=(6, 0))
 
-        # Gold bonus toggle — persisted in options.csv
+        # Data source dropdown
+        src_var = tk.StringVar(value=load_option("prod_data_source", "Village Data"))
+        src_frame = tk.Frame(hdr, bg=BG_MID, highlightthickness=1,
+                             highlightbackground=BORDER)
+        src_frame.pack(side="right", padx=(8, 0))
+        tk.Label(src_frame, text="Data source:", font=FONT_SMALL,
+                 bg=BG_MID, fg=TEXT_MUTED).pack(side="left", padx=(8, 4), pady=4)
+        styled_combo(src_frame, src_var, ["Village Data", "Parsed"],
+                     width=14, state="readonly").pack(side="left", padx=(0, 8), pady=4)
+
+        # Import button
+        if not self.is_archived:
+            styled_button(hdr, "📥  Import Production",
+                          command=lambda: _open_import(),
+                          small=True).pack(side="right", padx=(8, 0))
+
+        # Gold bonus toggle — only relevant for Village Data source
         gold_var = tk.BooleanVar(value=load_option("gold_bonus", "False") == "True")
         gold_frame = tk.Frame(hdr, bg=BG_MID, relief="flat", bd=0,
                               highlightthickness=1, highlightbackground=BORDER)
-        gold_frame.pack(side="right", padx=(12, 0))
-
-        def _refresh_table(*_):
-            save_option("gold_bonus", gold_var.get())
-            _build_table(gold_var.get())
-
+        gold_frame.pack(side="right", padx=(8, 0))
         gold_cb = tk.Checkbutton(
             gold_frame, text="💰 +25% Gold Bonus",
-            variable=gold_var, command=_refresh_table,
+            variable=gold_var,
+            command=lambda: (save_option("gold_bonus", gold_var.get()), _refresh()),
             bg=BG_MID, fg=TEXT_PRIMARY, selectcolor=BG_HOVER,
             activebackground=BG_MID, activeforeground=ACCENT,
-            font=FONT_SMALL, relief="flat", bd=0,
-            highlightthickness=0)
+            font=FONT_SMALL, relief="flat", bd=0, highlightthickness=0)
         gold_cb.pack(padx=8, pady=4)
 
         make_separator(outer).pack(fill="x", padx=24, pady=10)
@@ -3213,30 +4124,52 @@ class MainApp(tk.Frame):
                      font=FONT_BODY, bg=BG_DARK, fg=TEXT_MUTED).pack(padx=24, anchor="w")
             return
 
-        # ── Table container (rebuilt on toggle) ──────────────────────────────
         table_container = tk.Frame(outer, bg=BG_DARK)
         table_container.pack(fill="both", expand=True)
 
         COLS = [
-            (1, "🌲 Wood",  "wood",  "#7daa6f"),
-            (2, "🧱 Clay",  "clay",  "#b87c4c"),
-            (3, "⚙ Iron",  "iron",  "#8aabcc"),
-            (4, "🌾 Crop",  "crop",  "#c8b84a"),
+            (1, "🌲 Wood", "wood", "#7daa6f"),
+            (2, "🧱 Clay", "clay", "#b87c4c"),
+            (3, "⚙ Iron",  "iron", "#8aabcc"),
+            (4, "🌾 Crop", "crop", "#c8b84a"),
         ]
 
-        def _build_table(gold_bonus: bool):
+        def _refresh(*_):
+            save_option("prod_data_source", src_var.get())
+            use_parsed = src_var.get() == "Parsed"
+            # Gold bonus only relevant for Village Data
+            gold_cb.config(state="disabled" if use_parsed else "normal")
+            gold_frame.config(highlightbackground=TEXT_MUTED if use_parsed else BORDER)
+            _build_table(use_parsed)
+
+        src_var.trace_add("write", _refresh)
+
+        def _build_table(use_parsed: bool):
             for w in table_container.winfo_children():
                 w.destroy()
 
             rows   = []
             totals = {"wood": 0, "clay": 0, "iron": 0, "crop": 0}
-            for v in villages:
-                vname = v["village_name"]
-                prod  = calculate_village_production(
-                    self.server, self.account, vname, gold_bonus)
-                rows.append((vname, prod))
-                for k in totals:
-                    totals[k] += prod[k]
+
+            if use_parsed:
+                parsed = load_parsed_production(self.server, self.account)
+                for v in villages:
+                    vname = v["village_name"]
+                    prod  = parsed.get(vname, {"wood":0,"clay":0,"iron":0,"crop":0})
+                    rows.append((vname, prod))
+                    for k in totals:
+                        totals[k] += prod[k]
+                note = "  (from imported data)"
+            else:
+                gold_bonus = gold_var.get()
+                for v in villages:
+                    vname = v["village_name"]
+                    prod  = calculate_village_production(
+                        self.server, self.account, vname, gold_bonus)
+                    rows.append((vname, prod))
+                    for k in totals:
+                        totals[k] += prod[k]
+                note = "  (incl. 25% gold bonus)" if gold_bonus else ""
 
             scroll_outer, inner = scrollable_frame(table_container)
             scroll_outer.pack(fill="both", expand=True, padx=24, pady=(0, 16))
@@ -3248,14 +4181,13 @@ class MainApp(tk.Frame):
                 tbl.columnconfigure(c, minsize=90, uniform="res")
 
             def gl(row, col, text, bg, fg, bold=False, anchor="center"):
-                font = ("Consolas", 9, "bold") if bold else FONT_SMALL
-                tk.Label(tbl, text=text, font=font, bg=bg, fg=fg,
-                         anchor=anchor, padx=6, pady=3
+                tk.Label(tbl, text=text,
+                         font=("Consolas", 9, "bold") if bold else FONT_SMALL,
+                         bg=bg, fg=fg, anchor=anchor, padx=6, pady=3
                          ).grid(row=row, column=col, sticky="nsew",
                                 padx=(0, 1), pady=(0, 1))
 
-            # header
-            gl(0, 0, "Village",   BG_MID, TEXT_MUTED, bold=True, anchor="w")
+            gl(0, 0, "Village", BG_MID, TEXT_MUTED, bold=True, anchor="w")
             for col, label, _, color in COLS:
                 gl(0, col, label, BG_MID, color, bold=True)
             tk.Frame(tbl, bg=BORDER, height=1).grid(
@@ -3279,13 +4211,20 @@ class MainApp(tk.Frame):
                 gl(total_row, col, f"{totals[key]:,}", BG_HOVER, COL_FULL_GREEN, bold=True)
 
             grand = sum(totals.values())
-            bonus_note = "  (incl. 25% gold bonus)" if gold_bonus else ""
             tk.Label(inner,
-                     text=f"Total production across all villages:  {grand:,} /hr{bonus_note}",
+                     text=f"Total production:  {grand:,} /hr{note}",
                      font=("Consolas", 9, "bold"), bg=BG_DARK, fg=ACCENT
                      ).pack(anchor="w", padx=4, pady=(8, 4))
 
-        _build_table(gold_var.get())
+        def _open_import():
+            dlg = ImportProductionDialog(self, self.server, self.account,
+                                         [v["village_name"] for v in villages])
+            self.wait_window(dlg)
+            if src_var.get() == "Parsed":
+                _build_table(True)
+
+        # Initial render
+        _refresh()
 
     def _show_troops_overview(self):
         self._clear_center()
@@ -3404,6 +4343,19 @@ class MainApp(tk.Frame):
         tk.Label(hdr, text="  scroll to zoom  ·  drag to pan  ·  hover for village name",
                  font=FONT_SMALL, bg=BG_DARK, fg=TEXT_MUTED).pack(side="left", pady=(6, 0))
 
+        # Trade routes toggle
+        show_routes_var = tk.BooleanVar(value=False)
+        tr_frame = tk.Frame(hdr, bg=BG_MID, highlightthickness=1,
+                            highlightbackground=BORDER)
+        tr_frame.pack(side="right", padx=(0, 12))
+        tk.Checkbutton(tr_frame, text="🔄 Show Trade Routes",
+                       variable=show_routes_var,
+                       command=lambda: draw(),
+                       bg=BG_MID, fg=TEXT_PRIMARY, selectcolor=BG_HOVER,
+                       activebackground=BG_MID, activeforeground=ACCENT,
+                       font=FONT_SMALL, relief="flat", bd=0,
+                       highlightthickness=0).pack(padx=8, pady=4)
+
         # coord display in top-right
         coord_lbl = tk.Label(hdr, text="", font=FONT_SMALL,
                              bg=BG_DARK, fg=TEXT_SECONDARY)
@@ -3437,13 +4389,64 @@ class MainApp(tk.Frame):
 
         # Parse village coords
         vdata = []
+        coord_lookup = {}   # village_name -> (x, y)
         for v in villages:
             try:
                 cx = int(v["coord_x"]); cy = int(v["coord_y"])
                 vdata.append({"name": v["village_name"], "x": cx, "y": cy,
                                "capital": v.get("is_capital", "") == "1"})
+                coord_lookup[v["village_name"]] = (cx, cy)
             except (ValueError, TypeError, KeyError):
                 pass
+
+        # Known (third-party) village data
+        kvdata = []
+        for kv in load_known_villages(self.server, self.account):
+            try:
+                cx = int(kv["coord_x"]); cy = int(kv["coord_y"])
+                name = kv.get("name", "")
+                kvdata.append({"name": name, "x": cx, "y": cy,
+                                "vtype": kv.get("vtype", "")})
+                coord_lookup.setdefault(name, (cx, cy))
+            except (ValueError, TypeError, KeyError):
+                pass
+
+        # Collect all trade routes across all villages
+        # Each entry: {sx, sy, tx, ty, wood, clay, iron, crop, active}
+        all_routes = []
+        for v in villages:
+            vname = v["village_name"]
+            if vname not in coord_lookup:
+                continue
+            sx, sy = coord_lookup[vname]
+            for rt in load_trade_routes(self.server, self.account, vname):
+                if rt.get("active","1") in ("0","false","False",""):
+                    continue
+                target = rt.get("target","")
+                # Try own villages first, then known villages
+                tc = coord_lookup.get(target)
+                if tc is None:
+                    for kv in load_known_villages(self.server, self.account):
+                        if kv["name"] == target:
+                            try:
+                                tc = (int(kv["coord_x"]), int(kv["coord_y"]))
+                            except (ValueError, TypeError):
+                                pass
+                            break
+                if tc is None:
+                    continue
+                tx, ty = tc
+                try:
+                    wood = int(rt.get("wood",0) or 0)
+                    clay = int(rt.get("clay",0) or 0)
+                    iron = int(rt.get("iron",0) or 0)
+                    crop = int(rt.get("crop",0) or 0)
+                except ValueError:
+                    wood = clay = iron = crop = 0
+                all_routes.append({
+                    "sx": sx, "sy": sy, "tx": tx, "ty": ty,
+                    "wood": wood, "clay": clay, "iron": iron, "crop": crop,
+                })
 
         # ── Coordinate transforms ──────────────────────────────────────────────
         def world_pixels():
@@ -3472,14 +4475,48 @@ class MainApp(tk.Frame):
             return gx, gy
 
         # ── Draw ──────────────────────────────────────────────────────────────
-        _GRID_COL       = "#1a2540"   # slightly brighter minor grid
-        _CELL_COL       = "#111829"   # very subtle per-cell grid (high zoom only)
+        _GRID_COL       = "#1a2540"
+        _CELL_COL       = "#111829"
         _AXIS_COL       = "#2a4060"
         _VILLAGE_COL    = "#27ae60"
         _CAPITAL_COL    = "#c8963e"
+        _KNOWN_COL      = "#4a90d9"   # blue for third-party known villages
         _VILLAGE_HOVER  = "#58d68d"
         _LABEL_BG       = "#0f1520"
-        _TOOLTIP_ID     = [None, None]   # [rect_id, text_id]
+        _TOOLTIP_ID     = [None, None]
+
+        # Trade route arrow colours
+        _TR_CROP_ONLY   = "#d4c020"   # yellow  — crop only
+        _TR_RES_ONLY    = "#e07820"   # orange  — wood/clay/iron only
+        _TR_MIXED       = "#4090d8"   # blue    — crop + any other
+
+        def _route_color(wood, clay, iron, crop):
+            has_res  = (wood + clay + iron) > 0
+            has_crop = crop > 0
+            if has_crop and has_res:   return _TR_MIXED
+            if has_crop:               return _TR_CROP_ONLY
+            return _TR_RES_ONLY
+
+        def _draw_arrow(x1, y1, x2, y2, color, lw=2, offset=0):
+            """Draw an arrow from (x1,y1) to (x2,y2), pulling each endpoint
+            inward by `offset` pixels so the line starts/ends at the square edge."""
+            if offset > 0:
+                import math
+                dx, dy = x2 - x1, y2 - y1
+                dist = math.hypot(dx, dy)
+                if dist < offset * 2 + 2:
+                    return   # too short to draw meaningfully
+                ux, uy = dx / dist, dy / dist
+                x1 += ux * offset
+                y1 += uy * offset
+                x2 -= ux * offset
+                y2 -= uy * offset
+            head = max(6, min(14, lw * 4))   # arrowhead scales with line width
+            canvas.create_line(x1, y1, x2, y2,
+                               fill=color, width=lw,
+                               arrow=tk.LAST,
+                               arrowshape=(head, head + 2, max(2, lw + 1)),
+                               tags=("traderoute",))
 
         def _clear_tooltip():
             for tid in _TOOLTIP_ID:
@@ -3557,8 +4594,27 @@ class MainApp(tk.Frame):
                     canvas.create_rectangle(x0, y0, x1, y1,
                                             outline="#2a4060", width=2, fill="")
 
+            # ── Trade route arrows ────────────────────────────────────────────
+            r = max(2, min(9, cell * 0.38))   # needed for offset and village squares
+
+            if show_routes_var.get():
+                for rt in all_routes:
+                    for tx in copies:
+                        for ty in copies:
+                            sx_px, sy_px = game_to_canvas(rt["sx"] + tx * MAP_SIZE,
+                                                          rt["sy"] + ty * MAP_SIZE)
+                            tx_px, ty_px = game_to_canvas(rt["tx"] + tx * MAP_SIZE,
+                                                          rt["ty"] + ty * MAP_SIZE)
+                            # Only draw if either endpoint is near the canvas
+                            if ((-20 < sx_px < w + 20 or -20 < tx_px < w + 20) and
+                                (-20 < sy_px < h + 20 or -20 < ty_px < h + 20)):
+                                col = _route_color(rt["wood"], rt["clay"],
+                                                   rt["iron"], rt["crop"])
+                                lw = max(1, min(4, int(cell * 0.3)))
+                                _draw_arrow(sx_px, sy_px, tx_px, ty_px,
+                                            col, lw, offset=r)
+
             # ── Village squares (also drawn for each tile copy) ───────────────
-            r = max(2, min(9, cell * 0.38))   # half-size scales with zoom
             for v in vdata:
                 for tx in copies:
                     for ty in copies:
@@ -3575,6 +4631,31 @@ class MainApp(tk.Frame):
                                                    font=FONT_TINY,
                                                    fill=_CAPITAL_COL if v["capital"] else TEXT_SECONDARY,
                                                    anchor="s", tags=("vlabel",))
+
+            # ── Known (third-party) village squares ───────────────────────────
+            for v in kvdata:
+                for tx in copies:
+                    for ty in copies:
+                        px, py = game_to_canvas(v["x"] + tx * MAP_SIZE,
+                                                v["y"] + ty * MAP_SIZE)
+                        if -r * 2 < px < w + r * 2 and -r * 2 < py < h + r * 2:
+                            tag = ("village", v["name"]) if tx == 0 and ty == 0 else ("village_ghost",)
+                            canvas.create_rectangle(px - r, py - r, px + r, py + r,
+                                                    fill=_KNOWN_COL, outline="#000", width=1,
+                                                    tags=tag)
+                            if cell >= 10:
+                                label = v["name"]
+                                if v["vtype"]:
+                                    label += f" [{v['vtype']}]"
+                                canvas.create_text(px, py - r - 3, text=label,
+                                                   font=FONT_TINY,
+                                                   fill=_KNOWN_COL,
+                                                   anchor="s", tags=("vlabel",))
+
+            # Ensure village squares and labels always sit above trade route arrows
+            canvas.tag_raise("village_ghost")
+            canvas.tag_raise("village")
+            canvas.tag_raise("vlabel")
 
         # ── Tooltip ───────────────────────────────────────────────────────────
         def show_tooltip(px, py, text):

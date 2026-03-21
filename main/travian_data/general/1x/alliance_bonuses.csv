@@ -1,0 +1,25 @@
+bonus_type,level,value,description
+Recruitment,0,0,No bonus
+Recruitment,1,5,+5% training speed
+Recruitment,2,10,+10% training speed
+Recruitment,3,15,+15% training speed
+Recruitment,4,20,+20% training speed
+Recruitment,5,25,+25% training speed
+Philosophy,0,0,No bonus
+Philosophy,1,5,+5% research speed
+Philosophy,2,10,+10% research speed
+Philosophy,3,15,+15% research speed
+Philosophy,4,20,+20% research speed
+Philosophy,5,25,+25% research speed
+Metallurgy,0,0,No bonus
+Metallurgy,1,1,+1% troop attack
+Metallurgy,2,2,+2% troop attack
+Metallurgy,3,3,+3% troop attack
+Metallurgy,4,4,+4% troop attack
+Metallurgy,5,5,+5% troop attack
+Commerce,0,0,No bonus
+Commerce,1,10,+10% merchant carry capacity
+Commerce,2,20,+20% merchant carry capacity
+Commerce,3,30,+30% merchant carry capacity
+Commerce,4,40,+40% merchant carry capacity
+Commerce,5,50,+50% merchant carry capacity

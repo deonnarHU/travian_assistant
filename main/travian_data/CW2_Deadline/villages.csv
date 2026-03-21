@@ -1,1 +1,4 @@
 village_name,coord_x,coord_y,res_wood,res_clay,res_iron,res_crop,applied_template,group,is_capital
+1,,,4,4,4,6,,,
+2,13,13,4,4,4,6,,,
+3,41,41,4,4,4,6,,,
