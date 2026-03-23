@@ -178,6 +178,37 @@ def buildings_file(server, account, village_name):
 def troops_file(server, account, village_name):
     return Path(str(_vkey(server, account, village_name)) + "_troops.csv")
 
+def troop_queues_file(server, account, village_name):
+    return Path(str(_vkey(server, account, village_name)) + "_troop_queues.csv")
+
+def load_troop_queues(server, account, village_name) -> dict:
+    """Return {building_name: troop_name} for queued troops per building."""
+    fpath = troop_queues_file(server, account, village_name)
+    result = {}
+    if not fpath.exists():
+        return result
+    for enc in ("utf-8", "utf-8-sig", "latin-1"):
+        try:
+            with open(fpath, newline="", encoding=enc) as f:
+                for row in csv.DictReader(f):
+                    b = row.get("building","").strip()
+                    t = row.get("troop","").strip()
+                    if b:
+                        result[b] = t
+            break
+        except (UnicodeDecodeError, UnicodeError):
+            continue
+    return result
+
+def save_troop_queues(server, account, village_name, queues: dict):
+    fpath = troop_queues_file(server, account, village_name)
+    fpath.parent.mkdir(parents=True, exist_ok=True)
+    with open(fpath, "w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=["building", "troop"])
+        w.writeheader()
+        for b, t in queues.items():
+            w.writerow({"building": b, "troop": t})
+
 # Troop table row keys (stored as column headers in the CSV)
 TROOP_ROWS = ["trained", "native_in", "native_out", "foreign_in"]
 
@@ -231,6 +262,96 @@ def get_tribe_troops(tribe: str) -> list:
                 if row["tribe"].strip().lower() == tribe.strip().lower():
                     troops.append(row["name"].strip())
     return troops
+
+# Which buildings produce which troop categories (applies to all tribes)
+# Troops are looked up per-tribe dynamically; this maps building -> troop index slice
+PRODUCTION_BUILDINGS = ["Barracks", "Great Barracks", "Stable", "Great Stable", "Workshop"]
+
+# Troop category by troop index within a tribe's list (0-based)
+# Romans/Gauls/Teutons all follow: [0,1,2] = infantry, [3,4,5] = cavalry, [6,7] = siege
+# This is consistent across all tribes
+def troops_for_building(building: str, tribe: str) -> list:
+    """Return the troop names producible in the given building for the given tribe."""
+    all_troops = get_tribe_troops(tribe)
+    # Exclude Settler (last), Senator/Chief/Chieftain (second-to-last)
+    # Infantry = indices 0-2, Cavalry = 3-5, Siege = 6-7
+    infantry = all_troops[0:3]
+    cavalry  = all_troops[3:6]
+    siege    = all_troops[6:8]
+    mapping  = {
+        "Barracks":       infantry,
+        "Great Barracks": infantry,
+        "Stable":         cavalry,
+        "Great Stable":   cavalry,
+        "Workshop":       siege,
+    }
+    return mapping.get(building, [])
+
+def _parse_training_time(time_str: str) -> float:
+    """Parse H:MM:SS or M:SS training time string into seconds."""
+    parts = time_str.strip().split(":")
+    try:
+        if len(parts) == 3:
+            return int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
+        elif len(parts) == 2:
+            return int(parts[0]) * 60 + int(parts[1])
+    except ValueError:
+        pass
+    return 3600.0
+
+def get_troop_stats(tribe: str) -> dict:
+    """Return {troop_name: {cost_wood, cost_clay, cost_iron, cost_crop, training_sec}} for tribe."""
+    csv_path = DATA_DIR / "general" / "1x" / "troops.csv"
+    result = {}
+    if csv_path.exists():
+        with open(csv_path, newline="", encoding="utf-8") as f:
+            for row in csv.DictReader(f):
+                if row["tribe"].strip().lower() == tribe.strip().lower():
+                    name = row["name"].strip()
+                    result[name] = {
+                        "wood":  int(row.get("cost_wood",  0) or 0),
+                        "clay":  int(row.get("cost_clay",  0) or 0),
+                        "iron":  int(row.get("cost_iron",  0) or 0),
+                        "crop":  int(row.get("cost_crop",  0) or 0),
+                        "training_sec": _parse_training_time(row.get("training_time_1x", "1:00:00")),
+                    }
+    return result
+
+def calc_queue_hourly_cost(building: str, building_level: int,
+                            troop_name: str, troop_stats: dict,
+                            speed_mult: float = 1.0) -> dict:
+    """
+    Return {wood, clay, iron, crop} per hour for one building queuing one troop type.
+
+    Training time reduction: 2% per building level for Barracks/Stable (not Workshop).
+    Great Barracks / Great Stable: 3× cost, same training time reduction.
+    Speed servers: training_time / speed_mult.
+    """
+    if troop_name not in troop_stats:
+        return {"wood": 0, "clay": 0, "iron": 0, "crop": 0}
+
+    stats = troop_stats[troop_name]
+    base_sec = stats["training_sec"] / speed_mult
+
+    # Training time reduction: 2% per level for Barracks/Stable/Great variants
+    if building in ("Barracks", "Great Barracks", "Stable", "Great Stable"):
+        reduced_sec = base_sec * (0.98 ** building_level)
+    else:
+        reduced_sec = base_sec   # Workshop: no reduction
+
+    if reduced_sec <= 0:
+        return {"wood": 0, "clay": 0, "iron": 0, "crop": 0}
+
+    troops_per_hour = 3600.0 / reduced_sec
+    cost_mult = 3.0 if building in ("Great Barracks", "Great Stable") else 1.0
+
+    return {
+        "wood": round(stats["wood"] * troops_per_hour * cost_mult),
+        "clay": round(stats["clay"] * troops_per_hour * cost_mult),
+        "iron": round(stats["iron"] * troops_per_hour * cost_mult),
+        "crop": round(stats["crop"] * troops_per_hour * cost_mult),
+    }
+
 
 # ─── Resource layout per-village ─────────────────────────────────────────────
 # 18 resource field slots per village.  Each slot has a type and level.
@@ -808,6 +929,53 @@ def save_option(key: str, value):
 # ─── Alliance data layer ───────────────────────────────────────────────────────
 
 ALLIANCE_BONUS_TYPES = ["Recruitment", "Philosophy", "Metallurgy", "Commerce"]
+
+# ─── Village roles / boolean flags ───────────────────────────────────────────
+
+def village_roles_file(server, account) -> Path:
+    return account_dir(server, account) / "village_roles.csv"
+
+def load_village_roles(server, account) -> dict:
+    """Return {village_name: {flag: "1"/"0"}} from village_roles.csv."""
+    fpath = village_roles_file(server, account)
+    if not fpath.exists():
+        return {}
+    for enc in ("utf-8", "utf-8-sig", "cp1250", "latin-1"):
+        try:
+            with open(fpath, newline="", encoding=enc) as f:
+                result = {}
+                for row in csv.DictReader(f):
+                    vname = row.pop("village_name", "")
+                    if vname:
+                        result[vname] = dict(row)
+                return result
+        except (UnicodeDecodeError, UnicodeError):
+            continue
+    return {}
+
+def save_village_roles(server, account, roles: dict):
+    """Write {village_name: {flag: "1"/"0"}} to village_roles.csv.
+    Derives fieldnames from all flags seen across all villages."""
+    if not roles:
+        return
+    all_flags = []
+    seen = set()
+    for flags in roles.values():
+        for k in flags:
+            if k not in seen:
+                all_flags.append(k)
+                seen.add(k)
+    fpath = village_roles_file(server, account)
+    fpath.parent.mkdir(parents=True, exist_ok=True)
+    fieldnames = ["village_name"] + all_flags
+    with open(fpath, "w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")
+        w.writeheader()
+        for vname, flags in roles.items():
+            row = {"village_name": vname}
+            row.update({k: flags.get(k, "0") for k in all_flags})
+            w.writerow(row)
+
 
 def alliance_file(server, account) -> Path:
     return account_dir(server, account) / "alliance.csv"
@@ -3501,6 +3669,7 @@ class MainApp(tk.Frame):
             ("🌾  Resource Layout",    lambda: self._show_resource_layout(vn)),
             ("🔄  Trade Routes",       lambda: self._show_trade_routes(vn)),
             ("🪖  Troops",             lambda: self._show_troops(vn)),
+            ("⚙   Troop Queues",       lambda: self._show_troop_queues(vn)),
             ("📊  Net Resources",      lambda: self._show_net_resources(vn)),
         ]:
             nav_button(self.village_nav_frame, label, command=cmd).pack(fill="x")
@@ -3636,9 +3805,30 @@ class MainApp(tk.Frame):
         table_container = tk.Frame(outer, bg=BG_DARK)
         table_container.pack(fill="both", expand=True)
 
+        troop_names = get_tribe_troops(self.tribe)   # tribe-specific unit list
+        bool_flags  = ["Small", "Large"]
+
+        # roles_map: {vname: {flag: "1"/"0"}}
+        roles_map = load_village_roles(self.server, self.account)
+        # bool vars: {vname: {flag: BooleanVar}}
+        bool_vars: dict = {}
+
+        def _save_roles():
+            new_roles = {}
+            for vname, fvars in bool_vars.items():
+                new_roles[vname] = {flag: "1" if var.get() else "0"
+                                    for flag, var in fvars.items()}
+            save_village_roles(self.server, self.account, new_roles)
+            status_lbl.config(text="✓ Saved", fg=COL_FULL_GREEN)
+            fade_label(status_lbl, after_ms=3000)
+
+        # Wire save button (already in header)
+        # We attach the command after bool_vars is populated in _rebuild
+
         def _rebuild():
             for w in table_container.winfo_children():
                 w.destroy()
+            bool_vars.clear()
 
             cur_villages = load_villages(self.server, self.account)
             scroll_outer, inner = scrollable_frame(table_container)
@@ -3646,21 +3836,37 @@ class MainApp(tk.Frame):
 
             tbl = tk.Frame(inner, bg=BG_DARK)
             tbl.pack(fill="x")
-            tbl.columnconfigure(0, minsize=180)   # village name
-            tbl.columnconfigure(1, minsize=50)    # capital toggle
-            tbl.columnconfigure(2, minsize=200)   # template
 
-            def gh(col, text, bg=BG_MID):
+            # Fixed columns
+            tbl.columnconfigure(0, minsize=180)   # village name
+            tbl.columnconfigure(1, minsize=60)    # capital
+            tbl.columnconfigure(2, minsize=180)   # template
+            # Boolean flag columns
+            for ci, _ in enumerate(bool_flags, start=3):
+                tbl.columnconfigure(ci, minsize=55, uniform="bool")
+
+            n_cols = 3 + len(bool_flags)
+
+            def gh(col, text, bg=BG_MID, fg=TEXT_MUTED, anchor="center"):
                 tk.Label(tbl, text=text, font=("Consolas", 9, "bold"),
-                         bg=bg, fg=TEXT_MUTED, anchor="w" if col == 0 else "center",
-                         padx=6, pady=3
+                         bg=bg, fg=fg, anchor=anchor, padx=4, pady=3
                          ).grid(row=0, column=col, sticky="nsew", padx=(0,1), pady=(0,1))
 
-            gh(0, "Village")
-            gh(1, "👑 Capital")
-            gh(2, "Layout Template")
+            gh(0, "Village",          anchor="w")
+            gh(1, "👑")
+            gh(2, "Layout Template",  anchor="w")
+            for ci, flag in enumerate(bool_flags, start=3):
+                # Abbreviate long troop names
+                disp = flag if len(flag) <= 8 else flag[:7] + "…"
+                lbl = tk.Label(tbl, text=disp, font=("Consolas", 8, "bold"),
+                               bg=BG_MID, fg=TEXT_MUTED, anchor="center", padx=2, pady=3)
+                lbl.grid(row=0, column=ci, sticky="nsew", padx=(0,1), pady=(0,1))
+                if len(flag) > 8:
+                    lbl.bind("<Enter>", lambda e, w=lbl, f=flag: w.config(text=f))
+                    lbl.bind("<Leave>", lambda e, w=lbl, d=disp: w.config(text=d))
+
             tk.Frame(tbl, bg=BORDER, height=1).grid(
-                row=1, column=0, columnspan=3, sticky="ew", pady=(0,1))
+                row=1, column=0, columnspan=n_cols, sticky="ew", pady=(0,1))
 
             tmpl_opts = ["— None —"] + templates
 
@@ -3677,10 +3883,9 @@ class MainApp(tk.Frame):
                          anchor="w", padx=6, pady=3
                          ).grid(row=r, column=0, sticky="nsew", padx=(0,1), pady=(0,1))
 
-                # Capital toggle button
+                # Capital toggle
                 cap_btn = tk.Button(
-                    tbl,
-                    text="★ Capital" if is_cap else "☆ Set",
+                    tbl, text="★" if is_cap else "☆",
                     font=FONT_SMALL,
                     bg=ACCENT_DIM if is_cap else bg,
                     fg=ACCENT if is_cap else TEXT_MUTED,
@@ -3696,8 +3901,41 @@ class MainApp(tk.Frame):
                 t_var = tk.StringVar(value=cur_tmpl if cur_tmpl in tmpl_opts else "— None —")
                 t_var_map[vname] = t_var
                 state = "disabled" if self.is_archived else "readonly"
-                cb = styled_combo(tbl, t_var, tmpl_opts, width=22, state=state)
+                cb = styled_combo(tbl, t_var, tmpl_opts, width=18, state=state)
                 cb.grid(row=r, column=2, sticky="nsew", padx=(0,1), pady=(0,1))
+
+                # Boolean flag checkboxes
+                vflags = roles_map.get(vname, {})
+                bool_vars[vname] = {}
+                for ci, flag in enumerate(bool_flags, start=3):
+                    bvar = tk.BooleanVar(value=vflags.get(flag, "0") == "1")
+                    bool_vars[vname][flag] = bvar
+
+                    # Small and Large are mutually exclusive
+                    if flag == "Small":
+                        cmd = lambda vn=vname, bv=bvar: (
+                            bool_vars[vn]["Large"].set(False) if bv.get() else None)
+                    elif flag == "Large":
+                        cmd = lambda vn=vname, bv=bvar: (
+                            bool_vars[vn]["Small"].set(False) if bv.get() else None)
+                    else:
+                        cmd = None
+
+                    cb2 = tk.Checkbutton(tbl, variable=bvar, command=cmd,
+                                         bg=bg, activebackground=bg,
+                                         fg=COL_FULL_GREEN, activeforeground=COL_FULL_GREEN,
+                                         selectcolor=bg, relief="flat", bd=0)
+                    if self.is_archived:
+                        cb2.config(state="disabled")
+                    cb2.grid(row=r, column=ci, sticky="nsew", padx=(0,1), pady=(0,1))
+
+        # Wire the save button's command now that _save_roles is defined
+        if not self.is_archived:
+            # Find and update the Apply Templates button to also save roles,
+            # or add a dedicated Save Roles button
+            save_roles_btn = styled_button(hdr, "💾  Save Roles",
+                                           command=_save_roles, small=True)
+            save_roles_btn.pack(side="left", padx=(8, 0))
 
         _rebuild()
 
@@ -4764,8 +5002,190 @@ class MainApp(tk.Frame):
 
     def _show_net_production(self):
         self._clear_center()
-        self._content_header("Net Production", "Production minus troop upkeep")
-        self._placeholder_card("Net Production", "Total net resources per hour after upkeep.")
+        villages = load_villages(self.server, self.account)
+
+        outer = tk.Frame(self.center, bg=BG_DARK)
+        outer.pack(fill="both", expand=True)
+
+        hdr = tk.Frame(outer, bg=BG_DARK)
+        hdr.pack(fill="x", padx=24, pady=(24, 0))
+        tk.Label(hdr, text="Net Production",
+                 font=FONT_TITLE, bg=BG_DARK, fg=TEXT_PRIMARY).pack(side="left")
+        tk.Label(hdr, text="  —  SUM /hr per village (production + trade − consumption − queues − celebration)",
+                 font=FONT_SMALL, bg=BG_DARK, fg=TEXT_MUTED).pack(side="left", pady=(8, 0))
+        make_separator(outer).pack(fill="x", padx=24, pady=10)
+
+        if not villages:
+            tk.Label(outer, text="No villages found.",
+                     font=FONT_BODY, bg=BG_DARK, fg=TEXT_MUTED).pack(padx=24, anchor="w")
+            return
+
+        # ── Pre-load shared data ──────────────────────────────────────────────
+        use_parsed  = load_option("prod_data_source", "Village Data") == "Parsed"
+        parsed_prod = load_parsed_production(self.server, self.account) if use_parsed else {}
+        troop_names = get_tribe_troops(self.tribe)
+        troop_stats = get_troop_stats(self.tribe)
+        all_villages_set = {v["village_name"] for v in villages}
+
+        try:
+            speed_mult = float(self.speed.replace("x", ""))
+        except (ValueError, AttributeError):
+            speed_mult = 1.0
+
+        upkeep_map = {}
+        troops_csv = DATA_DIR / "general" / "1x" / "troops.csv"
+        if troops_csv.exists():
+            with open(troops_csv, newline="", encoding="utf-8") as f:
+                for row in csv.DictReader(f):
+                    if row["tribe"].strip().lower() == self.tribe.lower():
+                        try:
+                            upkeep_map[row["name"].strip()] = int(row["crop_upkeep"])
+                        except ValueError:
+                            upkeep_map[row["name"].strip()] = 1
+
+        cel_table = {}
+        cel_csv = DATA_DIR / "general" / "1x" / "celebrations.csv"
+        if cel_csv.exists():
+            with open(cel_csv, newline="", encoding="utf-8") as f:
+                for row in csv.DictReader(f):
+                    try:
+                        cel_table[int(row["townhall_level"])] = row
+                    except (ValueError, KeyError):
+                        pass
+
+        village_roles = load_village_roles(self.server, self.account)
+
+        # ── Compute SUM for every village ─────────────────────────────────────
+        rows = []
+        account_totals = {"wood": 0, "clay": 0, "iron": 0, "crop": 0}
+
+        for v in villages:
+            vname = v["village_name"]
+
+            # Production
+            if use_parsed:
+                prod = parsed_prod.get(vname, {"wood":0,"clay":0,"iron":0,"crop":0})
+            else:
+                prod = calculate_village_production(self.server, self.account, vname)
+
+            # Trade
+            trade = {"wood":0,"clay":0,"iron":0,"crop":0}
+            for rt in load_trade_routes(self.server, self.account, vname):
+                if rt.get("active","1") in ("0","false","False",""): continue
+                try: freq = max(1, int(rt.get("frequency_min",60) or 60))
+                except ValueError: freq = 60
+                f = 60.0 / freq
+                for k in trade:
+                    try: trade[k] -= round(int(rt.get(k,0) or 0) * f)
+                    except ValueError: pass
+            for ov in villages:
+                if ov["village_name"] == vname: continue
+                for rt in load_trade_routes(self.server, self.account, ov["village_name"]):
+                    if rt.get("target","") != vname: continue
+                    if rt.get("active","1") in ("0","false","False",""): continue
+                    try: freq = max(1, int(rt.get("frequency_min",60) or 60))
+                    except ValueError: freq = 60
+                    f = 60.0 / freq
+                    for k in trade:
+                        try: trade[k] += round(int(rt.get(k,0) or 0) * f)
+                        except ValueError: pass
+
+            # Celebration
+            vflags   = village_roles.get(vname, {})
+            is_small = vflags.get("Small","0") == "1"
+            is_large = vflags.get("Large","0") == "1"
+            current_blds = load_current_buildings(self.server, self.account, vname)
+            th_level = 0
+            for slot in current_blds.values():
+                if slot.get("building","").lower() == "townhall":
+                    try: th_level = int(slot.get("level",0))
+                    except ValueError: pass
+                    break
+            if is_large and th_level < 10: th_level = 0
+            celebration = {"wood":0,"clay":0,"iron":0,"crop":0}
+            if (is_small or is_large) and th_level > 0:
+                cel_row = cel_table.get(th_level, {})
+                prefix = "small" if is_small else "great"
+                for k in ("wood","clay","iron","crop"):
+                    try: celebration[k] = -round(float(cel_row.get(f"{prefix}_{k}_hr",0) or 0))
+                    except ValueError: pass
+
+            # Consumption
+            consumption = {"wood":0,"clay":0,"iron":0,"crop":0}
+            td = load_troop_data(self.server, self.account, vname, troop_names)
+            for t in troop_names:
+                present = td["native_in"].get(t,0) + td["foreign_in"].get(t,0)
+                consumption["crop"] -= present * upkeep_map.get(t, 1)
+
+            # Troop queues
+            queue_cost = {"wood":0,"clay":0,"iron":0,"crop":0}
+            saved_q = load_troop_queues(self.server, self.account, vname)
+            for slot in current_blds.values():
+                bname = slot.get("building","")
+                blvl  = slot.get("level",0)
+                if bname not in PRODUCTION_BUILDINGS: continue
+                tname = saved_q.get(bname,"")
+                if not tname: continue
+                c = calc_queue_hourly_cost(bname, blvl, tname, troop_stats, speed_mult)
+                for k in queue_cost: queue_cost[k] -= c[k]
+
+            net = {k: prod[k]+trade[k]+celebration[k]+consumption[k]+queue_cost[k]
+                   for k in ("wood","clay","iron","crop")}
+            rows.append((vname, net))
+            for k in account_totals: account_totals[k] += net[k]
+
+        # ── Grid table ────────────────────────────────────────────────────────
+        scroll_outer, inner = scrollable_frame(outer)
+        scroll_outer.pack(fill="both", expand=True, padx=24, pady=(0,16))
+
+        COLS = [
+            (1, "🌲 Wood", "wood",  "#7daa6f"),
+            (2, "🧱 Clay", "clay",  "#b87c4c"),
+            (3, "⚙ Iron",  "iron",  "#8aabcc"),
+            (4, "🌾 Crop", "crop",  "#c8b84a"),
+        ]
+
+        tbl = tk.Frame(inner, bg=BG_DARK)
+        tbl.pack(fill="x")
+        tbl.columnconfigure(0, minsize=200)
+        for c in range(1,5):
+            tbl.columnconfigure(c, minsize=100, uniform="res")
+
+        def gl(row, col, text, bg, fg, bold=False, anchor="center"):
+            tk.Label(tbl, text=text,
+                     font=("Consolas",9,"bold") if bold else FONT_SMALL,
+                     bg=bg, fg=fg, anchor=anchor, padx=8, pady=4
+                     ).grid(row=row, column=col, sticky="nsew", padx=(0,1), pady=(0,1))
+
+        gl(0,0,"Village", BG_MID, TEXT_MUTED, bold=True, anchor="w")
+        for ci, label, _, color in COLS:
+            gl(0, ci, label, BG_MID, color, bold=True)
+        tk.Frame(tbl, bg=BORDER, height=1).grid(
+            row=1, column=0, columnspan=5, sticky="ew", pady=(0,1))
+
+        for i, (vname, net) in enumerate(rows):
+            r  = i + 2
+            bg = BG_MID if i % 2 == 0 else BG_PANEL
+            gl(r, 0, vname, bg, TEXT_PRIMARY, anchor="w")
+            for ci, _, key, color in COLS:
+                val = net[key]
+                fg  = COL_FULL_GREEN if val > 0 else COL_RED if val < 0 else TEXT_MUTED
+                gl(r, ci, f"{val:+,}" if val != 0 else "0", bg, fg)
+
+        # Account totals row
+        tk.Frame(tbl, bg=ACCENT_DIM, height=1).grid(
+            row=len(rows)+2, column=0, columnspan=5, sticky="ew", pady=(2,1))
+        tr = len(rows)+3
+        gl(tr, 0, "Account Total", BG_HOVER, ACCENT, bold=True, anchor="w")
+        for ci, _, key, color in COLS:
+            val = account_totals[key]
+            fg  = COL_FULL_GREEN if val > 0 else COL_RED if val < 0 else TEXT_MUTED
+            gl(tr, ci, f"{val:+,}" if val != 0 else "0", BG_HOVER, fg, bold=True)
+
+        src = "parsed data" if use_parsed else "village data"
+        tk.Label(inner, text=f"Production source: {src}  ·  includes trade, celebrations, troop upkeep and queues",
+                 font=FONT_SMALL, bg=BG_DARK, fg=TEXT_MUTED
+                 ).pack(anchor="w", padx=4, pady=(8,4))
 
     # ── Village views ─────────────────────────────────────────────────────────
 
@@ -4809,6 +5229,124 @@ class MainApp(tk.Frame):
             on_save=lambda: self._refresh_village_list(),
             is_capital=is_capital)
         view.pack(fill="both", expand=True)
+
+    def _show_troop_queues(self, village):
+        self._clear_center()
+        outer = tk.Frame(self.center, bg=BG_DARK)
+        outer.pack(fill="both", expand=True)
+
+        hdr = tk.Frame(outer, bg=BG_DARK)
+        hdr.pack(fill="x", padx=24, pady=(24, 0))
+        tk.Label(hdr, text=f"{village}  —  Troop Queues",
+                 font=FONT_TITLE, bg=BG_DARK, fg=TEXT_PRIMARY).pack(side="left")
+        if not self.is_archived:
+            status_lbl = tk.Label(hdr, text="", font=FONT_SMALL,
+                                  bg=BG_DARK, fg=COL_FULL_GREEN, width=20, anchor="w")
+            status_lbl.pack(side="left", padx=(16, 0))
+            styled_button(hdr, "💾  Save", accent=True,
+                          command=lambda: _save()).pack(side="left")
+        make_separator(outer).pack(fill="x", padx=24, pady=10)
+
+        # Collect training buildings present in this village
+        current_buildings = load_current_buildings(self.server, self.account, village)
+        present = {}   # building_name -> level
+        for slot in current_buildings.values():
+            bname = slot.get("building", "")
+            blvl  = slot.get("level", 0)
+            if bname in PRODUCTION_BUILDINGS:
+                present[bname] = blvl
+
+        if not present:
+            tk.Label(outer,
+                     text="No production buildings found in this village's buildings data.\n"
+                          "Add buildings via the Buildings menu first.",
+                     font=FONT_BODY, bg=BG_DARK, fg=TEXT_MUTED).pack(padx=24, anchor="w")
+            return
+
+        troop_stats  = get_troop_stats(self.tribe)
+        saved_queues = load_troop_queues(self.server, self.account, village)
+        queue_vars   = {}   # building_name -> StringVar
+
+        try:
+            speed_mult = float(self.speed.replace("x", ""))
+        except (ValueError, AttributeError):
+            speed_mult = 1.0
+
+        scroll_outer, inner = scrollable_frame(outer)
+        scroll_outer.pack(fill="both", expand=True, padx=24, pady=(0, 16))
+
+        # Header note
+        tk.Label(inner, text="Select the troop type being trained in each building.",
+                 font=FONT_SMALL, bg=BG_DARK, fg=TEXT_MUTED).pack(anchor="w", pady=(0, 8))
+
+        tbl = tk.Frame(inner, bg=BG_DARK)
+        tbl.pack(fill="x")
+        tbl.columnconfigure(0, minsize=180)
+        tbl.columnconfigure(1, minsize=60, uniform="bld")
+        tbl.columnconfigure(2, minsize=200)
+        tbl.columnconfigure(3, minsize=340)
+
+        def gh(col, text):
+            tk.Label(tbl, text=text, font=("Consolas", 9, "bold"),
+                     bg=BG_MID, fg=TEXT_MUTED, anchor="w" if col == 0 else "center",
+                     padx=6, pady=3
+                     ).grid(row=0, column=col, sticky="nsew", padx=(0,1), pady=(0,1))
+
+        gh(0, "Building"); gh(1, "Level"); gh(2, "Queued Troop"); gh(3, "Cost /hr")
+        tk.Frame(tbl, bg=BORDER, height=1).grid(
+            row=1, column=0, columnspan=4, sticky="ew", pady=(0,1))
+
+        cost_lbls = {}   # building_name -> Label showing hourly cost
+
+        def _update_cost(bname):
+            tname = queue_vars[bname].get()
+            blvl  = present[bname]
+            if tname and tname != "— None —":
+                c = calc_queue_hourly_cost(bname, blvl, tname, troop_stats, speed_mult)
+                txt = (f"🌲{c['wood']:,}  🧱{c['clay']:,}  "
+                       f"⚙{c['iron']:,}  🌾{c['crop']:,}  /hr")
+            else:
+                txt = "—"
+            cost_lbls[bname].config(text=txt)
+
+        # Keep PRODUCTION_BUILDINGS order, only show present ones
+        for i, bname in enumerate([b for b in PRODUCTION_BUILDINGS if b in present]):
+            r   = i + 2
+            bg  = BG_MID if i % 2 == 0 else BG_PANEL
+            blvl = present[bname]
+            avail_troops = troops_for_building(bname, self.tribe)
+            opts   = ["— None —"] + avail_troops
+            saved  = saved_queues.get(bname, "")
+            cur    = saved if saved in avail_troops else "— None —"
+
+            tk.Label(tbl, text=bname, font=FONT_SMALL, bg=bg,
+                     fg=TEXT_PRIMARY, anchor="w", padx=6, pady=4
+                     ).grid(row=r, column=0, sticky="nsew", padx=(0,1), pady=(0,1))
+            tk.Label(tbl, text=str(blvl), font=FONT_SMALL, bg=bg,
+                     fg=TEXT_SECONDARY, anchor="center", padx=4, pady=4
+                     ).grid(row=r, column=1, sticky="nsew", padx=(0,1), pady=(0,1))
+
+            t_var = tk.StringVar(value=cur)
+            queue_vars[bname] = t_var
+            state = "disabled" if self.is_archived else "readonly"
+            styled_combo(tbl, t_var, opts, width=22, state=state
+                         ).grid(row=r, column=2, sticky="nsew", padx=(0,1), pady=(0,1))
+
+            cost_lbl = tk.Label(tbl, text="—", font=FONT_SMALL,
+                                bg=bg, fg=TEXT_SECONDARY, anchor="w", padx=8, pady=4)
+            cost_lbl.grid(row=r, column=3, sticky="nsew", padx=(0,1), pady=(0,1))
+            cost_lbls[bname] = cost_lbl
+            t_var.trace_add("write", lambda *_, b=bname: _update_cost(b))
+            _update_cost(bname)
+
+        def _save():
+            queues = {}
+            for bname, var in queue_vars.items():
+                val = var.get()
+                queues[bname] = val if val != "— None —" else ""
+            save_troop_queues(self.server, self.account, village, queues)
+            status_lbl.config(text="✓ Saved", fg=COL_FULL_GREEN)
+            fade_label(status_lbl, after_ms=3000)
 
     def _show_net_resources(self, village):
         self._clear_center()
@@ -4874,8 +5412,68 @@ class MainApp(tk.Frame):
                     except ValueError:
                         pass
 
-        # 3. Consumption: troops in village eat crop based on crop_upkeep
-        # Load crop upkeep per troop type from troops.csv
+        # 3. Celebration cost (per hour) based on Small/Large flag + Townhall level
+        # Data from travian_data/general/1x/celebrations.csv (per-level per-hour costs)
+        village_roles = load_village_roles(self.server, self.account)
+        vflags        = village_roles.get(village, {})
+        is_small      = vflags.get("Small", "0") == "1"
+        is_large      = vflags.get("Large", "0") == "1"
+
+        # Load celebration table
+        cel_table = {}   # townhall_level(int) -> {small_*_hr, great_*_hr}
+        cel_csv = DATA_DIR / "general" / "1x" / "celebrations.csv"
+        if cel_csv.exists():
+            with open(cel_csv, newline="", encoding="utf-8") as f:
+                for row in csv.DictReader(f):
+                    try:
+                        lvl = int(row["townhall_level"])
+                        cel_table[lvl] = row
+                    except (ValueError, KeyError):
+                        pass
+
+        # Get Townhall level from village's current buildings (0 = not built)
+        current_buildings = load_current_buildings(self.server, self.account, village)
+        th_level = 0
+        for slot_data in current_buildings.values():
+            if slot_data.get("building", "").lower() == "townhall":
+                try:
+                    th_level = int(slot_data.get("level", 0))
+                except ValueError:
+                    th_level = 0
+                break
+
+        # Clamp great celebration to minimum level 10
+        if is_large and 0 < th_level < 10:
+            th_level = 0   # treat as unavailable
+
+        def _get_celebration(level: int) -> dict:
+            if level == 0:
+                return {"wood": 0, "clay": 0, "iron": 0, "crop": 0}
+            row = cel_table.get(level, {})
+            if is_small:
+                return {
+                    "wood": -round(float(row.get("small_wood_hr", 0) or 0)),
+                    "clay": -round(float(row.get("small_clay_hr", 0) or 0)),
+                    "iron": -round(float(row.get("small_iron_hr", 0) or 0)),
+                    "crop": -round(float(row.get("small_crop_hr", 0) or 0)),
+                }
+            elif is_large:
+                return {
+                    "wood": -round(float(row.get("great_wood_hr", 0) or 0)),
+                    "clay": -round(float(row.get("great_clay_hr", 0) or 0)),
+                    "iron": -round(float(row.get("great_iron_hr", 0) or 0)),
+                    "crop": -round(float(row.get("great_crop_hr", 0) or 0)),
+                }
+            return {"wood": 0, "clay": 0, "iron": 0, "crop": 0}
+
+        if is_small:
+            cel_label = f"Celebration (Small, TH{th_level})" if th_level else "Celebration (Small, no TH)"
+        elif is_large:
+            cel_label = f"Celebration (Large, TH{th_level})" if th_level else "Celebration (Large, no TH)"
+        else:
+            cel_label = "Celebration"
+
+        # 4. Troop crop consumption (always shown)
         upkeep_map = {}
         troops_csv = DATA_DIR / "general" / "1x" / "troops.csv"
         if troops_csv.exists():
@@ -4889,20 +5487,15 @@ class MainApp(tk.Frame):
 
         troop_names = get_tribe_troops(self.tribe)
         troop_data  = load_troop_data(self.server, self.account, village, troop_names)
-        # Net troops physically present = native_in + foreign_in
         consumption = {"wood": 0, "clay": 0, "iron": 0, "crop": 0}
         for t in troop_names:
             present = (troop_data["native_in"].get(t, 0) +
                        troop_data["foreign_in"].get(t, 0))
-            upkeep  = upkeep_map.get(t, 1)
-            consumption["crop"] -= present * upkeep   # crop only
-
-        # 4. SUM
-        totals = {k: prod[k] + trade[k] + consumption[k] for k in ("wood","clay","iron","crop")}
+            consumption["crop"] -= present * upkeep_map.get(t, 1)
 
         # ── Table ─────────────────────────────────────────────────────────────
-        scroll_outer, inner = scrollable_frame(outer)
-        scroll_outer.pack(fill="both", expand=True, padx=24, pady=(0, 16))
+        table_container = tk.Frame(outer, bg=BG_DARK)
+        table_container.pack(fill="both", expand=True)
 
         COLS = [
             (1, "🌲 Wood", "wood",  "#7daa6f"),
@@ -4910,15 +5503,45 @@ class MainApp(tk.Frame):
             (3, "⚙ Iron",  "iron",  "#8aabcc"),
             (4, "🌾 Crop", "crop",  "#c8b84a"),
         ]
+
+        celebration = _get_celebration(th_level)
+
+        # 5. Troop queue cost /hr (sum across all production buildings)
+        troop_stats  = get_troop_stats(self.tribe)
+        saved_queues = load_troop_queues(self.server, self.account, village)
+        current_blds = load_current_buildings(self.server, self.account, village)
+        try:
+            speed_mult = float(self.speed.replace("x", ""))
+        except (ValueError, AttributeError):
+            speed_mult = 1.0
+
+        queue_cost = {"wood": 0, "clay": 0, "iron": 0, "crop": 0}
+        for slot in current_blds.values():
+            bname = slot.get("building", "")
+            blvl  = slot.get("level", 0)
+            if bname not in PRODUCTION_BUILDINGS:
+                continue
+            tname = saved_queues.get(bname, "")
+            if not tname:
+                continue
+            c = calc_queue_hourly_cost(bname, blvl, tname, troop_stats, speed_mult)
+            for k in queue_cost:
+                queue_cost[k] -= c[k]
+
+        totals = {k: prod[k] + trade[k] + celebration[k] + consumption[k] + queue_cost[k]
+                  for k in ("wood","clay","iron","crop")}
+
         ROWS = [
-            ("Production",   prod,        BG_PANEL),
-            ("Trade",        trade,       BG_MID),
-            ("Consumption",  consumption, BG_PANEL),
+            ("Production",   prod,       BG_PANEL),
+            ("Trade",        trade,      BG_MID),
+            (cel_label,      celebration,BG_PANEL),
+            ("Consumption",  consumption,BG_MID),
+            ("Troop Queues", queue_cost, BG_PANEL),
         ]
 
-        tbl = tk.Frame(inner, bg=BG_DARK)
-        tbl.pack(fill="x")
-        tbl.columnconfigure(0, minsize=140)
+        tbl = tk.Frame(table_container, bg=BG_DARK)
+        tbl.pack(fill="x", padx=24)
+        tbl.columnconfigure(0, minsize=220)
         for c in range(1, 5):
             tbl.columnconfigure(c, minsize=110, uniform="res")
 
@@ -4929,17 +5552,17 @@ class MainApp(tk.Frame):
                      ).grid(row=row, column=col, sticky="nsew",
                             padx=(0, 1), pady=(0, 1))
 
-        # Header
-        gl(0, 0, "",       BG_MID, TEXT_MUTED, bold=True, anchor="w")
+        gl(0, 0, "", BG_MID, TEXT_MUTED, bold=True, anchor="w")
         for ci, label, _, color in COLS:
             gl(0, ci, label, BG_MID, color, bold=True)
         tk.Frame(tbl, bg=BORDER, height=1).grid(
             row=1, column=0, columnspan=5, sticky="ew", pady=(0, 1))
 
-        # Data rows
         for ri, (row_label, data, bg) in enumerate(ROWS):
             r = ri + 2
-            gl(r, 0, row_label, bg, TEXT_SECONDARY, anchor="w")
+            row_fg = TEXT_MUTED if row_label == "Celebration" \
+                     and not is_small and not is_large else TEXT_SECONDARY
+            gl(r, 0, row_label, bg, row_fg, anchor="w")
             for ci, _, key, color in COLS:
                 val = data[key]
                 if val == 0:
@@ -4950,14 +5573,29 @@ class MainApp(tk.Frame):
                 else:
                     gl(r, ci, f"{val:,}", bg, COL_RED)
 
-        # SUM row — highlighted
+        sep_r = len(ROWS) + 2
+        sum_r = len(ROWS) + 3
         tk.Frame(tbl, bg=ACCENT_DIM, height=1).grid(
-            row=5, column=0, columnspan=5, sticky="ew", pady=(2, 1))
-        gl(6, 0, "SUM /hr", BG_HOVER, ACCENT, bold=True, anchor="w")
+            row=sep_r, column=0, columnspan=5, sticky="ew", pady=(2, 1))
+        gl(sum_r, 0, "SUM /hr", BG_HOVER, ACCENT, bold=True, anchor="w")
         for ci, _, key, color in COLS:
             val = totals[key]
             fg  = COL_FULL_GREEN if val > 0 else COL_RED if val < 0 else TEXT_MUTED
-            gl(6, ci, f"{val:+,}" if val != 0 else "0", BG_HOVER, fg, bold=True)
+            gl(sum_r, ci, f"{val:+,}" if val != 0 else "0", BG_HOVER, fg, bold=True)
+
+        # Notes
+        notes = []
+        if (is_small or is_large) and th_level == 0:
+            notes.append("⚠  No Townhall found in this village's buildings — celebration cost set to 0.")
+        if is_large and 0 < th_level < 10:
+            notes.append("⚠  Great Celebration requires Townhall level 10+.")
+        if not (is_small or is_large):
+            notes.append("ℹ  Set Small or Large in Account Overview to include celebration costs.")
+        for note in notes:
+            tk.Label(table_container, text=note, font=FONT_SMALL,
+                     bg=BG_DARK, fg=COL_ORANGE if note.startswith("⚠") else TEXT_MUTED,
+                     wraplength=560, justify="left"
+                     ).pack(anchor="w", padx=24, pady=(6, 0))
 
     def _open_troops_import(self):
         if self.is_archived:
