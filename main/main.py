@@ -209,6 +209,33 @@ def save_troop_queues(server, account, village_name, queues: dict):
         for b, t in queues.items():
             w.writerow({"building": b, "troop": t})
 
+def sent_troops_file(server, account, village_name):
+    return Path(str(_vkey(server, account, village_name)) + "_sent_troops.csv")
+
+def load_sent_troops(server, account, village_name) -> list:
+    """Return [{target_village, troop_name: count, ...}] — one row per destination."""
+    fpath = sent_troops_file(server, account, village_name)
+    if not fpath.exists():
+        return []
+    for enc in ("utf-8", "utf-8-sig", "latin-1"):
+        try:
+            with open(fpath, newline="", encoding=enc) as f:
+                return list(csv.DictReader(f))
+        except (UnicodeDecodeError, UnicodeError):
+            continue
+    return []
+
+def save_sent_troops(server, account, village_name, rows: list, troop_names: list):
+    """rows: [{target_village: str, troop_name: count}]"""
+    fpath = sent_troops_file(server, account, village_name)
+    fpath.parent.mkdir(parents=True, exist_ok=True)
+    fieldnames = ["target_village"] + troop_names
+    with open(fpath, "w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")
+        w.writeheader()
+        for row in rows:
+            w.writerow(row)
+
 # Troop table row keys (stored as column headers in the CSV)
 TROOP_ROWS = ["trained", "native_in", "native_out", "foreign_in"]
 
@@ -1094,18 +1121,33 @@ def _next_village_id(villages: list) -> str:
 def ensure_data_dir():
     DATA_DIR.mkdir(exist_ok=True)
     if not ACCOUNTS_FILE.exists():
-        with open(ACCOUNTS_FILE, "w", newline="") as f:
+        with open(ACCOUNTS_FILE, "w", newline="", encoding="utf-8") as f:
             csv.DictWriter(f, fieldnames=ACCOUNT_FIELDS).writeheader()
 
 def load_accounts():
     ensure_data_dir()
-    with open(ACCOUNTS_FILE, newline="") as f:
-        return list(csv.DictReader(f))
+    for enc in ("utf-8", "utf-8-sig", "cp1250", "latin-1"):
+        try:
+            with open(ACCOUNTS_FILE, newline="", encoding=enc) as f:
+                return list(csv.DictReader(f))
+        except (UnicodeDecodeError, UnicodeError):
+            continue
+    return []
 
 def _rewrite_accounts(accounts):
-    with open(ACCOUNTS_FILE, "w", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=ACCOUNT_FIELDS)
-        w.writeheader(); w.writerows(accounts)
+    with open(ACCOUNTS_FILE, "w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=ACCOUNT_FIELDS, extrasaction="ignore")
+        w.writeheader()
+        for a in accounts:
+            # Ensure all required fields exist with defaults
+            row = {
+                "server":  a.get("server", ""),
+                "account": a.get("account", ""),
+                "tribe":   a.get("tribe", ""),
+                "status":  a.get("status", "active"),
+                "speed":   a.get("speed", "1x"),
+            }
+            w.writerow(row)
 
 def save_new_account(server, account, tribe, status="active", speed="1x"):
     ensure_data_dir()
@@ -1127,10 +1169,13 @@ def save_new_account(server, account, tribe, status="active", speed="1x"):
 def update_account_status(server, account, new_status):
     accounts = load_accounts()
     key = account_key(server, account)
+    matched = False
     for a in accounts:
-        if account_key(a["server"], a["account"]) == key:
+        if account_key(a.get("server", ""), a.get("account", "")) == key:
             a["status"] = new_status
-    _rewrite_accounts(accounts)
+            matched = True
+    if matched:
+        _rewrite_accounts(accounts)
 
 def get_account(server, account):
     for a in load_accounts():
@@ -1720,9 +1765,17 @@ class LoginScreen(tk.Frame):
         a = self._selected()
         if not a:
             messagebox.showinfo("No Selection", "Select an account first."); return
-        new = "archived" if a.get("status") == "active" else "active"
+        current = (a.get("status") or "active").strip().lower()
+        new = "archived" if current == "active" else "active"
         update_account_status(a["server"], a["account"], new)
+        # Re-select same account after refresh
+        key = account_key(a["server"], a["account"])
         self._refresh_accounts()
+        for i, acc in enumerate(self._accounts):
+            if account_key(acc.get("server",""), acc.get("account","")) == key:
+                self.account_list.selection_set(i)
+                self.account_list.see(i)
+                break
 
     def _remove_account(self):
         a = self._selected()
@@ -2428,7 +2481,7 @@ class VillageBuildingsView(tk.Frame):
 _TROOP_ROW_META = [
     ("trained",    "Trained here",        BG_PANEL, TEXT_PRIMARY),
     ("native_in",  "Native in village",   BG_PANEL, TEXT_PRIMARY),
-    ("native_out", "Native sent out",     BG_PANEL, TEXT_MUTED),      # calculated
+    ("native_out", "Native sent out",     BG_PANEL, TEXT_PRIMARY),
     ("foreign_in", "Foreign in village",  BG_PANEL, TEXT_PRIMARY),
 ]
 _NET_ROW_BG  = "#1a2540"   # distinct highlight for net row
@@ -2455,15 +2508,21 @@ class VillageTroopsView(tk.Frame):
         self.is_archived  = is_archived
 
         self._troop_names     = get_tribe_troops(tribe)
-        self._vars            = {}   # (row_key, troop_name) -> StringVar
-        self._net_labels      = {}   # troop_name -> Label (net row)
-        self._native_out_lbls = {}   # troop_name -> Label (calculated native_out)
+        self._vars            = {}
+        self._net_labels      = {}
+        self._native_out_lbls = {}
 
         self._load_and_build()
 
     # ── Build ─────────────────────────────────────────────────────────────────
 
     def _load_and_build(self):
+        for w in self.winfo_children():
+            w.destroy()
+        self._vars.clear()
+        self._net_labels.clear()
+        self._native_out_lbls.clear()
+
         data = load_troop_data(self.server, self.account,
                                self.village_name, self._troop_names)
 
@@ -2478,6 +2537,12 @@ class VillageTroopsView(tk.Frame):
             self._status_lbl.pack(side="left", padx=(16, 0))
             styled_button(hdr, "💾  Save", command=self._save,
                           accent=True).pack(side="left")
+            styled_button(hdr, "📥  Import Sent Troops",
+                          command=self._open_import, small=True
+                          ).pack(side="left", padx=(8, 0))
+            styled_button(hdr, "📥  Import Support Troops",
+                          command=self._open_support_import, small=True
+                          ).pack(side="left", padx=(4, 0))
 
         make_separator(self).pack(fill="x", padx=24, pady=10)
 
@@ -2525,24 +2590,13 @@ class VillageTroopsView(tk.Frame):
                 row=gr, column=0, sticky="nsew", padx=(0,1), pady=(0,1))
 
             for ci, tname in enumerate(self._troop_names):
-                if rk == "native_out":
-                    lbl = tk.Label(tbl, text="0", font=FONT_SMALL,
-                                   bg=bg, fg=TEXT_MUTED, anchor="center", pady=2)
-                    lbl.grid(row=gr, column=ci + 1, sticky="nsew", padx=(0,1), pady=(0,1))
-                    self._native_out_lbls[tname] = lbl
-                else:
-                    var = tk.StringVar(value=str(data[rk].get(tname, 0)))
-                    self._vars[(rk, tname)] = var
-                    sb = tk.Spinbox(
-                        tbl, textvariable=var,
-                        from_=0, to=999999, increment=1,
-                        bg=BG_MID, fg=TEXT_PRIMARY, buttonbackground=BG_HOVER,
-                        insertbackground=ACCENT, relief="flat", bd=0,
-                        highlightthickness=0, disabledbackground=bg,
-                        disabledforeground=TEXT_MUTED, state=state,
-                        font=FONT_SMALL, justify="center")
-                    sb.grid(row=gr, column=ci + 1, sticky="nsew", padx=(0,1), pady=(0,1))
-                    var.trace_add("write", lambda *_, t=tname: self._update_derived(t))
+                var = tk.StringVar(value=str(data[rk].get(tname, 0)))
+                self._vars[(rk, tname)] = var
+                ent = styled_entry(tbl, var, width=7)
+                ent.config(state=state, justify="center",
+                           disabledbackground=bg, disabledforeground=TEXT_MUTED)
+                ent.grid(row=gr, column=ci + 1, sticky="nsew", padx=(0,1), pady=(0,1))
+                var.trace_add("write", lambda *_, t=tname, k=rk: self._update_derived(t, k))
 
         # 1px separator before net row
         net_gr = len(_TROOP_ROW_META) + 2
@@ -2562,7 +2616,112 @@ class VillageTroopsView(tk.Frame):
 
         # Initial calculation pass
         for tname in self._troop_names:
-            self._update_derived(tname)
+            self._update_derived(tname, None)
+
+        # ── Sent troops destination table (always shown) ──────────────────────
+        sent = load_sent_troops(self.server, self.account, self.village_name)
+        sent = [r for r in sent if any(
+            int(r.get(t, 0) or 0) for t in self._troop_names)]
+
+        def _troop_subtable(parent, title, first_col_label, rows, unknown_counts):
+            """Render a troop breakdown sub-table with an Unknown row."""
+            make_separator(parent).pack(fill="x", pady=(16, 6))
+            tk.Label(parent, text=title, font=("Consolas", 10, "bold"),
+                     bg=BG_DARK, fg=TEXT_PRIMARY).pack(anchor="w", pady=(0, 6))
+
+            tbl2 = tk.Frame(parent, bg=BG_DARK)
+            tbl2.pack(fill="x")
+            tbl2.columnconfigure(0, minsize=180)
+            for c in range(1, n_troops + 1):
+                tbl2.columnconfigure(c, minsize=90, uniform=f"sub{title[:4]}")
+
+            # Header
+            tk.Label(tbl2, text=first_col_label, font=("Consolas", 9, "bold"),
+                     bg=BG_MID, fg=TEXT_MUTED, anchor="w", padx=6, pady=3
+                     ).grid(row=0, column=0, sticky="nsew", padx=(0,1), pady=(0,1))
+            for ci, tname in enumerate(self._troop_names):
+                disp = tname if len(tname) <= 12 else tname[:11] + "…"
+                lbl = tk.Label(tbl2, text=disp, font=("Consolas", 9, "bold"),
+                               bg=BG_MID, fg=ACCENT, anchor="center", padx=4, pady=3)
+                lbl.grid(row=0, column=ci + 1, sticky="nsew", padx=(0,1), pady=(0,1))
+                lbl.bind("<Enter>", lambda e, w=lbl, full=tname: w.config(text=full))
+                lbl.bind("<Leave>", lambda e, w=lbl, d=disp: w.config(text=d))
+            tk.Frame(tbl2, bg=BORDER, height=1).grid(
+                row=1, column=0, columnspan=n_troops + 1, sticky="ew", pady=(0,1))
+
+            for i, row in enumerate(rows):
+                r  = i + 2
+                bg = BG_MID if i % 2 == 0 else BG_PANEL
+                vname = row.get("_label", row.get("target_village",
+                         row.get("source_village", "—")))
+                tk.Label(tbl2, text=vname,
+                         font=FONT_SMALL, bg=bg, fg=TEXT_PRIMARY,
+                         anchor="w", padx=8, pady=3
+                         ).grid(row=r, column=0, sticky="nsew", padx=(0,1), pady=(0,1))
+                for ci, tname in enumerate(self._troop_names):
+                    val = int(row.get(tname, 0) or 0)
+                    tk.Label(tbl2, text=str(val) if val else "—",
+                             font=FONT_SMALL, bg=bg,
+                             fg=TEXT_PRIMARY if val else TEXT_MUTED,
+                             anchor="center", pady=3
+                             ).grid(row=r, column=ci + 1, sticky="nsew",
+                                    padx=(0,1), pady=(0,1))
+
+            # Unknown row
+            n     = len(rows)
+            sep_r = n + 2
+            unk_r = n + 3
+            unk_bg = BG_MID if n % 2 == 0 else BG_PANEL
+            tk.Frame(tbl2, bg=ACCENT_DIM, height=1).grid(
+                row=sep_r, column=0, columnspan=n_troops + 1,
+                sticky="ew", pady=(2, 1))
+            tk.Label(tbl2, text="Unknown", font=("Consolas", 9, "bold"),
+                     bg=unk_bg, fg=TEXT_MUTED, anchor="w", padx=8, pady=3
+                     ).grid(row=unk_r, column=0, sticky="nsew", padx=(0,1), pady=(0,1))
+            for ci, tname in enumerate(self._troop_names):
+                unknown = unknown_counts.get(tname, 0)
+                fg = COL_RED if unknown < 0 else TEXT_PRIMARY if unknown else TEXT_MUTED
+                tk.Label(tbl2, text=f"{unknown:+d}" if unknown else "0",
+                         font=FONT_SMALL, bg=unk_bg, fg=fg,
+                         anchor="center", pady=3
+                         ).grid(row=unk_r, column=ci + 1, sticky="nsew",
+                                padx=(0,1), pady=(0,1))
+
+        # Sent-out table — always shown
+        sent_unknown = {
+            t: self._get_int("native_out", t) -
+               sum(int(r.get(t, 0) or 0) for r in sent)
+            for t in self._troop_names
+        }
+        _troop_subtable(inner, "Troops sent to other villages",
+                        "Target village", sent, sent_unknown)
+
+        # ── Incoming troops table ──────────────────────────────────────────────
+        # Collect per-source data from every other village's _sent_troops.csv
+        # where target_village == this village
+        incoming_rows = []
+        for v in load_villages(self.server, self.account):
+            src_name = v["village_name"]
+            if src_name == self.village_name:
+                continue
+            for row in load_sent_troops(self.server, self.account, src_name):
+                if row.get("target_village", "") != self.village_name:
+                    continue
+                if not any(int(row.get(t, 0) or 0) for t in self._troop_names):
+                    continue
+                entry = {"_label": src_name}
+                for t in self._troop_names:
+                    entry[t] = int(row.get(t, 0) or 0)
+                incoming_rows.append(entry)
+
+        # Unknown = foreign_in - sum of known incoming
+        inc_unknown = {
+            t: self._get_int("foreign_in", t) -
+               sum(r.get(t, 0) for r in incoming_rows)
+            for t in self._troop_names
+        }
+        _troop_subtable(inner, "Troops from other villages",
+                        "Source village", incoming_rows, inc_unknown)
 
     # ── Derived calculations ──────────────────────────────────────────────────
 
@@ -2572,27 +2731,53 @@ class VillageTroopsView(tk.Frame):
         except (ValueError, KeyError):
             return 0
 
-    def _update_derived(self, tname: str):
+    def _update_derived(self, tname: str, changed_key: str = None):
         """
-        native_out = trained - native_in   (clamped to 0)
-        net        = native_in + foreign_in
+        Maintain native_in + native_out == trained.
+        When native_in changes → adjust native_out.
+        When native_out changes → adjust native_in.
+        Also recompute net = native_in + foreign_in.
         """
-        trained    = self._get_int("trained",   tname)
-        native_in  = self._get_int("native_in", tname)
-        foreign_in = self._get_int("foreign_in", tname)
+        if getattr(self, "_updating", False):
+            return
+        self._updating = True
+        try:
+            trained    = self._get_int("trained",    tname)
+            native_in  = self._get_int("native_in",  tname)
+            native_out = self._get_int("native_out", tname)
 
-        native_out = max(0, trained - native_in)
-        net        = native_in + foreign_in
+            if changed_key == "native_in":
+                # Clamp native_in to trained, then derive native_out
+                native_in  = min(native_in, trained)
+                native_out = max(0, trained - native_in)
+                if str(native_in) != self._vars.get(("native_in", tname), tk.StringVar()).get():
+                    self._vars[("native_in", tname)].set(str(native_in))
+                if str(native_out) != self._vars.get(("native_out", tname), tk.StringVar()).get():
+                    self._vars[("native_out", tname)].set(str(native_out))
+            elif changed_key == "native_out":
+                native_out = min(native_out, trained)
+                native_in  = max(0, trained - native_out)
+                if str(native_out) != self._vars.get(("native_out", tname), tk.StringVar()).get():
+                    self._vars[("native_out", tname)].set(str(native_out))
+                if str(native_in) != self._vars.get(("native_in", tname), tk.StringVar()).get():
+                    self._vars[("native_in", tname)].set(str(native_in))
+            elif changed_key == "trained":
+                # trained changed: keep native_in, recompute native_out
+                native_in  = min(native_in, trained)
+                native_out = max(0, trained - native_in)
+                if str(native_in) != self._vars.get(("native_in", tname), tk.StringVar()).get():
+                    self._vars[("native_in", tname)].set(str(native_in))
+                if str(native_out) != self._vars.get(("native_out", tname), tk.StringVar()).get():
+                    self._vars[("native_out", tname)].set(str(native_out))
 
-        out_lbl = self._native_out_lbls.get(tname)
-        if out_lbl:
-            out_lbl.config(text=str(native_out))
-
-        net_lbl = self._net_labels.get(tname)
-        if net_lbl:
-            net_lbl.config(
-                text=str(net),
-                fg=COL_FULL_GREEN if net > 0 else _NET_ROW_FG)
+            foreign_in = self._get_int("foreign_in", tname)
+            net = self._get_int("native_in", tname) + foreign_in
+            net_lbl = self._net_labels.get(tname)
+            if net_lbl:
+                net_lbl.config(text=str(net),
+                               fg=COL_FULL_GREEN if net > 0 else _NET_ROW_FG)
+        finally:
+            self._updating = False
 
     # ── Save ─────────────────────────────────────────────────────────────────
 
@@ -2603,15 +2788,24 @@ class VillageTroopsView(tk.Frame):
                 data[rk][tname] = max(0, int(var.get() or 0))
             except ValueError:
                 data[rk][tname] = 0
-        # Derive native_out before saving so CSV stays consistent
-        for tname in self._troop_names:
-            trained   = data["trained"].get(tname, 0)
-            native_in = data["native_in"].get(tname, 0)
-            data["native_out"][tname] = max(0, trained - native_in)
         save_troop_data(self.server, self.account,
                         self.village_name, self._troop_names, data)
         self._status_lbl.config(text="✓ Troops saved", fg=COL_FULL_GREEN)
         fade_label(self._status_lbl, after_ms=3500)
+
+    def _open_import(self):
+        dlg = ReinforcementsImportDialog(
+            self, self.server, self.account, self.tribe,
+            village_name=self.village_name,
+            on_complete=self._load_and_build)
+        self.wait_window(dlg)
+
+    def _open_support_import(self):
+        dlg = SupportTroopsImportDialog(
+            self, self.server, self.account, self.tribe,
+            village_name=self.village_name,
+            on_complete=self._load_and_build)
+        self.wait_window(dlg)
 
 
 # ─── Village Resource Layout View ─────────────────────────────────────────────
@@ -3553,6 +3747,441 @@ class ImportProductionDialog(tk.Toplevel):
             fg=COL_FULL_GREEN)
 
 
+def parse_reinforcements(raw_text: str, tribe: str) -> list:
+    """
+    Parse Rally Point → Overview → Troops in other villages paste.
+
+    The browser copies each table ROW as one line, cells separated by tabs.
+    Structure per reinforcement block:
+      ROW A: source_village TAB "Reinforcement for TARGET"
+      ROW B: coords TAB troop_name TAB troop_name ...
+      ROW C: "Troops" TAB count TAB count ...
+
+    Returns list of {source_village, target_village, troops: {name: count}}.
+    """
+    import re as _re2
+
+    def _cl(s):
+        return _re2.sub(r'[\u200e\u200f\u202a-\u202e\u2066-\u2069\xad\xa0,]', '', s).strip()
+
+    tribe_troops = set(get_tribe_troops(tribe)) | {"Hero"}
+    ci_lookup    = {t.lower(): t for t in tribe_troops}
+    coord_pat    = _re2.compile(r'\(?\s*-?\d+\s*\|\s*[\u2212\-]?\d+\s*\)?')
+    reinf_pat    = _re2.compile(r'^Reinforcement\s+for\s+(.+)$', _re2.IGNORECASE)
+
+    # Do NOT filter empty lines — tab structure must be preserved per-row
+    lines = raw_text.splitlines()
+
+    results = []
+    i = 0
+    while i < len(lines):
+        parts = [_cl(p) for p in lines[i].split('\t')]
+        # Match row: source TAB "Reinforcement for TARGET"
+        if len(parts) >= 2:
+            m = reinf_pat.match(parts[1])
+            if m:
+                source = parts[0]
+                target = m.group(1).strip()
+
+                j = i + 1
+                troop_names = []
+                # Next row: coords TAB troop_name TAB ...
+                if j < len(lines):
+                    hdr = [_cl(p) for p in lines[j].split('\t')]
+                    if coord_pat.search(hdr[0] if hdr else ""):
+                        troop_names = [p for p in hdr[1:] if p and p.lower() != "hero"]
+                        j += 1
+
+                # Next row: "Troops" TAB count TAB ...
+                counts = []
+                if j < len(lines):
+                    tr = [_cl(p) for p in lines[j].split('\t')]
+                    if tr and tr[0].lower() == "troops":
+                        for p in tr[1:]:
+                            try:
+                                counts.append(int(p))
+                            except ValueError:
+                                pass
+                        j += 1
+
+                troops = dict(zip(troop_names, counts))
+                results.append({
+                    "source_village": source,
+                    "target_village": target,
+                    "troops": troops,
+                })
+                i = j
+                continue
+        i += 1
+
+    return results
+
+
+# ─── Reinforcements Import Dialog ─────────────────────────────────────────────
+
+class ReinforcementsImportDialog(tk.Toplevel):
+    """
+    Parse Rally Point → Overview → Troops in other villages.
+    When village_name is given (opened from a village's Troops view):
+      - only processes blocks where source == village_name
+      - updates native_out on the source and foreign_in on targets
+    """
+    def __init__(self, master, server, account, tribe,
+                 village_name=None, on_complete=None):
+        super().__init__(master)
+        self.server        = server
+        self.account       = account
+        self.tribe         = tribe
+        self.village_name  = village_name   # if set, filter to this source only
+        self._on_complete  = on_complete
+        self.title("Import Sent Troops" if village_name else "Import Reinforcements")
+        self.configure(bg=BG_DARK)
+        self.geometry("720x580")
+        self.grab_set()
+        self._parsed = []
+        self._build()
+
+    def _build(self):
+        pad = tk.Frame(self, bg=BG_DARK)
+        pad.pack(fill="both", expand=True, padx=20, pady=16)
+
+        title = "Import Sent Troops" if self.village_name else "Import Reinforcements"
+        tk.Label(pad, text=title, font=FONT_HEADING,
+                 bg=BG_DARK, fg=TEXT_PRIMARY).pack(anchor="w", pady=(0, 4))
+
+        if self.village_name:
+            desc = (f"Paste from Rally Point → Overview → Troops in other villages.\n"
+                    f"Will import troops sent OUT from '{self.village_name}'.\n"
+                    f"Updates 'Native sent out' here and 'Foreign in village' on targets.")
+        else:
+            desc = ("Paste from Rally Point → Overview → Troops in other villages.\n"
+                    "Updates 'foreign troops in' on target villages and "
+                    "'native troops out' on source villages.")
+        tk.Label(pad, text=desc, font=FONT_SMALL, bg=BG_DARK, fg=TEXT_MUTED,
+                 justify="left").pack(anchor="w", pady=(0, 8))
+
+        txt_frame = tk.Frame(pad, bg=BORDER)
+        txt_frame.pack(fill="both", expand=True)
+        self._txt = tk.Text(txt_frame, bg=BG_MID, fg=TEXT_PRIMARY,
+                            insertbackground=ACCENT, font=("Consolas", 9),
+                            relief="flat", bd=6, wrap="none",
+                            selectbackground=BG_HOVER)
+        sb = tk.Scrollbar(txt_frame, command=self._txt.yview,
+                          bg=BG_MID, troughcolor=BG_DARK, relief="flat", bd=0, width=8)
+        self._txt.config(yscrollcommand=sb.set)
+        sb.pack(side="right", fill="y")
+        self._txt.pack(fill="both", expand=True)
+
+        self._preview = tk.Label(pad, text="", font=("Consolas", 8),
+                                 bg=BG_DARK, fg=COL_FULL_GREEN,
+                                 justify="left", wraplength=660, anchor="w")
+        self._preview.pack(fill="x", pady=(6, 0))
+
+        btn_row = tk.Frame(pad, bg=BG_DARK)
+        btn_row.pack(fill="x", pady=(8, 0))
+        styled_button(btn_row, "🔍  Parse",  command=self._parse,  accent=True).pack(side="left")
+        styled_button(btn_row, "✅  Import", command=self._import, small=True).pack(side="left", padx=6)
+        self._status = tk.Label(btn_row, text="", font=FONT_SMALL,
+                                bg=BG_DARK, fg=COL_FULL_GREEN)
+        self._status.pack(side="left", padx=8)
+        styled_button(btn_row, "Close", command=self.destroy, small=True).pack(side="right")
+
+    def _parse(self):
+        raw = self._txt.get("1.0", "end")
+        all_parsed = parse_reinforcements(raw, self.tribe)
+
+        # Filter to source village if specified
+        if self.village_name:
+            self._parsed = [r for r in all_parsed
+                            if r["source_village"] == self.village_name]
+            filtered_note = f" (filtered to source='{self.village_name}')" if self._parsed != all_parsed else ""
+        else:
+            self._parsed = all_parsed
+            filtered_note = ""
+
+        if not self._parsed:
+            # Show debug info to help diagnose
+            import re as _re
+            def _cl(s):
+                return _re.sub(r'[\u200e\u200f\u202a-\u202e\u2066-\u2069\xad\xa0,]', '', s).strip()
+            lines = [_cl(ln) for ln in raw.splitlines()]
+            lines = [ln for ln in lines if ln]
+            reinf_lines = [f"  [{i}] {repr(ln)}" for i, ln in enumerate(lines[:30])]
+            debug = ("❌  No reinforcements found.\n\n"
+                     f"Tribe: {self.tribe}  |  All parsed: {len(all_parsed)}"
+                     + (f"  |  Source filter: '{self.village_name}'" if self.village_name else "") + "\n"
+                     "First 30 cleaned lines seen:\n" + "\n".join(reinf_lines))
+            self._preview.config(text=debug, fg=COL_RED)
+            return
+
+        lines_out = [f"✔  Found {len(self._parsed)} block(s){filtered_note}:"]
+        for r in self._parsed:
+            nonzero = {k: v for k, v in r["troops"].items() if v}
+            lines_out.append(f"  {r['source_village']} → {r['target_village']}:  "
+                             + ("  ".join(f"{k}: {v}" for k, v in nonzero.items()) or "all zero"))
+        self._preview.config(text="\n".join(lines_out), fg=COL_FULL_GREEN)
+
+    def _import(self):
+        if not self._parsed:
+            self._parse()
+        if not self._parsed:
+            return
+
+        tribe_troops = get_tribe_troops(self.tribe)
+        own_villages = {v["village_name"] for v in load_villages(self.server, self.account)}
+
+        foreign_updates: dict = {}
+        out_updates: dict = {}
+
+        for r in self._parsed:
+            src = r["source_village"]
+            tgt = r["target_village"]
+
+            if tgt not in foreign_updates:
+                foreign_updates[tgt] = {t: 0 for t in tribe_troops}
+            for t, cnt in r["troops"].items():
+                if t in foreign_updates[tgt]:
+                    foreign_updates[tgt][t] += cnt
+
+            if src not in out_updates:
+                out_updates[src] = {t: 0 for t in tribe_troops}
+            for t, cnt in r["troops"].items():
+                if t in out_updates[src]:
+                    out_updates[src][t] += cnt
+
+        updated = 0
+        for vname, foreign_counts in foreign_updates.items():
+            if vname not in own_villages:
+                continue
+            td = load_troop_data(self.server, self.account, vname, tribe_troops)
+            for t in tribe_troops:
+                td["foreign_in"][t] = foreign_counts.get(t, 0)
+            save_troop_data(self.server, self.account, vname, tribe_troops, td)
+            updated += 1
+
+        for vname, out_counts in out_updates.items():
+            if vname not in own_villages:
+                continue
+            td = load_troop_data(self.server, self.account, vname, tribe_troops)
+            for t in tribe_troops:
+                td["native_out"][t] = out_counts.get(t, 0)
+                td["native_in"][t]  = max(0, td["trained"].get(t, 0) - td["native_out"][t])
+            save_troop_data(self.server, self.account, vname, tribe_troops, td)
+            # Save per-destination breakdown for this source village
+            dest_rows = []
+            for r in self._parsed:
+                if r["source_village"] == vname:
+                    row = {"target_village": r["target_village"]}
+                    for t in tribe_troops:
+                        row[t] = r["troops"].get(t, 0)
+                    dest_rows.append(row)
+            save_sent_troops(self.server, self.account, vname, dest_rows, tribe_troops)
+            updated += 1
+
+        self._status.config(text=f"✅  Updated {updated} village(s).", fg=COL_FULL_GREEN)
+        self._parsed = []
+        if self._on_complete:
+            self._on_complete()
+
+
+def parse_support_troops(raw_text: str, tribe: str) -> list:
+    """
+    Parse Rally Point → Overview → Troops in this village (and its oases).
+
+    Row format (tab-separated):
+      SOURCE TAB "Own troops"          → skip
+      SOURCE TAB "PLAYER's troops"     → foreign reinforcement block
+      coords TAB troop_name TAB ...
+      "Troops" TAB count TAB ...
+
+    Returns list of {source_village, troops: {name: count}}.
+    'source_village' is the player name (from "PLAYER's troops").
+    """
+    import re as _re2
+
+    def _cl(s):
+        return _re2.sub(r'[\u200e\u200f\u202a-\u202e\u2066-\u2069\xad\xa0,]', '', s).strip()
+
+    tribe_troops = set(get_tribe_troops(tribe)) | {"Hero"}
+    ci_lookup    = {t.lower(): t for t in tribe_troops}
+    coord_pat    = _re2.compile(r'\(?\s*-?\d+\s*\|\s*[\u2212\-]?\d+\s*\)?')
+    own_pat      = _re2.compile(r'^Own\s+troops$', _re2.IGNORECASE)
+    # "Deadline's troops" or "Deadline's troops" (both apostrophe variants)
+    foreign_pat  = _re2.compile(r"^(.+?)[\u2019']s\s+troops$", _re2.IGNORECASE)
+
+    lines = raw_text.splitlines()
+    results = []
+    i = 0
+    while i < len(lines):
+        parts = [_cl(p) for p in lines[i].split('\t')]
+        if len(parts) >= 2:
+            # Skip own troops block
+            if own_pat.match(parts[1]):
+                i += 1
+                continue
+            m = foreign_pat.match(parts[1])
+            if m:
+                source = m.group(1).strip()
+                j = i + 1
+                troop_names = []
+                if j < len(lines):
+                    hdr = [_cl(p) for p in lines[j].split('\t')]
+                    if coord_pat.search(hdr[0] if hdr else ""):
+                        troop_names = [p for p in hdr[1:] if p and p.lower() != "hero"]
+                        j += 1
+                counts = []
+                if j < len(lines):
+                    tr = [_cl(p) for p in lines[j].split('\t')]
+                    if tr and tr[0].lower() == "troops":
+                        for p in tr[1:]:
+                            try:
+                                counts.append(int(p))
+                            except ValueError:
+                                pass
+                        j += 1
+                troops = dict(zip(troop_names, counts))
+                results.append({"source_village": source, "troops": troops})
+                i = j
+                continue
+        i += 1
+    return results
+
+
+# ─── Support Troops Import Dialog ─────────────────────────────────────────────
+
+class SupportTroopsImportDialog(tk.Toplevel):
+    """
+    Parse Rally Point → Overview → Troops in this village.
+    Imports foreign_in for this village, skipping own troops and
+    avoiding duplication with troops already imported via sent troops.
+    """
+    def __init__(self, master, server, account, tribe,
+                 village_name=None, on_complete=None):
+        super().__init__(master)
+        self.server       = server
+        self.account      = account
+        self.tribe        = tribe
+        self.village_name = village_name
+        self._on_complete = on_complete
+        self.title("Import Support Troops")
+        self.configure(bg=BG_DARK)
+        self.geometry("720x560")
+        self.grab_set()
+        self._parsed = []
+        self._build()
+
+    def _build(self):
+        pad = tk.Frame(self, bg=BG_DARK)
+        pad.pack(fill="both", expand=True, padx=20, pady=16)
+
+        tk.Label(pad, text="Import Support Troops", font=FONT_HEADING,
+                 bg=BG_DARK, fg=TEXT_PRIMARY).pack(anchor="w", pady=(0, 4))
+        tk.Label(pad,
+                 text=f"Paste from Rally Point → Overview → Troops in this village"
+                      + (f" (for '{self.village_name}')" if self.village_name else "") + ".\n"
+                      "Own troops are ignored. Only foreign reinforcements are imported.\n"
+                      "Troops already recorded via 'Import Sent Troops' are not duplicated.",
+                 font=FONT_SMALL, bg=BG_DARK, fg=TEXT_MUTED,
+                 justify="left").pack(anchor="w", pady=(0, 8))
+
+        txt_frame = tk.Frame(pad, bg=BORDER)
+        txt_frame.pack(fill="both", expand=True)
+        self._txt = tk.Text(txt_frame, bg=BG_MID, fg=TEXT_PRIMARY,
+                            insertbackground=ACCENT, font=("Consolas", 9),
+                            relief="flat", bd=6, wrap="none",
+                            selectbackground=BG_HOVER)
+        sb = tk.Scrollbar(txt_frame, command=self._txt.yview,
+                          bg=BG_MID, troughcolor=BG_DARK, relief="flat", bd=0, width=8)
+        self._txt.config(yscrollcommand=sb.set)
+        sb.pack(side="right", fill="y")
+        self._txt.pack(fill="both", expand=True)
+
+        self._preview = tk.Label(pad, text="", font=("Consolas", 8),
+                                 bg=BG_DARK, fg=COL_FULL_GREEN,
+                                 justify="left", wraplength=660, anchor="w")
+        self._preview.pack(fill="x", pady=(6, 0))
+
+        btn_row = tk.Frame(pad, bg=BG_DARK)
+        btn_row.pack(fill="x", pady=(8, 0))
+        styled_button(btn_row, "🔍  Parse",  command=self._parse,  accent=True).pack(side="left")
+        styled_button(btn_row, "✅  Import", command=self._import, small=True).pack(side="left", padx=6)
+        self._status = tk.Label(btn_row, text="", font=FONT_SMALL,
+                                bg=BG_DARK, fg=COL_FULL_GREEN)
+        self._status.pack(side="left", padx=8)
+        styled_button(btn_row, "Close", command=self.destroy, small=True).pack(side="right")
+
+    def _parse(self):
+        raw = self._txt.get("1.0", "end")
+        self._parsed = parse_support_troops(raw, self.tribe)
+        if not self._parsed:
+            import re as _re
+            def _cl(s):
+                return _re.sub(r'[\u200e\u200f\u202a-\u202e\u2066-\u2069\xad\xa0,]', '', s).strip()
+            lines = raw.splitlines()
+            preview_lines = [f"  [{i}] {repr(_cl(ln))}" for i, ln in enumerate(lines[:25]) if _cl(ln)]
+            self._preview.config(
+                text="❌  No support troops found. Make sure you pasted from\n"
+                     "Rally Point → Overview → Troops in this village.\n\n"
+                     "First 25 lines:\n" + "\n".join(preview_lines),
+                fg=COL_RED)
+            return
+        lines_out = [f"✔  Found {len(self._parsed)} reinforcement(s):"]
+        for r in self._parsed:
+            nonzero = {k: v for k, v in r["troops"].items() if v}
+            lines_out.append(f"  from {r['source_village']}:  "
+                             + ("  ".join(f"{k}: {v}" for k, v in nonzero.items()) or "all zero"))
+        self._preview.config(text="\n".join(lines_out), fg=COL_FULL_GREEN)
+
+    def _import(self):
+        if not self._parsed:
+            self._parse()
+        if not self._parsed:
+            return
+
+        tribe_troops = get_tribe_troops(self.tribe)
+        target = self.village_name
+
+        # Build set of (source_village, troop_name, count) already recorded
+        # via sent troops imports from any village → avoid double-counting
+        already_sent: dict = {}   # source_village -> {troop: count}
+        for v in load_villages(self.server, self.account):
+            vname = v["village_name"]
+            for row in load_sent_troops(self.server, self.account, vname):
+                tgt = row.get("target_village", "")
+                if tgt != target:
+                    continue
+                src = vname
+                if src not in already_sent:
+                    already_sent[src] = {t: 0 for t in tribe_troops}
+                for t in tribe_troops:
+                    try:
+                        already_sent[src][t] += int(row.get(t, 0) or 0)
+                    except ValueError:
+                        pass
+
+        # Accumulate foreign_in for this village, subtracting already-known sent troops
+        foreign_totals = {t: 0 for t in tribe_troops}
+        for r in self._parsed:
+            src = r["source_village"]
+            known = already_sent.get(src, {})
+            for t in tribe_troops:
+                incoming = r["troops"].get(t, 0)
+                already  = known.get(t, 0)
+                net = max(0, incoming - already)
+                foreign_totals[t] += net
+
+        if target:
+            td = load_troop_data(self.server, self.account, target, tribe_troops)
+            for t in tribe_troops:
+                td["foreign_in"][t] = foreign_totals.get(t, 0)
+            save_troop_data(self.server, self.account, target, tribe_troops, td)
+
+        self._status.config(text="✅  Support troops imported.", fg=COL_FULL_GREEN)
+        self._parsed = []
+        if self._on_complete:
+            self._on_complete()
+
+
 # ─── Main Application Window ──────────────────────────────────────────────────
 
 class MainApp(tk.Frame):
@@ -3634,8 +4263,15 @@ class MainApp(tk.Frame):
             ("🔄  Trade Route Summary", self._show_trade_route_summary),
             ("📊  Production Info",   self._show_production_info),
             ("⚔   Troops Overview",   self._show_troops_overview),
-            ("🗺   Troop Locations",  self._show_troop_locations),
+            ("⚔   Net Troops",        self._show_troop_locations),
             ("⚡  Net Production",    self._show_net_production),
+        ]:
+            nav_button(pad, label, command=cmd).pack(fill="x")
+
+        make_separator(pad).pack(fill="x", padx=8, pady=10)
+        section_label(pad, "Statistics").pack(fill="x", padx=12, pady=(0, 4))
+        for label, cmd in [
+            ("🌾  Farm Top Stats",    self._show_farm_top_stats),
         ]:
             nav_button(pad, label, command=cmd).pack(fill="x")
 
@@ -4997,8 +5633,93 @@ class MainApp(tk.Frame):
 
     def _show_troop_locations(self):
         self._clear_center()
-        self._content_header("Troop Locations", "Where all your troops are")
-        self._placeholder_card("Troop Locations", "Troop positions shown with X/Y coordinates.")
+        villages    = load_villages(self.server, self.account)
+        troop_names = get_tribe_troops(self.tribe)
+
+        outer = tk.Frame(self.center, bg=BG_DARK)
+        outer.pack(fill="both", expand=True)
+
+        hdr = tk.Frame(outer, bg=BG_DARK)
+        hdr.pack(fill="x", padx=24, pady=(24, 0))
+        tk.Label(hdr, text="Net Troops",
+                 font=FONT_TITLE, bg=BG_DARK, fg=TEXT_PRIMARY).pack(side="left")
+        tk.Label(hdr, text="  —  native_in + foreign_in per village",
+                 font=FONT_SMALL, bg=BG_DARK, fg=TEXT_MUTED).pack(side="left", pady=(8, 0))
+        make_separator(outer).pack(fill="x", padx=24, pady=10)
+
+        if not villages or not troop_names:
+            tk.Label(outer, text="No village or troop data found.",
+                     font=FONT_BODY, bg=BG_DARK, fg=TEXT_MUTED).pack(padx=24, anchor="w")
+            return
+
+        # Load net troops per village
+        rows = []
+        account_totals = {t: 0 for t in troop_names}
+        for v in villages:
+            vname = v["village_name"]
+            td = load_troop_data(self.server, self.account, vname, troop_names)
+            net = {t: td["native_in"].get(t, 0) + td["foreign_in"].get(t, 0)
+                   for t in troop_names}
+            rows.append((vname, net))
+            for t in troop_names:
+                account_totals[t] += net[t]
+
+        scroll_outer, inner = scrollable_frame(outer)
+        scroll_outer.pack(fill="both", expand=True, padx=24, pady=(0, 16))
+
+        n_troops = len(troop_names)
+        tbl = tk.Frame(inner, bg=BG_DARK)
+        tbl.pack(fill="x")
+        tbl.columnconfigure(0, minsize=180)
+        for c in range(1, n_troops + 1):
+            tbl.columnconfigure(c, minsize=80, uniform="nt")
+
+        # Header row
+        tk.Label(tbl, text="Village", font=("Consolas", 9, "bold"),
+                 bg=BG_MID, fg=TEXT_MUTED, anchor="w", padx=6, pady=3
+                 ).grid(row=0, column=0, sticky="nsew", padx=(0,1), pady=(0,1))
+        for ci, tname in enumerate(troop_names):
+            disp = tname if len(tname) <= 12 else tname[:11] + "…"
+            lbl = tk.Label(tbl, text=disp, font=("Consolas", 9, "bold"),
+                           bg=BG_MID, fg=ACCENT, anchor="center", padx=4, pady=3)
+            lbl.grid(row=0, column=ci + 1, sticky="nsew", padx=(0,1), pady=(0,1))
+            lbl.bind("<Enter>", lambda e, w=lbl, f=tname: w.config(text=f))
+            lbl.bind("<Leave>", lambda e, w=lbl, d=disp: w.config(text=d))
+        tk.Frame(tbl, bg=BORDER, height=1).grid(
+            row=1, column=0, columnspan=n_troops + 1, sticky="ew", pady=(0,1))
+
+        # Village rows
+        for i, (vname, net) in enumerate(rows):
+            r  = i + 2
+            bg = BG_MID if i % 2 == 0 else BG_PANEL
+            tk.Label(tbl, text=vname, font=FONT_SMALL, bg=bg,
+                     fg=TEXT_PRIMARY, anchor="w", padx=8, pady=3
+                     ).grid(row=r, column=0, sticky="nsew", padx=(0,1), pady=(0,1))
+            for ci, tname in enumerate(troop_names):
+                val = net[tname]
+                tk.Label(tbl, text=str(val) if val else "—",
+                         font=FONT_SMALL, bg=bg,
+                         fg=COL_FULL_GREEN if val else TEXT_MUTED,
+                         anchor="center", pady=3
+                         ).grid(row=r, column=ci + 1, sticky="nsew",
+                                padx=(0,1), pady=(0,1))
+
+        # Totals row
+        tk.Frame(tbl, bg=ACCENT_DIM, height=1).grid(
+            row=len(rows) + 2, column=0, columnspan=n_troops + 1,
+            sticky="ew", pady=(2,1))
+        tr = len(rows) + 3
+        tk.Label(tbl, text="Account Total", font=("Consolas", 9, "bold"),
+                 bg=BG_HOVER, fg=ACCENT, anchor="w", padx=8, pady=4
+                 ).grid(row=tr, column=0, sticky="nsew", padx=(0,1), pady=(0,1))
+        for ci, tname in enumerate(troop_names):
+            val = account_totals[tname]
+            tk.Label(tbl, text=str(val) if val else "—",
+                     font=("Consolas", 9, "bold"), bg=BG_HOVER,
+                     fg=COL_FULL_GREEN if val else TEXT_MUTED,
+                     anchor="center", pady=4
+                     ).grid(row=tr, column=ci + 1, sticky="nsew",
+                            padx=(0,1), pady=(0,1))
 
     def _show_net_production(self):
         self._clear_center()
@@ -5186,6 +5907,31 @@ class MainApp(tk.Frame):
         tk.Label(inner, text=f"Production source: {src}  ·  includes trade, celebrations, troop upkeep and queues",
                  font=FONT_SMALL, bg=BG_DARK, fg=TEXT_MUTED
                  ).pack(anchor="w", padx=4, pady=(8,4))
+
+    # ── Statistics views ──────────────────────────────────────────────────────
+
+    def _show_farm_top_stats(self):
+        self._clear_center()
+        outer = tk.Frame(self.center, bg=BG_DARK)
+        outer.pack(fill="both", expand=True)
+
+        hdr = tk.Frame(outer, bg=BG_DARK)
+        hdr.pack(fill="x", padx=24, pady=(24, 0))
+        tk.Label(hdr, text="Farm Top Stats",
+                 font=FONT_TITLE, bg=BG_DARK, fg=TEXT_PRIMARY).pack(side="left")
+        make_separator(outer).pack(fill="x", padx=24, pady=12)
+
+        card = tk.Frame(outer, bg=BG_PANEL)
+        card.pack(fill="both", expand=True, padx=24, pady=(0, 24))
+        inner = tk.Frame(card, bg=BG_PANEL)
+        inner.pack(expand=True)
+        tk.Label(inner, text="📊", font=("Georgia", 32),
+                 bg=BG_PANEL, fg=TEXT_MUTED).pack(pady=(60, 8))
+        tk.Label(inner, text="Farm Top Stats", font=FONT_HEADING,
+                 bg=BG_PANEL, fg=TEXT_SECONDARY).pack()
+        tk.Label(inner, text="Coming soon — statistics on farming activity across villages.",
+                 font=FONT_SMALL, bg=BG_PANEL, fg=TEXT_MUTED,
+                 wraplength=440, justify="center").pack(pady=(6, 0))
 
     # ── Village views ─────────────────────────────────────────────────────────
 
@@ -5601,6 +6347,13 @@ class MainApp(tk.Frame):
         if self.is_archived:
             return
         TroopOverviewImportDialog(
+            self, self.server, self.account, self.tribe,
+            on_complete=self._refresh_village_list)
+
+    def _open_reinforcements_import(self):
+        if self.is_archived:
+            return
+        ReinforcementsImportDialog(
             self, self.server, self.account, self.tribe,
             on_complete=self._refresh_village_list)
 

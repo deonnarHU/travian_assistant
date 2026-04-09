@@ -1,0 +1,2 @@
+route_id,target,wood,clay,iron,crop,merchants,frequency_min,departure_time,travel_minutes,active
+1,2,0,0,2000,0,1,60,21:35,2,1

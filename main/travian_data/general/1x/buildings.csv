@@ -1,736 +1,736 @@
-tribe,name,level,cost_wood,cost_clay,cost_iron,cost_crop,build_time_1x,population_gained,culture_points,special_effect,is_unique
-all,Woodcutter,1,40,100,50,60,0:03:20,2,0,+production per level,No
-all,Woodcutter,2,66,167,83,100,0:05:34,2,0,+production per level,No
-all,Woodcutter,3,111,278,139,167,0:09:17,2,0,+production per level,No
-all,Woodcutter,4,186,465,232,279,0:15:31,2,0,+production per level,No
-all,Woodcutter,5,311,777,388,466,0:25:55,2,0,+production per level,No
-all,Woodcutter,6,519,1298,649,779,0:43:17,2,0,+production per level,No
-all,Woodcutter,7,867,2169,1084,1301,1:12:18,2,0,+production per level,No
-all,Woodcutter,8,1449,3622,1811,2173,2:00:45,2,0,+production per level,No
-all,Woodcutter,9,2419,6049,3024,3629,3:21:39,2,0,+production per level,No
-all,Woodcutter,10,4041,10102,5051,6061,5:36:45,2,0,+production per level,No
-all,Woodcutter,11,6748,16871,8435,10123,9:22:23,2,0,+production per level,No
-all,Woodcutter,12,11270,28176,14088,16905,15:39:12,2,0,+production per level,No
-all,Woodcutter,13,18821,47054,23527,28232,26:08:28,2,0,+production per level,No
-all,Woodcutter,14,31432,78580,39290,47148,43:39:20,2,0,+production per level,No
-all,Woodcutter,15,52491,131229,65614,78737,72:54:18,2,0,+production per level,No
-all,Woodcutter,16,87661,219152,109576,131491,121:45:05,2,0,+production per level,No
-all,Woodcutter,17,146394,365985,182992,219591,203:19:30,2,0,+production per level,No
-all,Woodcutter,18,244478,611195,305597,366717,339:33:10,2,0,+production per level,No
-all,Woodcutter,19,408278,1020696,510348,612417,567:03:12,2,0,+production per level,No
-all,Woodcutter,20,681825,1704562,852281,1022737,946:58:45,2,0,+production per level,No
-all,Clay Pit,1,80,40,80,50,0:03:20,2,0,+production per level,No
-all,Clay Pit,2,133,66,133,83,0:05:34,2,0,+production per level,No
-all,Clay Pit,3,223,111,223,139,0:09:17,2,0,+production per level,No
-all,Clay Pit,4,372,186,372,232,0:15:31,2,0,+production per level,No
-all,Clay Pit,5,622,311,622,388,0:25:55,2,0,+production per level,No
-all,Clay Pit,6,1039,519,1039,649,0:43:17,2,0,+production per level,No
-all,Clay Pit,7,1735,867,1735,1084,1:12:18,2,0,+production per level,No
-all,Clay Pit,8,2898,1449,2898,1811,2:00:45,2,0,+production per level,No
-all,Clay Pit,9,4839,2419,4839,3024,3:21:39,2,0,+production per level,No
-all,Clay Pit,10,8082,4041,8082,5051,5:36:45,2,0,+production per level,No
-all,Clay Pit,11,13497,6748,13497,8435,9:22:23,2,0,+production per level,No
-all,Clay Pit,12,22540,11270,22540,14088,15:39:12,2,0,+production per level,No
-all,Clay Pit,13,37643,18821,37643,23527,26:08:28,2,0,+production per level,No
-all,Clay Pit,14,62864,31432,62864,39290,43:39:20,2,0,+production per level,No
-all,Clay Pit,15,104983,52491,104983,65614,72:54:18,2,0,+production per level,No
-all,Clay Pit,16,175322,87661,175322,109576,121:45:05,2,0,+production per level,No
-all,Clay Pit,17,292788,146394,292788,182992,203:19:30,2,0,+production per level,No
-all,Clay Pit,18,488956,244478,488956,305597,339:33:10,2,0,+production per level,No
-all,Clay Pit,19,816556,408278,816556,510348,567:03:12,2,0,+production per level,No
-all,Clay Pit,20,1363650,681825,1363650,852281,946:58:45,2,0,+production per level,No
-all,Iron Mine,1,100,80,30,60,0:03:20,2,0,+production per level,No
-all,Iron Mine,2,167,133,50,100,0:05:34,2,0,+production per level,No
-all,Iron Mine,3,278,223,83,167,0:09:17,2,0,+production per level,No
-all,Iron Mine,4,465,372,139,279,0:15:31,2,0,+production per level,No
-all,Iron Mine,5,777,622,233,466,0:25:55,2,0,+production per level,No
-all,Iron Mine,6,1298,1039,389,779,0:43:17,2,0,+production per level,No
-all,Iron Mine,7,2169,1735,650,1301,1:12:18,2,0,+production per level,No
-all,Iron Mine,8,3622,2898,1086,2173,2:00:45,2,0,+production per level,No
-all,Iron Mine,9,6049,4839,1814,3629,3:21:39,2,0,+production per level,No
-all,Iron Mine,10,10102,8082,3030,6061,5:36:45,2,0,+production per level,No
-all,Iron Mine,11,16871,13497,5061,10123,9:22:23,2,0,+production per level,No
-all,Iron Mine,12,28176,22540,8452,16905,15:39:12,2,0,+production per level,No
-all,Iron Mine,13,47054,37643,14116,28232,26:08:28,2,0,+production per level,No
-all,Iron Mine,14,78580,62864,23574,47148,43:39:20,2,0,+production per level,No
-all,Iron Mine,15,131229,104983,39368,78737,72:54:18,2,0,+production per level,No
-all,Iron Mine,16,219152,175322,65745,131491,121:45:05,2,0,+production per level,No
-all,Iron Mine,17,365985,292788,109795,219591,203:19:30,2,0,+production per level,No
-all,Iron Mine,18,611195,488956,183358,366717,339:33:10,2,0,+production per level,No
-all,Iron Mine,19,1020696,816556,306208,612417,567:03:12,2,0,+production per level,No
-all,Iron Mine,20,1704562,1363650,511368,1022737,946:58:45,2,0,+production per level,No
-all,Cropland,1,70,90,70,20,0:04:10,1,0,+production per level,No
-all,Cropland,2,116,150,116,33,0:06:57,1,0,+production per level,No
-all,Cropland,3,195,251,195,55,0:11:37,1,0,+production per level,No
-all,Cropland,4,326,419,326,93,0:19:24,1,0,+production per level,No
-all,Cropland,5,544,700,544,155,0:32:24,1,0,+production per level,No
-all,Cropland,6,909,1169,909,259,0:54:07,1,0,+production per level,No
-all,Cropland,7,1518,1952,1518,433,1:30:22,1,0,+production per level,No
-all,Cropland,8,2535,3260,2535,724,2:30:56,1,0,+production per level,No
-all,Cropland,9,4234,5444,4234,1209,4:12:04,1,0,+production per level,No
-all,Cropland,10,7072,9092,7072,2020,7:00:57,1,0,+production per level,No
-all,Cropland,11,11810,15184,11810,3374,11:42:59,1,0,+production per level,No
-all,Cropland,12,19723,25358,19723,5635,19:34:00,1,0,+production per level,No
-all,Cropland,13,32937,42348,32937,9410,32:40:35,1,0,+production per level,No
-all,Cropland,14,55006,70722,55006,15716,54:34:10,1,0,+production per level,No
-all,Cropland,15,91860,118106,91860,26245,91:07:53,1,0,+production per level,No
-all,Cropland,16,153406,197237,153406,43830,152:11:22,1,0,+production per level,No
-all,Cropland,17,256189,329386,256189,73197,254:09:23,1,0,+production per level,No
-all,Cropland,18,427836,550075,427836,122239,424:26:28,1,0,+production per level,No
-all,Cropland,19,714487,918626,714487,204139,708:49:00,1,0,+production per level,No
-all,Cropland,20,1193193,1534106,1193193,340912,1183:43:26,1,0,+production per level,No
-all,Main Building,1,70,40,60,20,0:06:40,2,2,Reduces build time per level; demolish at lvl10,Yes
-all,Main Building,2,116,66,100,33,0:11:08,2,2,Reduces build time per level; demolish at lvl10,Yes
-all,Main Building,3,195,111,167,55,0:18:35,2,2,Reduces build time per level; demolish at lvl10,Yes
-all,Main Building,4,326,186,279,93,0:31:02,2,2,Reduces build time per level; demolish at lvl10,Yes
-all,Main Building,5,544,311,466,155,0:51:51,2,2,Reduces build time per level; demolish at lvl10,Yes
-all,Main Building,6,909,519,779,259,1:26:35,3,2,Reduces build time per level; demolish at lvl10,Yes
-all,Main Building,7,1518,867,1301,433,2:24:36,3,2,Reduces build time per level; demolish at lvl10,Yes
-all,Main Building,8,2535,1449,2173,724,4:01:30,3,2,Reduces build time per level; demolish at lvl10,Yes
-all,Main Building,9,4234,2419,3629,1209,6:43:18,3,2,Reduces build time per level; demolish at lvl10,Yes
-all,Main Building,10,7072,4041,6061,2020,11:13:31,3,2,Reduces build time per level; demolish at lvl10,Yes
-all,Main Building,11,11810,6748,10123,3374,18:44:47,4,2,Reduces build time per level; demolish at lvl10,Yes
-all,Main Building,12,19723,11270,16905,5635,31:18:24,4,2,Reduces build time per level; demolish at lvl10,Yes
-all,Main Building,13,32937,18821,28232,9410,52:16:56,4,2,Reduces build time per level; demolish at lvl10,Yes
-all,Main Building,14,55006,31432,47148,15716,87:18:41,4,2,Reduces build time per level; demolish at lvl10,Yes
-all,Main Building,15,91860,52491,78737,26245,145:48:36,4,2,Reduces build time per level; demolish at lvl10,Yes
-all,Main Building,16,153406,87661,131491,43830,243:30:11,5,2,Reduces build time per level; demolish at lvl10,Yes
-all,Main Building,17,256189,146394,219591,73197,406:39:00,5,2,Reduces build time per level; demolish at lvl10,Yes
-all,Main Building,18,427836,244478,366717,122239,679:06:21,5,2,Reduces build time per level; demolish at lvl10,Yes
-all,Main Building,19,714487,408278,612417,204139,1134:06:24,5,2,Reduces build time per level; demolish at lvl10,Yes
-all,Main Building,20,1193193,681825,1022737,340912,1893:57:30,5,2,Reduces build time per level; demolish at lvl10,Yes
-all,Warehouse,1,130,80,150,40,0:08:20,1,0,Stores wood/clay/iron; 800 cap at lvl1,No
-all,Warehouse,2,217,133,250,66,0:13:55,1,0,Stores wood/clay/iron; 800 cap at lvl1,No
-all,Warehouse,3,362,223,418,111,0:23:14,1,0,Stores wood/clay/iron; 800 cap at lvl1,No
-all,Warehouse,4,605,372,698,186,0:38:48,2,0,Stores wood/clay/iron; 800 cap at lvl1,No
-all,Warehouse,5,1011,622,1166,311,1:04:48,2,0,Stores wood/clay/iron; 800 cap at lvl1,No
-all,Warehouse,6,1688,1039,1948,519,1:48:14,2,0,Stores wood/clay/iron; 800 cap at lvl1,No
-all,Warehouse,7,2819,1735,3253,867,3:00:45,2,0,Stores wood/clay/iron; 800 cap at lvl1,No
-all,Warehouse,8,4709,2898,5433,1449,5:01:52,3,0,Stores wood/clay/iron; 800 cap at lvl1,No
-all,Warehouse,9,7864,4839,9074,2419,8:24:08,3,0,Stores wood/clay/iron; 800 cap at lvl1,No
-all,Warehouse,10,13133,8082,15154,4041,14:01:54,3,0,Stores wood/clay/iron; 800 cap at lvl1,No
-all,Warehouse,11,21933,13497,25307,6748,23:25:59,3,0,Stores wood/clay/iron; 800 cap at lvl1,No
-all,Warehouse,12,36628,22540,42264,11270,39:08:00,3,0,Stores wood/clay/iron; 800 cap at lvl1,No
-all,Warehouse,13,61170,37643,70581,18821,65:21:10,4,0,Stores wood/clay/iron; 800 cap at lvl1,No
-all,Warehouse,14,102154,62864,117870,31432,109:08:21,4,0,Stores wood/clay/iron; 800 cap at lvl1,No
-all,Warehouse,15,170598,104983,196843,52491,182:15:46,4,0,Stores wood/clay/iron; 800 cap at lvl1,No
-all,Warehouse,16,284898,175322,328729,87661,304:22:44,4,0,Stores wood/clay/iron; 800 cap at lvl1,No
-all,Warehouse,17,475780,292788,548977,146394,508:18:46,5,0,Stores wood/clay/iron; 800 cap at lvl1,No
-all,Warehouse,18,794553,488956,916792,244478,848:52:56,5,0,Stores wood/clay/iron; 800 cap at lvl1,No
-all,Warehouse,19,1326905,816556,1531044,408278,1417:38:00,5,0,Stores wood/clay/iron; 800 cap at lvl1,No
-all,Warehouse,20,2215931,1363650,2556843,681825,2367:26:52,5,0,Stores wood/clay/iron; 800 cap at lvl1,No
-all,Granary,1,160,100,100,70,0:08:20,1,0,Stores crop; 800 cap at lvl1,No
-all,Granary,2,267,167,167,116,0:13:55,1,0,Stores crop; 800 cap at lvl1,No
-all,Granary,3,446,278,278,195,0:23:14,1,0,Stores crop; 800 cap at lvl1,No
-all,Granary,4,745,465,465,326,0:38:48,2,0,Stores crop; 800 cap at lvl1,No
-all,Granary,5,1244,777,777,544,1:04:48,2,0,Stores crop; 800 cap at lvl1,No
-all,Granary,6,2078,1298,1298,909,1:48:14,2,0,Stores crop; 800 cap at lvl1,No
-all,Granary,7,3470,2169,2169,1518,3:00:45,2,0,Stores crop; 800 cap at lvl1,No
-all,Granary,8,5796,3622,3622,2535,5:01:52,3,0,Stores crop; 800 cap at lvl1,No
-all,Granary,9,9679,6049,6049,4234,8:24:08,3,0,Stores crop; 800 cap at lvl1,No
-all,Granary,10,16164,10102,10102,7072,14:01:54,3,0,Stores crop; 800 cap at lvl1,No
-all,Granary,11,26995,16871,16871,11810,23:25:59,3,0,Stores crop; 800 cap at lvl1,No
-all,Granary,12,45081,28176,28176,19723,39:08:00,3,0,Stores crop; 800 cap at lvl1,No
-all,Granary,13,75286,47054,47054,32937,65:21:10,4,0,Stores crop; 800 cap at lvl1,No
-all,Granary,14,125728,78580,78580,55006,109:08:21,4,0,Stores crop; 800 cap at lvl1,No
-all,Granary,15,209966,131229,131229,91860,182:15:46,4,0,Stores crop; 800 cap at lvl1,No
-all,Granary,16,350644,219152,219152,153406,304:22:44,4,0,Stores crop; 800 cap at lvl1,No
-all,Granary,17,585576,365985,365985,256189,508:18:46,5,0,Stores crop; 800 cap at lvl1,No
-all,Granary,18,977912,611195,611195,427836,848:52:56,5,0,Stores crop; 800 cap at lvl1,No
-all,Granary,19,1633113,1020696,1020696,714487,1417:38:00,5,0,Stores crop; 800 cap at lvl1,No
-all,Granary,20,2727300,1704562,1704562,1193193,2367:26:52,5,0,Stores crop; 800 cap at lvl1,No
-all,Rally Point,1,40,30,35,10,0:08:20,1,1,See incoming/outgoing troops; required for barracks,Yes
-all,Rally Point,2,66,50,58,16,0:13:55,1,1,See incoming/outgoing troops; required for barracks,Yes
-all,Rally Point,3,111,83,97,27,0:23:14,1,1,See incoming/outgoing troops; required for barracks,Yes
-all,Rally Point,4,186,139,163,46,0:38:48,1,1,See incoming/outgoing troops; required for barracks,Yes
-all,Rally Point,5,311,233,272,77,1:04:48,1,1,See incoming/outgoing troops; required for barracks,Yes
-all,Rally Point,6,519,389,454,129,1:48:14,1,1,See incoming/outgoing troops; required for barracks,Yes
-all,Rally Point,7,867,650,759,216,3:00:45,2,1,See incoming/outgoing troops; required for barracks,Yes
-all,Rally Point,8,1449,1086,1267,362,5:01:52,2,1,See incoming/outgoing troops; required for barracks,Yes
-all,Rally Point,9,2419,1814,2117,604,8:24:08,2,1,See incoming/outgoing troops; required for barracks,Yes
-all,Rally Point,10,4041,3030,3536,1010,14:01:54,2,1,See incoming/outgoing troops; required for barracks,Yes
-all,Rally Point,11,6748,5061,5905,1687,23:25:59,2,1,See incoming/outgoing troops; required for barracks,Yes
-all,Rally Point,12,11270,8452,9861,2817,39:08:00,2,1,See incoming/outgoing troops; required for barracks,Yes
-all,Rally Point,13,18821,14116,16468,4705,65:21:10,3,1,See incoming/outgoing troops; required for barracks,Yes
-all,Rally Point,14,31432,23574,27503,7858,109:08:21,3,1,See incoming/outgoing troops; required for barracks,Yes
-all,Rally Point,15,52491,39368,45930,13122,182:15:46,3,1,See incoming/outgoing troops; required for barracks,Yes
-all,Rally Point,16,87661,65745,76703,21915,304:22:44,3,1,See incoming/outgoing troops; required for barracks,Yes
-all,Rally Point,17,146394,109795,128094,36598,508:18:46,3,1,See incoming/outgoing troops; required for barracks,Yes
-all,Rally Point,18,244478,183358,213918,61119,848:52:56,3,1,See incoming/outgoing troops; required for barracks,Yes
-all,Rally Point,19,408278,306208,357243,102069,1417:38:00,4,1,See incoming/outgoing troops; required for barracks,Yes
-all,Rally Point,20,681825,511368,596596,170456,2367:26:52,4,1,See incoming/outgoing troops; required for barracks,Yes
-all,Marketplace,1,100,80,120,70,0:10:50,2,4,1 merchant per level; enables trading,Yes
-all,Marketplace,2,167,133,200,116,0:18:05,2,4,1 merchant per level; enables trading,Yes
-all,Marketplace,3,278,223,334,195,0:30:12,2,4,1 merchant per level; enables trading,Yes
-all,Marketplace,4,465,372,558,326,0:50:27,2,4,1 merchant per level; enables trading,Yes
-all,Marketplace,5,777,622,933,544,1:24:15,3,4,1 merchant per level; enables trading,Yes
-all,Marketplace,6,1298,1039,1558,909,2:20:42,3,4,1 merchant per level; enables trading,Yes
-all,Marketplace,7,2169,1735,2603,1518,3:54:59,3,4,1 merchant per level; enables trading,Yes
-all,Marketplace,8,3622,2898,4347,2535,6:32:26,3,4,1 merchant per level; enables trading,Yes
-all,Marketplace,9,6049,4839,7259,4234,10:55:22,3,4,1 merchant per level; enables trading,Yes
-all,Marketplace,10,10102,8082,12123,7072,18:14:29,4,4,1 merchant per level; enables trading,Yes
-all,Marketplace,11,16871,13497,20246,11810,30:27:47,4,4,1 merchant per level; enables trading,Yes
-all,Marketplace,12,28176,22540,33811,19723,50:52:24,4,4,1 merchant per level; enables trading,Yes
-all,Marketplace,13,47054,37643,56464,32937,84:57:31,4,4,1 merchant per level; enables trading,Yes
-all,Marketplace,14,78580,62864,94296,55006,141:52:52,4,4,1 merchant per level; enables trading,Yes
-all,Marketplace,15,131229,104983,157475,91860,236:56:30,5,4,1 merchant per level; enables trading,Yes
-all,Marketplace,16,219152,175322,262983,153406,395:41:33,5,4,1 merchant per level; enables trading,Yes
-all,Marketplace,17,365985,292788,439182,256189,660:48:23,5,4,1 merchant per level; enables trading,Yes
-all,Marketplace,18,611195,488956,733434,427836,1103:32:49,5,4,1 merchant per level; enables trading,Yes
-all,Marketplace,19,1020696,816556,1224835,714487,1842:55:25,5,4,1 merchant per level; enables trading,Yes
-all,Marketplace,20,1704562,1363650,2045475,1193193,3077:40:56,6,4,1 merchant per level; enables trading,Yes
-all,Embassy,1,180,130,150,80,0:30:00,3,3,Join/found alliance; raise max alliance size,Yes
-all,Embassy,2,300,217,250,133,0:50:06,3,3,Join/found alliance; raise max alliance size,Yes
-all,Embassy,3,502,362,418,223,1:23:40,3,3,Join/found alliance; raise max alliance size,Yes
-all,Embassy,4,838,605,698,372,2:19:43,3,3,Join/found alliance; raise max alliance size,Yes
-all,Embassy,5,1400,1011,1166,622,3:53:20,4,3,Join/found alliance; raise max alliance size,Yes
-all,Embassy,6,2338,1688,1948,1039,6:29:40,4,3,Join/found alliance; raise max alliance size,Yes
-all,Embassy,7,3904,2819,3253,1735,10:50:45,4,3,Join/found alliance; raise max alliance size,Yes
-all,Embassy,8,6520,4709,5433,2898,18:06:46,4,3,Join/found alliance; raise max alliance size,Yes
-all,Embassy,9,10889,7864,9074,4839,30:14:54,4,3,Join/found alliance; raise max alliance size,Yes
-all,Embassy,10,18185,13133,15154,8082,50:30:53,5,3,Join/found alliance; raise max alliance size,Yes
-all,Embassy,11,30369,21933,25307,13497,84:21:34,5,3,Join/found alliance; raise max alliance size,Yes
-all,Embassy,12,50717,36628,42264,22540,140:52:50,5,3,Join/found alliance; raise max alliance size,Yes
-all,Embassy,13,84697,61170,70581,37643,235:16:14,5,3,Join/found alliance; raise max alliance size,Yes
-all,Embassy,14,141444,102154,117870,62864,392:54:06,5,3,Join/found alliance; raise max alliance size,Yes
-all,Embassy,15,236212,170598,196843,104983,656:08:46,6,3,Join/found alliance; raise max alliance size,Yes
-all,Embassy,16,394475,284898,328729,175322,1095:45:50,6,3,Join/found alliance; raise max alliance size,Yes
-all,Embassy,17,658773,475780,548977,292788,1829:55:33,6,3,Join/found alliance; raise max alliance size,Yes
-all,Embassy,18,1100151,794553,916792,488956,3055:58:35,6,3,Join/found alliance; raise max alliance size,Yes
-all,Embassy,19,1837253,1326905,1531044,816556,5103:28:50,6,3,Join/found alliance; raise max alliance size,Yes
-all,Embassy,20,3068212,2215931,2556843,1363650,8522:48:46,7,3,Join/found alliance; raise max alliance size,Yes
-all,Cranny,1,40,50,30,10,0:03:20,1,1,Hides 200 resources from raiders at lvl1,No
-all,Cranny,2,66,83,50,16,0:05:34,1,1,Hides 200 resources from raiders at lvl1,No
-all,Cranny,3,111,139,83,27,0:09:17,1,1,Hides 200 resources from raiders at lvl1,No
-all,Cranny,4,186,232,139,46,0:15:31,1,1,Hides 200 resources from raiders at lvl1,No
-all,Cranny,5,311,388,233,77,0:25:55,1,1,Hides 200 resources from raiders at lvl1,No
-all,Cranny,6,519,649,389,129,0:43:17,1,1,Hides 200 resources from raiders at lvl1,No
-all,Cranny,7,867,1084,650,216,1:12:18,1,1,Hides 200 resources from raiders at lvl1,No
-all,Cranny,8,1449,1811,1086,362,2:00:45,1,1,Hides 200 resources from raiders at lvl1,No
-all,Cranny,9,2419,3024,1814,604,3:21:39,1,1,Hides 200 resources from raiders at lvl1,No
-all,Cranny,10,4041,5051,3030,1010,5:36:45,1,1,Hides 200 resources from raiders at lvl1,No
-all,Cranny,11,6748,8435,5061,1687,9:22:23,1,1,Hides 200 resources from raiders at lvl1,No
-all,Cranny,12,11270,14088,8452,2817,15:39:12,1,1,Hides 200 resources from raiders at lvl1,No
-all,Cranny,13,18821,23527,14116,4705,26:08:28,1,1,Hides 200 resources from raiders at lvl1,No
-all,Cranny,14,31432,39290,23574,7858,43:39:20,1,1,Hides 200 resources from raiders at lvl1,No
-all,Cranny,15,52491,65614,39368,13122,72:54:18,1,1,Hides 200 resources from raiders at lvl1,No
-all,Cranny,16,87661,109576,65745,21915,121:45:05,1,1,Hides 200 resources from raiders at lvl1,No
-all,Cranny,17,146394,182992,109795,36598,203:19:30,1,1,Hides 200 resources from raiders at lvl1,No
-all,Cranny,18,244478,305597,183358,61119,339:33:10,1,1,Hides 200 resources from raiders at lvl1,No
-all,Cranny,19,408278,510348,306208,102069,567:03:12,1,1,Hides 200 resources from raiders at lvl1,No
-all,Cranny,20,681825,852281,511368,170456,946:58:45,1,1,Hides 200 resources from raiders at lvl1,No
-all,Academy,1,220,160,90,40,0:30:00,4,3,Research new troops per level,Yes
-all,Academy,2,367,267,150,66,0:50:06,4,3,Research new troops per level,Yes
-all,Academy,3,613,446,251,111,1:23:40,4,3,Research new troops per level,Yes
-all,Academy,4,1024,745,419,186,2:19:43,4,3,Research new troops per level,Yes
-all,Academy,5,1711,1244,700,311,3:53:20,5,3,Research new troops per level,Yes
-all,Academy,6,2857,2078,1169,519,6:29:40,5,3,Research new troops per level,Yes
-all,Academy,7,4772,3470,1952,867,10:50:45,5,3,Research new troops per level,Yes
-all,Academy,8,7969,5796,3260,1449,18:06:46,5,3,Research new troops per level,Yes
-all,Academy,9,13309,9679,5444,2419,30:14:54,5,3,Research new troops per level,Yes
-all,Academy,10,22226,16164,9092,4041,50:30:53,6,3,Research new troops per level,Yes
-all,Academy,11,37118,26995,15184,6748,84:21:34,6,3,Research new troops per level,Yes
-all,Academy,12,61987,45081,25358,11270,140:52:50,6,3,Research new troops per level,Yes
-all,Academy,13,103519,75286,42348,18821,235:16:14,6,3,Research new troops per level,Yes
-all,Academy,14,172876,125728,70722,31432,392:54:06,6,3,Research new troops per level,Yes
-all,Academy,15,288704,209966,118106,52491,656:08:46,7,3,Research new troops per level,Yes
-all,Academy,16,482136,350644,197237,87661,1095:45:50,7,3,Research new troops per level,Yes
-all,Academy,17,805167,585576,329386,146394,1829:55:33,7,3,Research new troops per level,Yes
-all,Academy,18,1344629,977912,550075,244478,3055:58:35,7,3,Research new troops per level,Yes
-all,Academy,19,2245531,1633113,918626,408278,5103:28:50,7,3,Research new troops per level,Yes
-all,Academy,20,3750037,2727300,1534106,681825,8522:48:46,8,3,Research new troops per level,Yes
-all,Barracks,1,210,140,260,120,0:30:00,4,4,Train infantry; speed boost per level,Yes
-all,Barracks,2,350,233,434,200,0:50:06,4,4,Train infantry; speed boost per level,Yes
-all,Barracks,3,585,390,725,334,1:23:40,4,4,Train infantry; speed boost per level,Yes
-all,Barracks,4,978,652,1210,558,2:19:43,4,4,Train infantry; speed boost per level,Yes
-all,Barracks,5,1633,1088,2022,933,3:53:20,5,4,Train infantry; speed boost per level,Yes
-all,Barracks,6,2727,1818,3377,1558,6:29:40,5,4,Train infantry; speed boost per level,Yes
-all,Barracks,7,4555,3036,5639,2603,10:50:45,5,4,Train infantry; speed boost per level,Yes
-all,Barracks,8,7607,5071,9418,4347,18:06:46,5,4,Train infantry; speed boost per level,Yes
-all,Barracks,9,12704,8469,15729,7259,30:14:54,5,4,Train infantry; speed boost per level,Yes
-all,Barracks,10,21216,14144,26267,12123,50:30:53,6,4,Train infantry; speed boost per level,Yes
-all,Barracks,11,35431,23620,43867,20246,84:21:34,6,4,Train infantry; speed boost per level,Yes
-all,Barracks,12,59169,39446,73257,33811,140:52:50,6,4,Train infantry; speed boost per level,Yes
-all,Barracks,13,98813,65875,122340,56464,235:16:14,6,4,Train infantry; speed boost per level,Yes
-all,Barracks,14,165018,110012,204308,94296,392:54:06,6,4,Train infantry; speed boost per level,Yes
-all,Barracks,15,275581,183720,341196,157475,656:08:46,7,4,Train infantry; speed boost per level,Yes
-all,Barracks,16,460220,306813,569797,262983,1095:45:50,7,4,Train infantry; speed boost per level,Yes
-all,Barracks,17,768568,512379,951561,439182,1829:55:33,7,4,Train infantry; speed boost per level,Yes
-all,Barracks,18,1283510,855673,1589107,733434,3055:58:35,7,4,Train infantry; speed boost per level,Yes
-all,Barracks,19,2143461,1428974,2653810,1224835,5103:28:50,7,4,Train infantry; speed boost per level,Yes
-all,Barracks,20,3579581,2386387,4431862,2045475,8522:48:46,8,4,Train infantry; speed boost per level,Yes
-all,Stable,1,260,140,220,100,0:50:00,5,5,Train cavalry; speed boost per level,Yes
-all,Stable,2,434,233,367,167,1:23:30,5,5,Train cavalry; speed boost per level,Yes
-all,Stable,3,725,390,613,278,2:19:26,5,5,Train cavalry; speed boost per level,Yes
-all,Stable,4,1210,652,1024,465,3:52:52,5,5,Train cavalry; speed boost per level,Yes
-all,Stable,5,2022,1088,1711,777,6:28:53,6,5,Train cavalry; speed boost per level,Yes
-all,Stable,6,3377,1818,2857,1298,10:49:27,6,5,Train cavalry; speed boost per level,Yes
-all,Stable,7,5639,3036,4772,2169,18:04:35,6,5,Train cavalry; speed boost per level,Yes
-all,Stable,8,9418,5071,7969,3622,30:11:16,6,5,Train cavalry; speed boost per level,Yes
-all,Stable,9,15729,8469,13309,6049,50:24:50,6,5,Train cavalry; speed boost per level,Yes
-all,Stable,10,26267,14144,22226,10102,84:11:28,7,5,Train cavalry; speed boost per level,Yes
-all,Stable,11,43867,23620,37118,16871,140:35:57,7,5,Train cavalry; speed boost per level,Yes
-all,Stable,12,73257,39446,61987,28176,234:48:03,7,5,Train cavalry; speed boost per level,Yes
-all,Stable,13,122340,65875,103519,47054,392:07:03,7,5,Train cavalry; speed boost per level,Yes
-all,Stable,14,204308,110012,172876,78580,654:50:11,7,5,Train cavalry; speed boost per level,Yes
-all,Stable,15,341196,183720,288704,131229,1093:34:37,8,5,Train cavalry; speed boost per level,Yes
-all,Stable,16,569797,306813,482136,219152,1826:16:24,8,5,Train cavalry; speed boost per level,Yes
-all,Stable,17,951561,512379,805167,365985,3049:52:36,8,5,Train cavalry; speed boost per level,Yes
-all,Stable,18,1589107,855673,1344629,611195,5093:17:39,8,5,Train cavalry; speed boost per level,Yes
-all,Stable,19,2653810,1428974,2245531,1020696,8505:48:04,8,5,Train cavalry; speed boost per level,Yes
-all,Stable,20,4431862,2386387,3750037,1704562,14204:41:17,9,5,Train cavalry; speed boost per level,Yes
-all,Workshop,1,460,510,600,320,1:30:00,3,3,Train siege weapons,Yes
-all,Workshop,2,768,851,1002,534,2:30:18,3,3,Train siege weapons,Yes
-all,Workshop,3,1282,1422,1673,892,4:11:00,3,3,Train siege weapons,Yes
-all,Workshop,4,2142,2375,2794,1490,6:59:10,3,3,Train siege weapons,Yes
-all,Workshop,5,3577,3966,4666,2488,11:40:01,4,3,Train siege weapons,Yes
-all,Workshop,6,5975,6624,7793,4156,19:29:01,4,3,Train siege weapons,Yes
-all,Workshop,7,9978,11062,13015,6941,32:32:16,4,3,Train siege weapons,Yes
-all,Workshop,8,16663,18475,21735,11592,54:20:18,4,3,Train siege weapons,Yes
-all,Workshop,9,27828,30853,36298,19358,90:44:42,4,3,Train siege weapons,Yes
-all,Workshop,10,46473,51525,60617,32329,151:32:39,5,3,Train siege weapons,Yes
-all,Workshop,11,77610,86046,101231,53990,253:04:44,5,3,Train siege weapons,Yes
-all,Workshop,12,129610,143698,169056,90163,422:38:30,5,3,Train siege weapons,Yes
-all,Workshop,13,216448,239976,282324,150573,705:48:42,5,3,Train siege weapons,Yes
-all,Workshop,14,361469,400759,471482,251457,1178:42:20,5,3,Train siege weapons,Yes
-all,Workshop,15,603654,669269,787375,419933,1968:26:18,6,3,Train siege weapons,Yes
-all,Workshop,16,1008102,1117679,1314916,701289,3287:17:32,6,3,Train siege weapons,Yes
-all,Workshop,17,1683531,1866524,2195911,1171152,5489:46:41,6,3,Train siege weapons,Yes
-all,Workshop,18,2811498,3117096,3667171,1955824,9167:55:46,6,3,Train siege weapons,Yes
-all,Workshop,19,4695202,5205550,6124176,3266227,15310:26:32,6,3,Train siege weapons,Yes
-all,Workshop,20,7840987,8693269,10227375,5454600,25568:26:19,7,3,Train siege weapons,Yes
-all,Smithy,1,180,240,150,80,0:30:00,4,2,Upgrade troop attack/defense per level,Yes
-all,Smithy,2,300,400,250,133,0:50:06,4,2,Upgrade troop attack/defense per level,Yes
-all,Smithy,3,502,669,418,223,1:23:40,4,2,Upgrade troop attack/defense per level,Yes
-all,Smithy,4,838,1117,698,372,2:19:43,4,2,Upgrade troop attack/defense per level,Yes
-all,Smithy,5,1400,1866,1166,622,3:53:20,5,2,Upgrade troop attack/defense per level,Yes
-all,Smithy,6,2338,3117,1948,1039,6:29:40,5,2,Upgrade troop attack/defense per level,Yes
-all,Smithy,7,3904,5206,3253,1735,10:50:45,5,2,Upgrade troop attack/defense per level,Yes
-all,Smithy,8,6520,8694,5433,2898,18:06:46,5,2,Upgrade troop attack/defense per level,Yes
-all,Smithy,9,10889,14519,9074,4839,30:14:54,5,2,Upgrade troop attack/defense per level,Yes
-all,Smithy,10,18185,24247,15154,8082,50:30:53,6,2,Upgrade troop attack/defense per level,Yes
-all,Smithy,11,30369,40492,25307,13497,84:21:34,6,2,Upgrade troop attack/defense per level,Yes
-all,Smithy,12,50717,67622,42264,22540,140:52:50,6,2,Upgrade troop attack/defense per level,Yes
-all,Smithy,13,84697,112929,70581,37643,235:16:14,6,2,Upgrade troop attack/defense per level,Yes
-all,Smithy,14,141444,188592,117870,62864,392:54:06,6,2,Upgrade troop attack/defense per level,Yes
-all,Smithy,15,236212,314950,196843,104983,656:08:46,7,2,Upgrade troop attack/defense per level,Yes
-all,Smithy,16,394475,525966,328729,175322,1095:45:50,7,2,Upgrade troop attack/defense per level,Yes
-all,Smithy,17,658773,878364,548977,292788,1829:55:33,7,2,Upgrade troop attack/defense per level,Yes
-all,Smithy,18,1100151,1466868,916792,488956,3055:58:35,7,2,Upgrade troop attack/defense per level,Yes
-all,Smithy,19,1837253,2449670,1531044,816556,5103:28:50,7,2,Upgrade troop attack/defense per level,Yes
-all,Smithy,20,3068212,4090950,2556843,1363650,8522:48:46,8,2,Upgrade troop attack/defense per level,Yes
-all,Armoury,1,130,210,180,90,0:30:00,4,2,Upgrade troop defense per level,Yes
-all,Armoury,2,217,350,300,150,0:50:06,4,2,Upgrade troop defense per level,Yes
-all,Armoury,3,362,585,502,251,1:23:40,4,2,Upgrade troop defense per level,Yes
-all,Armoury,4,605,978,838,419,2:19:43,4,2,Upgrade troop defense per level,Yes
-all,Armoury,5,1011,1633,1400,700,3:53:20,5,2,Upgrade troop defense per level,Yes
-all,Armoury,6,1688,2727,2338,1169,6:29:40,5,2,Upgrade troop defense per level,Yes
-all,Armoury,7,2819,4555,3904,1952,10:50:45,5,2,Upgrade troop defense per level,Yes
-all,Armoury,8,4709,7607,6520,3260,18:06:46,5,2,Upgrade troop defense per level,Yes
-all,Armoury,9,7864,12704,10889,5444,30:14:54,5,2,Upgrade troop defense per level,Yes
-all,Armoury,10,13133,21216,18185,9092,50:30:53,6,2,Upgrade troop defense per level,Yes
-all,Armoury,11,21933,35431,30369,15184,84:21:34,6,2,Upgrade troop defense per level,Yes
-all,Armoury,12,36628,59169,50717,25358,140:52:50,6,2,Upgrade troop defense per level,Yes
-all,Armoury,13,61170,98813,84697,42348,235:16:14,6,2,Upgrade troop defense per level,Yes
-all,Armoury,14,102154,165018,141444,70722,392:54:06,6,2,Upgrade troop defense per level,Yes
-all,Armoury,15,170598,275581,236212,118106,656:08:46,7,2,Upgrade troop defense per level,Yes
-all,Armoury,16,284898,460220,394475,197237,1095:45:50,7,2,Upgrade troop defense per level,Yes
-all,Armoury,17,475780,768568,658773,329386,1829:55:33,7,2,Upgrade troop defense per level,Yes
-all,Armoury,18,794553,1283510,1100151,550075,3055:58:35,7,2,Upgrade troop defense per level,Yes
-all,Armoury,19,1326905,2143461,1837253,918626,5103:28:50,7,2,Upgrade troop defense per level,Yes
-all,Armoury,20,2215931,3579581,3068212,1534106,8522:48:46,8,2,Upgrade troop defense per level,Yes
-all,Townhall,1,1250,1000,1250,400,6:00:00,4,10,Host celebrations for culture points,Yes
-all,Townhall,2,2087,1670,2087,668,10:01:12,4,10,Host celebrations for culture points,Yes
-all,Townhall,3,3486,2788,3486,1115,16:44:00,4,10,Host celebrations for culture points,Yes
-all,Townhall,4,5821,4657,5821,1862,27:56:41,5,10,Host celebrations for culture points,Yes
-all,Townhall,5,9722,7777,9722,3111,46:40:04,5,10,Host celebrations for culture points,Yes
-all,Townhall,6,16236,12989,16236,5195,77:56:06,5,10,Host celebrations for culture points,Yes
-all,Townhall,7,27114,21691,27114,8676,130:09:06,5,10,Host celebrations for culture points,Yes
-all,Townhall,8,45281,36225,45281,14490,217:21:12,6,10,Host celebrations for culture points,Yes
-all,Townhall,9,75620,60496,75620,24198,362:58:48,6,10,Host celebrations for culture points,Yes
-all,Townhall,10,126286,101029,126286,40411,606:10:37,6,10,Host celebrations for culture points,Yes
-all,Townhall,11,210899,168719,210899,67487,1012:18:56,6,10,Host celebrations for culture points,Yes
-all,Townhall,12,352201,281761,352201,112704,1690:34:01,7,10,Host celebrations for culture points,Yes
-all,Townhall,13,588176,470541,588176,188216,2823:14:49,7,10,Host celebrations for culture points,Yes
-all,Townhall,14,982254,785803,982254,314321,4714:49:22,7,10,Host celebrations for culture points,Yes
-all,Townhall,15,1640365,1312292,1640365,524916,7873:45:14,7,10,Host celebrations for culture points,Yes
-all,Townhall,16,2739410,2191528,2739410,876611,13149:10:09,8,10,Host celebrations for culture points,Yes
-all,Townhall,17,4574815,3659852,4574815,1463940,21959:06:45,8,10,Host celebrations for culture points,Yes
-all,Townhall,18,7639941,6111953,7639941,2444781,36671:43:05,8,10,Host celebrations for culture points,Yes
-all,Townhall,19,12758701,10206961,12758701,4082784,61241:46:10,8,10,Host celebrations for culture points,Yes
-all,Townhall,20,21307032,17045625,21307032,6818250,102273:45:18,9,10,Host celebrations for culture points,Yes
-all,Residence,1,580,460,350,180,2:00:00,4,4,Expand to 3 villages; trains settlers,Yes
-all,Residence,2,968,768,584,300,3:20:24,4,4,Expand to 3 villages; trains settlers,Yes
-all,Residence,3,1617,1282,976,502,5:34:40,4,4,Expand to 3 villages; trains settlers,Yes
-all,Residence,4,2701,2142,1630,838,9:18:53,5,4,Expand to 3 villages; trains settlers,Yes
-all,Residence,5,4511,3577,2722,1400,15:33:21,5,4,Expand to 3 villages; trains settlers,Yes
-all,Residence,6,7533,5975,4546,2338,25:58:42,5,4,Expand to 3 villages; trains settlers,Yes
-all,Residence,7,12581,9978,7592,3904,43:23:02,5,4,Expand to 3 villages; trains settlers,Yes
-all,Residence,8,21010,16663,12678,6520,72:27:04,6,4,Expand to 3 villages; trains settlers,Yes
-all,Residence,9,35088,27828,21173,10889,120:59:36,6,4,Expand to 3 villages; trains settlers,Yes
-all,Residence,10,58597,46473,35360,18185,202:03:32,6,4,Expand to 3 villages; trains settlers,Yes
-all,Residence,11,97857,77610,59051,30369,337:26:18,6,4,Expand to 3 villages; trains settlers,Yes
-all,Residence,12,163421,129610,98616,50717,563:31:20,7,4,Expand to 3 villages; trains settlers,Yes
-all,Residence,13,272913,216448,164689,84697,941:04:56,7,4,Expand to 3 villages; trains settlers,Yes
-all,Residence,14,455766,361469,275031,141444,1571:36:27,7,4,Expand to 3 villages; trains settlers,Yes
-all,Residence,15,761129,603654,459302,236212,2624:35:04,7,4,Expand to 3 villages; trains settlers,Yes
-all,Residence,16,1271086,1008102,767034,394475,4383:03:23,8,4,Expand to 3 villages; trains settlers,Yes
-all,Residence,17,2122714,1683531,1280948,658773,7319:42:15,8,4,Expand to 3 villages; trains settlers,Yes
-all,Residence,18,3544932,2811498,2139183,1100151,12223:54:21,8,4,Expand to 3 villages; trains settlers,Yes
-all,Residence,19,5920037,4695202,3572436,1837253,20413:55:23,8,4,Expand to 3 villages; trains settlers,Yes
-all,Residence,20,9886463,7840987,5965969,3068212,34091:15:06,9,4,Expand to 3 villages; trains settlers,Yes
-all,Palace,1,1200,800,1000,600,5:00:00,6,5,Capital + expand; trains senators/chiefs,Yes
-all,Palace,2,2004,1336,1670,1002,8:21:00,6,5,Capital + expand; trains senators/chiefs,Yes
-all,Palace,3,3346,2231,2788,1673,13:56:40,6,5,Capital + expand; trains senators/chiefs,Yes
-all,Palace,4,5588,3725,4657,2794,23:17:14,7,5,Capital + expand; trains senators/chiefs,Yes
-all,Palace,5,9333,6222,7777,4666,38:53:23,7,5,Capital + expand; trains senators/chiefs,Yes
-all,Palace,6,15587,10391,12989,7793,64:56:45,7,5,Capital + expand; trains senators/chiefs,Yes
-all,Palace,7,26030,17353,21691,13015,108:27:35,7,5,Capital + expand; trains senators/chiefs,Yes
-all,Palace,8,43470,28980,36225,21735,181:07:40,8,5,Capital + expand; trains senators/chiefs,Yes
-all,Palace,9,72596,48397,60496,36298,302:29:00,8,5,Capital + expand; trains senators/chiefs,Yes
-all,Palace,10,121235,80823,101029,60617,505:08:51,8,5,Capital + expand; trains senators/chiefs,Yes
-all,Palace,11,202463,134975,168719,101231,843:35:47,8,5,Capital + expand; trains senators/chiefs,Yes
-all,Palace,12,338113,225408,281761,169056,1408:48:21,9,5,Capital + expand; trains senators/chiefs,Yes
-all,Palace,13,564649,376432,470541,282324,2352:42:21,9,5,Capital + expand; trains senators/chiefs,Yes
-all,Palace,14,942964,628643,785803,471482,3929:01:08,9,5,Capital + expand; trains senators/chiefs,Yes
-all,Palace,15,1574750,1049833,1312292,787375,6561:27:42,9,5,Capital + expand; trains senators/chiefs,Yes
-all,Palace,16,2629833,1753222,2191528,1314916,10957:38:27,10,5,Capital + expand; trains senators/chiefs,Yes
-all,Palace,17,4391822,2927881,3659852,2195911,18299:15:38,10,5,Capital + expand; trains senators/chiefs,Yes
-all,Palace,18,7334343,4889562,6111953,3667171,30559:45:54,10,5,Capital + expand; trains senators/chiefs,Yes
-all,Palace,19,12248353,8165569,10206961,6124176,51034:48:28,10,5,Capital + expand; trains senators/chiefs,Yes
-all,Palace,20,20454751,13636500,17045625,10227375,85228:07:45,11,5,Capital + expand; trains senators/chiefs,Yes
-all,Tournament Square,1,1000,1000,1000,1000,4:00:00,2,2,Boosts troop travel speed beyond 30 fields,Yes
-all,Tournament Square,2,1670,1670,1670,1670,6:40:48,2,2,Boosts troop travel speed beyond 30 fields,Yes
-all,Tournament Square,3,2788,2788,2788,2788,11:09:20,2,2,Boosts troop travel speed beyond 30 fields,Yes
-all,Tournament Square,4,4657,4657,4657,4657,18:37:47,2,2,Boosts troop travel speed beyond 30 fields,Yes
-all,Tournament Square,5,7777,7777,7777,7777,31:06:42,2,2,Boosts troop travel speed beyond 30 fields,Yes
-all,Tournament Square,6,12989,12989,12989,12989,51:57:24,3,2,Boosts troop travel speed beyond 30 fields,Yes
-all,Tournament Square,7,21691,21691,21691,21691,86:46:04,3,2,Boosts troop travel speed beyond 30 fields,Yes
-all,Tournament Square,8,36225,36225,36225,36225,144:54:08,3,2,Boosts troop travel speed beyond 30 fields,Yes
-all,Tournament Square,9,60496,60496,60496,60496,241:59:12,3,2,Boosts troop travel speed beyond 30 fields,Yes
-all,Tournament Square,10,101029,101029,101029,101029,404:07:04,3,2,Boosts troop travel speed beyond 30 fields,Yes
-all,Tournament Square,11,168719,168719,168719,168719,674:52:37,3,2,Boosts troop travel speed beyond 30 fields,Yes
-all,Tournament Square,12,281761,281761,281761,281761,1127:02:41,4,2,Boosts troop travel speed beyond 30 fields,Yes
-all,Tournament Square,13,470541,470541,470541,470541,1882:09:53,4,2,Boosts troop travel speed beyond 30 fields,Yes
-all,Tournament Square,14,785803,785803,785803,785803,3143:12:54,4,2,Boosts troop travel speed beyond 30 fields,Yes
-all,Tournament Square,15,1312292,1312292,1312292,1312292,5249:10:09,4,2,Boosts troop travel speed beyond 30 fields,Yes
-all,Tournament Square,16,2191528,2191528,2191528,2191528,8766:06:46,4,2,Boosts troop travel speed beyond 30 fields,Yes
-all,Tournament Square,17,3659852,3659852,3659852,3659852,14639:24:30,4,2,Boosts troop travel speed beyond 30 fields,Yes
-all,Tournament Square,18,6111953,6111953,6111953,6111953,24447:48:43,5,2,Boosts troop travel speed beyond 30 fields,Yes
-all,Tournament Square,19,10206961,10206961,10206961,10206961,40827:50:46,5,2,Boosts troop travel speed beyond 30 fields,Yes
-all,Tournament Square,20,17045625,17045625,17045625,17045625,68182:30:12,5,2,Boosts troop travel speed beyond 30 fields,Yes
-all,Trade Office,1,300,500,350,200,1:30:00,2,2,Increases merchant carry capacity,Yes
-all,Trade Office,2,501,835,584,334,2:30:18,2,2,Increases merchant carry capacity,Yes
-all,Trade Office,3,836,1394,976,557,4:11:00,2,2,Increases merchant carry capacity,Yes
-all,Trade Office,4,1397,2328,1630,931,6:59:10,2,2,Increases merchant carry capacity,Yes
-all,Trade Office,5,2333,3888,2722,1555,11:40:01,3,2,Increases merchant carry capacity,Yes
-all,Trade Office,6,3896,6494,4546,2597,19:29:01,3,2,Increases merchant carry capacity,Yes
-all,Trade Office,7,6507,10845,7592,4338,32:32:16,3,2,Increases merchant carry capacity,Yes
-all,Trade Office,8,10867,18112,12678,7245,54:20:18,3,2,Increases merchant carry capacity,Yes
-all,Trade Office,9,18149,30248,21173,12099,90:44:42,3,2,Increases merchant carry capacity,Yes
-all,Trade Office,10,30308,50514,35360,20205,151:32:39,4,2,Increases merchant carry capacity,Yes
-all,Trade Office,11,50615,84359,59051,33743,253:04:44,4,2,Increases merchant carry capacity,Yes
-all,Trade Office,12,84528,140880,98616,56352,422:38:30,4,2,Increases merchant carry capacity,Yes
-all,Trade Office,13,141162,235270,164689,94108,705:48:42,4,2,Increases merchant carry capacity,Yes
-all,Trade Office,14,235741,392901,275031,157160,1178:42:20,4,2,Increases merchant carry capacity,Yes
-all,Trade Office,15,393687,656146,459302,262458,1968:26:18,5,2,Increases merchant carry capacity,Yes
-all,Trade Office,16,657458,1095764,767034,438305,3287:17:32,5,2,Increases merchant carry capacity,Yes
-all,Trade Office,17,1097955,1829926,1280948,731970,5489:46:41,5,2,Increases merchant carry capacity,Yes
-all,Trade Office,18,1833585,3055976,2139183,1222390,9167:55:46,5,2,Increases merchant carry capacity,Yes
-all,Trade Office,19,3062088,5103480,3572436,2041392,15310:26:32,5,2,Increases merchant carry capacity,Yes
-all,Trade Office,20,5113687,8522812,5965969,3409125,25568:26:19,6,2,Increases merchant carry capacity,Yes
-all,Hero's Mansion,1,700,670,700,240,3:00:00,4,4,Equip hero items; capture oases,Yes
-all,Hero's Mansion,2,1169,1118,1169,400,5:00:36,4,4,Equip hero items; capture oases,Yes
-all,Hero's Mansion,3,1952,1868,1952,669,8:22:00,4,4,Equip hero items; capture oases,Yes
-all,Hero's Mansion,4,3260,3120,3260,1117,13:58:20,4,4,Equip hero items; capture oases,Yes
-all,Hero's Mansion,5,5444,5211,5444,1866,23:20:02,5,4,Equip hero items; capture oases,Yes
-all,Hero's Mansion,6,9092,8702,9092,3117,38:58:03,5,4,Equip hero items; capture oases,Yes
-all,Hero's Mansion,7,15184,14533,15184,5206,65:04:33,5,4,Equip hero items; capture oases,Yes
-all,Hero's Mansion,8,25357,24271,25357,8694,108:40:36,5,4,Equip hero items; capture oases,Yes
-all,Hero's Mansion,9,42347,40532,42347,14519,181:29:24,5,4,Equip hero items; capture oases,Yes
-all,Hero's Mansion,10,70720,67689,70720,24247,303:05:18,6,4,Equip hero items; capture oases,Yes
-all,Hero's Mansion,11,118103,113041,118103,40492,506:09:28,6,4,Equip hero items; capture oases,Yes
-all,Hero's Mansion,12,197232,188780,197232,67622,845:17:00,6,4,Equip hero items; capture oases,Yes
-all,Hero's Mansion,13,329378,315262,329378,112929,1411:37:24,6,4,Equip hero items; capture oases,Yes
-all,Hero's Mansion,14,550062,526488,550062,188592,2357:24:41,6,4,Equip hero items; capture oases,Yes
-all,Hero's Mansion,15,918604,879235,918604,314950,3936:52:37,7,4,Equip hero items; capture oases,Yes
-all,Hero's Mansion,16,1534069,1468323,1534069,525966,6574:35:04,7,4,Equip hero items; capture oases,Yes
-all,Hero's Mansion,17,2561896,2452100,2561896,878364,10979:33:22,7,4,Equip hero items; capture oases,Yes
-all,Hero's Mansion,18,4278367,4095008,4278367,1466868,18335:51:32,7,4,Equip hero items; capture oases,Yes
-all,Hero's Mansion,19,7144873,6838664,7144873,2449670,30620:53:05,7,4,Equip hero items; capture oases,Yes
-all,Hero's Mansion,20,11931938,11420569,11931938,4090950,51136:52:39,8,4,Equip hero items; capture oases,Yes
-all,Sawmill,1,400,350,350,100,1:30:00,1,1,+5% wood production per level (max 5),Yes
-all,Sawmill,2,668,584,584,167,2:30:18,1,1,+5% wood production per level (max 5),Yes
-all,Sawmill,3,1115,976,976,278,4:11:00,1,1,+5% wood production per level (max 5),Yes
-all,Sawmill,4,1862,1630,1630,465,6:59:10,1,1,+5% wood production per level (max 5),Yes
-all,Sawmill,5,3111,2722,2722,777,11:40:01,1,1,+5% wood production per level (max 5),Yes
-all,Brickyard,1,440,480,320,120,1:30:00,1,1,+5% clay production per level (max 5),Yes
-all,Brickyard,2,734,801,534,200,2:30:18,1,1,+5% clay production per level (max 5),Yes
-all,Brickyard,3,1227,1338,892,334,4:11:00,1,1,+5% clay production per level (max 5),Yes
-all,Brickyard,4,2049,2235,1490,558,6:59:10,1,1,+5% clay production per level (max 5),Yes
-all,Brickyard,5,3422,3733,2488,933,11:40:01,1,1,+5% clay production per level (max 5),Yes
-all,Iron Foundry,1,200,450,400,100,1:30:00,1,1,+5% iron production per level (max 5),Yes
-all,Iron Foundry,2,334,751,668,167,2:30:18,1,1,+5% iron production per level (max 5),Yes
-all,Iron Foundry,3,557,1255,1115,278,4:11:00,1,1,+5% iron production per level (max 5),Yes
-all,Iron Foundry,4,931,2095,1862,465,6:59:10,1,1,+5% iron production per level (max 5),Yes
-all,Iron Foundry,5,1555,3500,3111,777,11:40:01,1,1,+5% iron production per level (max 5),Yes
-all,Flour Mill,1,500,440,380,140,1:30:00,1,1,+5% crop production per level (max 5),Yes
-all,Flour Mill,2,835,734,634,233,2:30:18,1,1,+5% crop production per level (max 5),Yes
-all,Flour Mill,3,1394,1227,1059,390,4:11:00,1,1,+5% crop production per level (max 5),Yes
-all,Flour Mill,4,2328,2049,1769,652,6:59:10,1,1,+5% crop production per level (max 5),Yes
-all,Flour Mill,5,3888,3422,2955,1088,11:40:01,1,1,+5% crop production per level (max 5),Yes
-all,Bakery,1,500,440,380,140,2:00:00,1,1,+5% crop production per level (max 5); needs Flour Mill 5,Yes
-all,Bakery,2,835,734,634,233,3:20:24,1,1,+5% crop production per level (max 5); needs Flour Mill 5,Yes
-all,Bakery,3,1394,1227,1059,390,5:34:40,1,1,+5% crop production per level (max 5); needs Flour Mill 5,Yes
-all,Bakery,4,2328,2049,1769,652,9:18:53,1,1,+5% crop production per level (max 5); needs Flour Mill 5,Yes
-all,Bakery,5,3888,3422,2955,1088,15:33:21,1,1,+5% crop production per level (max 5); needs Flour Mill 5,Yes
-all,Great Warehouse,1,650,400,750,200,1:00:00,2,0,Triple-capacity warehouse (capital only with artifact),Yes
-all,Great Warehouse,2,1085,668,1252,334,1:40:12,2,0,Triple-capacity warehouse (capital only with artifact),Yes
-all,Great Warehouse,3,1812,1115,2091,557,2:47:20,3,0,Triple-capacity warehouse (capital only with artifact),Yes
-all,Great Warehouse,4,3027,1862,3493,931,4:39:26,3,0,Triple-capacity warehouse (capital only with artifact),Yes
-all,Great Warehouse,5,5055,3111,5833,1555,7:46:40,3,0,Triple-capacity warehouse (capital only with artifact),Yes
-all,Great Warehouse,6,8442,5195,9741,2597,12:59:21,4,0,Triple-capacity warehouse (capital only with artifact),Yes
-all,Great Warehouse,7,14099,8676,16268,4338,21:41:31,4,0,Triple-capacity warehouse (capital only with artifact),Yes
-all,Great Warehouse,8,23546,14490,27169,7245,36:13:32,4,0,Triple-capacity warehouse (capital only with artifact),Yes
-all,Great Warehouse,9,39322,24198,45372,12099,60:29:48,5,0,Triple-capacity warehouse (capital only with artifact),Yes
-all,Great Warehouse,10,65669,40411,75772,20205,101:01:46,5,0,Triple-capacity warehouse (capital only with artifact),Yes
-all,Great Warehouse,11,109667,67487,126539,33743,168:43:09,5,0,Triple-capacity warehouse (capital only with artifact),Yes
-all,Great Warehouse,12,183144,112704,211320,56352,281:45:40,6,0,Triple-capacity warehouse (capital only with artifact),Yes
-all,Great Warehouse,13,305851,188216,352905,94108,470:32:28,6,0,Triple-capacity warehouse (capital only with artifact),Yes
-all,Great Warehouse,14,510772,314321,589352,157160,785:48:13,6,0,Triple-capacity warehouse (capital only with artifact),Yes
-all,Great Warehouse,15,852990,524916,984219,262458,1312:17:32,7,0,Triple-capacity warehouse (capital only with artifact),Yes
-all,Great Warehouse,16,1424493,876611,1643646,438305,2191:31:41,7,0,Triple-capacity warehouse (capital only with artifact),Yes
-all,Great Warehouse,17,2378903,1463940,2744889,731970,3659:51:07,7,0,Triple-capacity warehouse (capital only with artifact),Yes
-all,Great Warehouse,18,3972769,2444781,4583964,1222390,6111:57:10,8,0,Triple-capacity warehouse (capital only with artifact),Yes
-all,Great Warehouse,19,6634525,4082784,7655221,2041392,10206:57:41,8,0,Triple-capacity warehouse (capital only with artifact),Yes
-all,Great Warehouse,20,11079656,6818250,12784219,3409125,17045:37:33,8,0,Triple-capacity warehouse (capital only with artifact),Yes
-all,Great Granary,1,800,500,500,350,1:00:00,2,0,Triple-capacity granary (capital only with artifact),Yes
-all,Great Granary,2,1336,835,835,584,1:40:12,2,0,Triple-capacity granary (capital only with artifact),Yes
-all,Great Granary,3,2231,1394,1394,976,2:47:20,3,0,Triple-capacity granary (capital only with artifact),Yes
-all,Great Granary,4,3725,2328,2328,1630,4:39:26,3,0,Triple-capacity granary (capital only with artifact),Yes
-all,Great Granary,5,6222,3888,3888,2722,7:46:40,3,0,Triple-capacity granary (capital only with artifact),Yes
-all,Great Granary,6,10391,6494,6494,4546,12:59:21,4,0,Triple-capacity granary (capital only with artifact),Yes
-all,Great Granary,7,17353,10845,10845,7592,21:41:31,4,0,Triple-capacity granary (capital only with artifact),Yes
-all,Great Granary,8,28980,18112,18112,12678,36:13:32,4,0,Triple-capacity granary (capital only with artifact),Yes
-all,Great Granary,9,48397,30248,30248,21173,60:29:48,5,0,Triple-capacity granary (capital only with artifact),Yes
-all,Great Granary,10,80823,50514,50514,35360,101:01:46,5,0,Triple-capacity granary (capital only with artifact),Yes
-all,Great Granary,11,134975,84359,84359,59051,168:43:09,5,0,Triple-capacity granary (capital only with artifact),Yes
-all,Great Granary,12,225408,140880,140880,98616,281:45:40,6,0,Triple-capacity granary (capital only with artifact),Yes
-all,Great Granary,13,376432,235270,235270,164689,470:32:28,6,0,Triple-capacity granary (capital only with artifact),Yes
-all,Great Granary,14,628643,392901,392901,275031,785:48:13,6,0,Triple-capacity granary (capital only with artifact),Yes
-all,Great Granary,15,1049833,656146,656146,459302,1312:17:32,7,0,Triple-capacity granary (capital only with artifact),Yes
-all,Great Granary,16,1753222,1095764,1095764,767034,2191:31:41,7,0,Triple-capacity granary (capital only with artifact),Yes
-all,Great Granary,17,2927881,1829926,1829926,1280948,3659:51:07,7,0,Triple-capacity granary (capital only with artifact),Yes
-all,Great Granary,18,4889562,3055976,3055976,2139183,6111:57:10,8,0,Triple-capacity granary (capital only with artifact),Yes
-all,Great Granary,19,8165569,5103480,5103480,3572436,10206:57:41,8,0,Triple-capacity granary (capital only with artifact),Yes
-all,Great Granary,20,13636500,8522812,8522812,5965969,17045:37:33,8,0,Triple-capacity granary (capital only with artifact),Yes
-all,Great Barracks,1,1300,840,1560,720,1:00:00,5,3,Train 3x infantry simultaneously at 3x cost,Yes
-all,Great Barracks,2,2171,1402,2605,1202,1:40:12,5,3,Train 3x infantry simultaneously at 3x cost,Yes
-all,Great Barracks,3,3625,2342,4350,2008,2:47:20,5,3,Train 3x infantry simultaneously at 3x cost,Yes
-all,Great Barracks,4,6054,3912,7265,3353,4:39:26,6,3,Train 3x infantry simultaneously at 3x cost,Yes
-all,Great Barracks,5,10111,6533,12133,5600,7:46:40,6,3,Train 3x infantry simultaneously at 3x cost,Yes
-all,Great Barracks,6,16885,10910,20263,9352,12:59:21,6,3,Train 3x infantry simultaneously at 3x cost,Yes
-all,Great Barracks,7,28199,18221,33839,15618,21:41:31,6,3,Train 3x infantry simultaneously at 3x cost,Yes
-all,Great Barracks,8,47093,30429,56511,26082,36:13:32,7,3,Train 3x infantry simultaneously at 3x cost,Yes
-all,Great Barracks,9,78645,50817,94374,43557,60:29:48,7,3,Train 3x infantry simultaneously at 3x cost,Yes
-all,Great Barracks,10,131338,84864,157606,72741,101:01:46,7,3,Train 3x infantry simultaneously at 3x cost,Yes
-all,Great Barracks,11,219335,141724,263202,121477,168:43:09,7,3,Train 3x infantry simultaneously at 3x cost,Yes
-all,Great Barracks,12,366289,236679,439547,202868,281:45:40,8,3,Train 3x infantry simultaneously at 3x cost,Yes
-all,Great Barracks,13,611703,395254,734044,338789,470:32:28,8,3,Train 3x infantry simultaneously at 3x cost,Yes
-all,Great Barracks,14,1021544,660075,1225853,565778,785:48:13,8,3,Train 3x infantry simultaneously at 3x cost,Yes
-all,Great Barracks,15,1705980,1102325,2047176,944850,1312:17:32,8,3,Train 3x infantry simultaneously at 3x cost,Yes
-all,Great Barracks,16,2848986,1840883,3418784,1577900,2191:31:41,9,3,Train 3x infantry simultaneously at 3x cost,Yes
-all,Great Barracks,17,4757807,3074275,5709369,2635093,3659:51:07,9,3,Train 3x infantry simultaneously at 3x cost,Yes
-all,Great Barracks,18,7945538,5134040,9534646,4400606,6111:57:10,9,3,Train 3x infantry simultaneously at 3x cost,Yes
-all,Great Barracks,19,13269050,8573847,15922860,7349012,10206:57:41,9,3,Train 3x infantry simultaneously at 3x cost,Yes
-all,Great Barracks,20,22159313,14318325,26591176,12272850,17045:37:33,10,3,Train 3x infantry simultaneously at 3x cost,Yes
-all,Great Stable,1,1560,840,1320,600,1:00:00,5,3,Train 3x cavalry simultaneously at 3x cost,Yes
-all,Great Stable,2,2605,1402,2204,1002,1:40:12,5,3,Train 3x cavalry simultaneously at 3x cost,Yes
-all,Great Stable,3,4350,2342,3681,1673,2:47:20,5,3,Train 3x cavalry simultaneously at 3x cost,Yes
-all,Great Stable,4,7265,3912,6147,2794,4:39:26,6,3,Train 3x cavalry simultaneously at 3x cost,Yes
-all,Great Stable,5,12133,6533,10266,4666,7:46:40,6,3,Train 3x cavalry simultaneously at 3x cost,Yes
-all,Great Stable,6,20263,10910,17145,7793,12:59:21,6,3,Train 3x cavalry simultaneously at 3x cost,Yes
-all,Great Stable,7,33839,18221,28633,13015,21:41:31,6,3,Train 3x cavalry simultaneously at 3x cost,Yes
-all,Great Stable,8,56511,30429,47817,21735,36:13:32,7,3,Train 3x cavalry simultaneously at 3x cost,Yes
-all,Great Stable,9,94374,50817,79855,36298,60:29:48,7,3,Train 3x cavalry simultaneously at 3x cost,Yes
-all,Great Stable,10,157606,84864,133358,60617,101:01:46,7,3,Train 3x cavalry simultaneously at 3x cost,Yes
-all,Great Stable,11,263202,141724,222709,101231,168:43:09,7,3,Train 3x cavalry simultaneously at 3x cost,Yes
-all,Great Stable,12,439547,236679,371924,169056,281:45:40,8,3,Train 3x cavalry simultaneously at 3x cost,Yes
-all,Great Stable,13,734044,395254,621114,282324,470:32:28,8,3,Train 3x cavalry simultaneously at 3x cost,Yes
-all,Great Stable,14,1225853,660075,1037261,471482,785:48:13,8,3,Train 3x cavalry simultaneously at 3x cost,Yes
-all,Great Stable,15,2047176,1102325,1732225,787375,1312:17:32,8,3,Train 3x cavalry simultaneously at 3x cost,Yes
-all,Great Stable,16,3418784,1840883,2892817,1314916,2191:31:41,9,3,Train 3x cavalry simultaneously at 3x cost,Yes
-all,Great Stable,17,5709369,3074275,4831004,2195911,3659:51:07,9,3,Train 3x cavalry simultaneously at 3x cost,Yes
-all,Great Stable,18,9534646,5134040,8067778,3667171,6111:57:10,9,3,Train 3x cavalry simultaneously at 3x cost,Yes
-all,Great Stable,19,15922860,8573847,13473189,6124176,10206:57:41,9,3,Train 3x cavalry simultaneously at 3x cost,Yes
-all,Great Stable,20,26591176,14318325,22500226,10227375,17045:37:33,10,3,Train 3x cavalry simultaneously at 3x cost,Yes
-all,Stonemason,1,155,130,125,70,0:30:00,2,2,Protects buildings from catapults (capital only),Yes
-all,Stonemason,2,258,217,208,116,0:50:06,2,2,Protects buildings from catapults (capital only),Yes
-all,Stonemason,3,432,362,348,195,1:23:40,2,2,Protects buildings from catapults (capital only),Yes
-all,Stonemason,4,721,605,582,326,2:19:43,2,2,Protects buildings from catapults (capital only),Yes
-all,Stonemason,5,1205,1011,972,544,3:53:20,3,2,Protects buildings from catapults (capital only),Yes
-all,Stonemason,6,2013,1688,1623,909,6:29:40,3,2,Protects buildings from catapults (capital only),Yes
-all,Stonemason,7,3362,2819,2711,1518,10:50:45,3,2,Protects buildings from catapults (capital only),Yes
-all,Stonemason,8,5614,4709,4528,2535,18:06:46,3,2,Protects buildings from catapults (capital only),Yes
-all,Stonemason,9,9376,7864,7562,4234,30:14:54,3,2,Protects buildings from catapults (capital only),Yes
-all,Stonemason,10,15659,13133,12628,7072,50:30:53,4,2,Protects buildings from catapults (capital only),Yes
-all,Treasury,1,2500,2000,2400,1200,8:00:00,4,10,Stores artifacts; 1 diet per 10 levels,Yes
-all,Treasury,2,4175,3340,4008,2004,13:21:36,4,10,Stores artifacts; 1 diet per 10 levels,Yes
-all,Treasury,3,6972,5577,6693,3346,22:18:40,5,10,Stores artifacts; 1 diet per 10 levels,Yes
-all,Treasury,4,11643,9314,11177,5588,37:15:34,5,10,Stores artifacts; 1 diet per 10 levels,Yes
-all,Treasury,5,19444,15555,18667,9333,62:13:25,5,10,Stores artifacts; 1 diet per 10 levels,Yes
-all,Treasury,6,32472,25978,31174,15587,103:54:48,6,10,Stores artifacts; 1 diet per 10 levels,Yes
-all,Treasury,7,54229,43383,52060,26030,173:32:08,6,10,Stores artifacts; 1 diet per 10 levels,Yes
-all,Treasury,8,90563,72451,86941,43470,289:48:16,6,10,Stores artifacts; 1 diet per 10 levels,Yes
-all,Treasury,9,151241,120993,145192,72596,483:58:25,7,10,Stores artifacts; 1 diet per 10 levels,Yes
-all,Treasury,10,252573,202059,242470,121235,808:14:09,7,10,Stores artifacts; 1 diet per 10 levels,Yes
-all,Treasury,11,421798,337438,404926,202463,1349:45:15,7,10,Stores artifacts; 1 diet per 10 levels,Yes
-all,Treasury,12,704402,563522,676226,338113,2254:05:22,8,10,Stores artifacts; 1 diet per 10 levels,Yes
-all,Treasury,13,1176352,941082,1129298,564649,3764:19:46,8,10,Stores artifacts; 1 diet per 10 levels,Yes
-all,Treasury,14,1964509,1571607,1885929,942964,6286:25:49,8,10,Stores artifacts; 1 diet per 10 levels,Yes
-all,Treasury,15,3280730,2624584,3149501,1574750,10498:20:19,9,10,Stores artifacts; 1 diet per 10 levels,Yes
-all,Treasury,16,5478820,4383056,5259667,2629833,17532:13:32,9,10,Stores artifacts; 1 diet per 10 levels,Yes
-all,Treasury,17,9149630,7319704,8783645,4391822,29278:49:01,9,10,Stores artifacts; 1 diet per 10 levels,Yes
-all,Treasury,18,15279882,12223906,14668687,7334343,48895:37:27,10,10,Stores artifacts; 1 diet per 10 levels,Yes
-all,Treasury,19,25517403,20413923,24496707,12248353,81655:41:33,10,10,Stores artifacts; 1 diet per 10 levels,Yes
-all,Treasury,20,42614064,34091251,40909502,20454751,136365:00:24,10,10,Stores artifacts; 1 diet per 10 levels,Yes
-Romans,City Wall,1,70,90,170,70,0:30:00,2,2,Strongest wall; high defense bonus but fragile to rams,Yes
-Romans,City Wall,2,116,150,283,116,0:50:06,2,2,Strongest wall; high defense bonus but fragile to rams,Yes
-Romans,City Wall,3,195,251,474,195,1:23:40,2,2,Strongest wall; high defense bonus but fragile to rams,Yes
-Romans,City Wall,4,326,419,791,326,2:19:43,2,2,Strongest wall; high defense bonus but fragile to rams,Yes
-Romans,City Wall,5,544,700,1322,544,3:53:20,2,2,Strongest wall; high defense bonus but fragile to rams,Yes
-Romans,City Wall,6,909,1169,2208,909,6:29:40,2,2,Strongest wall; high defense bonus but fragile to rams,Yes
-Romans,City Wall,7,1518,1952,3687,1518,10:50:45,2,2,Strongest wall; high defense bonus but fragile to rams,Yes
-Romans,City Wall,8,2535,3260,6158,2535,18:06:46,2,2,Strongest wall; high defense bonus but fragile to rams,Yes
-Romans,City Wall,9,4234,5444,10284,4234,30:14:54,2,2,Strongest wall; high defense bonus but fragile to rams,Yes
-Romans,City Wall,10,7072,9092,17175,7072,50:30:53,2,2,Strongest wall; high defense bonus but fragile to rams,Yes
-Romans,City Wall,11,11810,15184,28682,11810,84:21:34,2,2,Strongest wall; high defense bonus but fragile to rams,Yes
-Romans,City Wall,12,19723,25358,47899,19723,140:52:50,2,2,Strongest wall; high defense bonus but fragile to rams,Yes
-Romans,City Wall,13,32937,42348,79992,32937,235:16:14,2,2,Strongest wall; high defense bonus but fragile to rams,Yes
-Romans,City Wall,14,55006,70722,133586,55006,392:54:06,2,2,Strongest wall; high defense bonus but fragile to rams,Yes
-Romans,City Wall,15,91860,118106,223089,91860,656:08:46,2,2,Strongest wall; high defense bonus but fragile to rams,Yes
-Romans,City Wall,16,153406,197237,372559,153406,1095:45:50,2,2,Strongest wall; high defense bonus but fragile to rams,Yes
-Romans,City Wall,17,256189,329386,622174,256189,1829:55:33,2,2,Strongest wall; high defense bonus but fragile to rams,Yes
-Romans,City Wall,18,427836,550075,1039032,427836,3055:58:35,2,2,Strongest wall; high defense bonus but fragile to rams,Yes
-Romans,City Wall,19,714487,918626,1735183,714487,5103:28:50,2,2,Strongest wall; high defense bonus but fragile to rams,Yes
-Romans,City Wall,20,1193193,1534106,2897756,1193193,8522:48:46,2,2,Strongest wall; high defense bonus but fragile to rams,Yes
-Romans,Horse Drinking Trough,1,780,420,660,320,2:00:00,2,2,Reduces cavalry crop upkeep by 1 per 5 levels,Yes
-Romans,Horse Drinking Trough,2,1302,701,1102,534,3:20:24,2,2,Reduces cavalry crop upkeep by 1 per 5 levels,Yes
-Romans,Horse Drinking Trough,3,2175,1171,1840,892,5:34:40,2,2,Reduces cavalry crop upkeep by 1 per 5 levels,Yes
-Romans,Horse Drinking Trough,4,3632,1956,3073,1490,9:18:53,2,2,Reduces cavalry crop upkeep by 1 per 5 levels,Yes
-Romans,Horse Drinking Trough,5,6066,3266,5133,2488,15:33:21,3,2,Reduces cavalry crop upkeep by 1 per 5 levels,Yes
-Romans,Horse Drinking Trough,6,10131,5455,8572,4156,25:58:42,3,2,Reduces cavalry crop upkeep by 1 per 5 levels,Yes
-Romans,Horse Drinking Trough,7,16919,9110,14316,6941,43:23:02,3,2,Reduces cavalry crop upkeep by 1 per 5 levels,Yes
-Romans,Horse Drinking Trough,8,28255,15214,23908,11592,72:27:04,3,2,Reduces cavalry crop upkeep by 1 per 5 levels,Yes
-Romans,Horse Drinking Trough,9,47187,25408,39927,19358,120:59:36,3,2,Reduces cavalry crop upkeep by 1 per 5 levels,Yes
-Romans,Horse Drinking Trough,10,78803,42432,66679,32329,202:03:32,4,2,Reduces cavalry crop upkeep by 1 per 5 levels,Yes
-Romans,Horse Drinking Trough,11,131601,70862,111354,53990,337:26:18,4,2,Reduces cavalry crop upkeep by 1 per 5 levels,Yes
-Romans,Horse Drinking Trough,12,219773,118339,185962,90163,563:31:20,4,2,Reduces cavalry crop upkeep by 1 per 5 levels,Yes
-Romans,Horse Drinking Trough,13,367022,197627,310557,150573,941:04:56,4,2,Reduces cavalry crop upkeep by 1 per 5 levels,Yes
-Romans,Horse Drinking Trough,14,612926,330037,518630,251457,1571:36:27,4,2,Reduces cavalry crop upkeep by 1 per 5 levels,Yes
-Romans,Horse Drinking Trough,15,1023588,551162,866112,419933,2624:35:04,5,2,Reduces cavalry crop upkeep by 1 per 5 levels,Yes
-Romans,Horse Drinking Trough,16,1709392,920441,1446408,701289,4383:03:23,5,2,Reduces cavalry crop upkeep by 1 per 5 levels,Yes
-Romans,Horse Drinking Trough,17,2854684,1537137,2415502,1171152,7319:42:15,5,2,Reduces cavalry crop upkeep by 1 per 5 levels,Yes
-Romans,Horse Drinking Trough,18,4767323,2567020,4033889,1955824,12223:54:21,5,2,Reduces cavalry crop upkeep by 1 per 5 levels,Yes
-Romans,Horse Drinking Trough,19,7961430,4286923,6736594,3266227,20413:55:23,5,2,Reduces cavalry crop upkeep by 1 per 5 levels,Yes
-Romans,Horse Drinking Trough,20,13295588,7159162,11250113,5454600,34091:15:06,6,2,Reduces cavalry crop upkeep by 1 per 5 levels,Yes
-Teutons,Earth Wall,1,120,200,0,80,0:20:00,2,2,Hard to destroy; moderate defense bonus,Yes
-Teutons,Earth Wall,2,200,334,0,133,0:33:24,2,2,Hard to destroy; moderate defense bonus,Yes
-Teutons,Earth Wall,3,334,557,0,223,0:55:46,2,2,Hard to destroy; moderate defense bonus,Yes
-Teutons,Earth Wall,4,558,931,0,372,1:33:08,2,2,Hard to destroy; moderate defense bonus,Yes
-Teutons,Earth Wall,5,933,1555,0,622,2:35:33,2,2,Hard to destroy; moderate defense bonus,Yes
-Teutons,Earth Wall,6,1558,2597,0,1039,4:19:47,2,2,Hard to destroy; moderate defense bonus,Yes
-Teutons,Earth Wall,7,2603,4338,0,1735,7:13:50,2,2,Hard to destroy; moderate defense bonus,Yes
-Teutons,Earth Wall,8,4347,7245,0,2898,12:04:30,2,2,Hard to destroy; moderate defense bonus,Yes
-Teutons,Earth Wall,9,7259,12099,0,4839,20:09:56,2,2,Hard to destroy; moderate defense bonus,Yes
-Teutons,Earth Wall,10,12123,20205,0,8082,33:40:35,2,2,Hard to destroy; moderate defense bonus,Yes
-Teutons,Earth Wall,11,20246,33743,0,13497,56:14:23,2,2,Hard to destroy; moderate defense bonus,Yes
-Teutons,Earth Wall,12,33811,56352,0,22540,93:55:13,2,2,Hard to destroy; moderate defense bonus,Yes
-Teutons,Earth Wall,13,56464,94108,0,37643,156:50:49,2,2,Hard to destroy; moderate defense bonus,Yes
-Teutons,Earth Wall,14,94296,157160,0,62864,261:56:04,2,2,Hard to destroy; moderate defense bonus,Yes
-Teutons,Earth Wall,15,157475,262458,0,104983,437:25:50,2,2,Hard to destroy; moderate defense bonus,Yes
-Teutons,Earth Wall,16,262983,438305,0,175322,730:30:33,2,2,Hard to destroy; moderate defense bonus,Yes
-Teutons,Earth Wall,17,439182,731970,0,292788,1219:57:02,2,2,Hard to destroy; moderate defense bonus,Yes
-Teutons,Earth Wall,18,733434,1222390,0,488956,2037:19:03,2,2,Hard to destroy; moderate defense bonus,Yes
-Teutons,Earth Wall,19,1224835,2041392,0,816556,3402:19:13,2,2,Hard to destroy; moderate defense bonus,Yes
-Teutons,Earth Wall,20,2045475,3409125,0,1363650,5681:52:31,2,2,Hard to destroy; moderate defense bonus,Yes
-Teutons,Brewery,1,1460,2000,1120,680,6:00:00,3,3,Boosts troop attack from this village during parties,Yes
-Teutons,Brewery,2,2438,3340,1870,1135,10:01:12,3,3,Boosts troop attack from this village during parties,Yes
-Teutons,Brewery,3,4071,5577,3123,1896,16:44:00,3,3,Boosts troop attack from this village during parties,Yes
-Teutons,Brewery,4,6799,9314,5216,3167,27:56:41,3,3,Boosts troop attack from this village during parties,Yes
-Teutons,Brewery,5,11355,15555,8711,5289,46:40:04,4,3,Boosts troop attack from this village during parties,Yes
-Teutons,Brewery,6,18964,25978,14547,8832,77:56:06,4,3,Boosts troop attack from this village during parties,Yes
-Teutons,Brewery,7,31670,43383,24294,14750,130:09:06,4,3,Boosts troop attack from this village during parties,Yes
-Teutons,Brewery,8,52889,72451,40572,24633,217:21:12,4,3,Boosts troop attack from this village during parties,Yes
-Teutons,Brewery,9,88325,120993,67756,41137,362:58:48,4,3,Boosts troop attack from this village during parties,Yes
-Teutons,Brewery,10,147503,202059,113153,68700,606:10:37,5,3,Boosts troop attack from this village during parties,Yes
-Teutons,Brewery,11,246330,337438,188965,114729,1012:18:56,5,3,Boosts troop attack from this village during parties,Yes
-Teutons,Brewery,12,411371,563522,315572,191597,1690:34:01,5,3,Boosts troop attack from this village during parties,Yes
-Teutons,Brewery,13,686990,941082,527006,319968,2823:14:49,5,3,Boosts troop attack from this village during parties,Yes
-Teutons,Brewery,14,1147273,1571607,880100,534346,4714:49:22,5,3,Boosts troop attack from this village during parties,Yes
-Teutons,Brewery,15,1915946,2624584,1469767,892358,7873:45:14,6,3,Boosts troop attack from this village during parties,Yes
-Teutons,Brewery,16,3199631,4383056,2454511,1490239,13149:10:09,6,3,Boosts troop attack from this village during parties,Yes
-Teutons,Brewery,17,5343384,7319704,4099034,2488699,21959:06:45,6,3,Boosts troop attack from this village during parties,Yes
-Teutons,Brewery,18,8923451,12223906,6845387,4156128,36671:43:05,6,3,Boosts troop attack from this village during parties,Yes
-Teutons,Brewery,19,14902163,20413923,11431796,6940733,61241:46:10,6,3,Boosts troop attack from this village during parties,Yes
-Teutons,Brewery,20,24886613,34091251,19091100,11591025,102273:45:18,7,3,Boosts troop attack from this village during parties,Yes
-Teutons,Trapper,1,100,100,100,80,0:30:00,2,2,Traps enemy troops per level (up to 1000 at max),No
-Teutons,Trapper,2,167,167,167,133,0:50:06,2,2,Traps enemy troops per level (up to 1000 at max),No
-Teutons,Trapper,3,278,278,278,223,1:23:40,2,2,Traps enemy troops per level (up to 1000 at max),No
-Teutons,Trapper,4,465,465,465,372,2:19:43,2,2,Traps enemy troops per level (up to 1000 at max),No
-Teutons,Trapper,5,777,777,777,622,3:53:20,2,2,Traps enemy troops per level (up to 1000 at max),No
-Teutons,Trapper,6,1298,1298,1298,1039,6:29:40,2,2,Traps enemy troops per level (up to 1000 at max),No
-Teutons,Trapper,7,2169,2169,2169,1735,10:50:45,2,2,Traps enemy troops per level (up to 1000 at max),No
-Teutons,Trapper,8,3622,3622,3622,2898,18:06:46,2,2,Traps enemy troops per level (up to 1000 at max),No
-Teutons,Trapper,9,6049,6049,6049,4839,30:14:54,2,2,Traps enemy troops per level (up to 1000 at max),No
-Teutons,Trapper,10,10102,10102,10102,8082,50:30:53,2,2,Traps enemy troops per level (up to 1000 at max),No
-Teutons,Trapper,11,16871,16871,16871,13497,84:21:34,2,2,Traps enemy troops per level (up to 1000 at max),No
-Teutons,Trapper,12,28176,28176,28176,22540,140:52:50,2,2,Traps enemy troops per level (up to 1000 at max),No
-Teutons,Trapper,13,47054,47054,47054,37643,235:16:14,2,2,Traps enemy troops per level (up to 1000 at max),No
-Teutons,Trapper,14,78580,78580,78580,62864,392:54:06,2,2,Traps enemy troops per level (up to 1000 at max),No
-Teutons,Trapper,15,131229,131229,131229,104983,656:08:46,2,2,Traps enemy troops per level (up to 1000 at max),No
-Teutons,Trapper,16,219152,219152,219152,175322,1095:45:50,2,2,Traps enemy troops per level (up to 1000 at max),No
-Teutons,Trapper,17,365985,365985,365985,292788,1829:55:33,2,2,Traps enemy troops per level (up to 1000 at max),No
-Teutons,Trapper,18,611195,611195,611195,488956,3055:58:35,2,2,Traps enemy troops per level (up to 1000 at max),No
-Teutons,Trapper,19,1020696,1020696,1020696,816556,5103:28:50,2,2,Traps enemy troops per level (up to 1000 at max),No
-Teutons,Trapper,20,1704562,1704562,1704562,1363650,8522:48:46,2,2,Traps enemy troops per level (up to 1000 at max),No
-Gauls,Palisade,1,160,100,80,60,0:20:00,2,2,Balanced defense; hard to destroy; moderate bonus,Yes
-Gauls,Palisade,2,267,167,133,100,0:33:24,2,2,Balanced defense; hard to destroy; moderate bonus,Yes
-Gauls,Palisade,3,446,278,223,167,0:55:46,2,2,Balanced defense; hard to destroy; moderate bonus,Yes
-Gauls,Palisade,4,745,465,372,279,1:33:08,2,2,Balanced defense; hard to destroy; moderate bonus,Yes
-Gauls,Palisade,5,1244,777,622,466,2:35:33,2,2,Balanced defense; hard to destroy; moderate bonus,Yes
-Gauls,Palisade,6,2078,1298,1039,779,4:19:47,2,2,Balanced defense; hard to destroy; moderate bonus,Yes
-Gauls,Palisade,7,3470,2169,1735,1301,7:13:50,2,2,Balanced defense; hard to destroy; moderate bonus,Yes
-Gauls,Palisade,8,5796,3622,2898,2173,12:04:30,2,2,Balanced defense; hard to destroy; moderate bonus,Yes
-Gauls,Palisade,9,9679,6049,4839,3629,20:09:56,2,2,Balanced defense; hard to destroy; moderate bonus,Yes
-Gauls,Palisade,10,16164,10102,8082,6061,33:40:35,2,2,Balanced defense; hard to destroy; moderate bonus,Yes
-Gauls,Palisade,11,26995,16871,13497,10123,56:14:23,2,2,Balanced defense; hard to destroy; moderate bonus,Yes
-Gauls,Palisade,12,45081,28176,22540,16905,93:55:13,2,2,Balanced defense; hard to destroy; moderate bonus,Yes
-Gauls,Palisade,13,75286,47054,37643,28232,156:50:49,2,2,Balanced defense; hard to destroy; moderate bonus,Yes
-Gauls,Palisade,14,125728,78580,62864,47148,261:56:04,2,2,Balanced defense; hard to destroy; moderate bonus,Yes
-Gauls,Palisade,15,209966,131229,104983,78737,437:25:50,2,2,Balanced defense; hard to destroy; moderate bonus,Yes
-Gauls,Palisade,16,350644,219152,175322,131491,730:30:33,2,2,Balanced defense; hard to destroy; moderate bonus,Yes
-Gauls,Palisade,17,585576,365985,292788,219591,1219:57:02,2,2,Balanced defense; hard to destroy; moderate bonus,Yes
-Gauls,Palisade,18,977912,611195,488956,366717,2037:19:03,2,2,Balanced defense; hard to destroy; moderate bonus,Yes
-Gauls,Palisade,19,1633113,1020696,816556,612417,3402:19:13,2,2,Balanced defense; hard to destroy; moderate bonus,Yes
-Gauls,Palisade,20,2727300,1704562,1363650,1022737,5681:52:31,2,2,Balanced defense; hard to destroy; moderate bonus,Yes
-Gauls,Menhir,1,65,65,65,65,0:05:00,1,1,Slows enemy scouts; Gaul-specific cranny bonus,Yes
-Gauls,Menhir,2,108,108,108,108,0:08:21,1,1,Slows enemy scouts; Gaul-specific cranny bonus,Yes
-Gauls,Menhir,3,181,181,181,181,0:13:56,1,1,Slows enemy scouts; Gaul-specific cranny bonus,Yes
-Gauls,Menhir,4,302,302,302,302,0:23:17,1,1,Slows enemy scouts; Gaul-specific cranny bonus,Yes
-Gauls,Menhir,5,505,505,505,505,0:38:53,1,1,Slows enemy scouts; Gaul-specific cranny bonus,Yes
-Gauls,Menhir,6,844,844,844,844,1:04:56,1,1,Slows enemy scouts; Gaul-specific cranny bonus,Yes
-Gauls,Menhir,7,1409,1409,1409,1409,1:48:27,1,1,Slows enemy scouts; Gaul-specific cranny bonus,Yes
-Gauls,Menhir,8,2354,2354,2354,2354,3:01:07,1,1,Slows enemy scouts; Gaul-specific cranny bonus,Yes
-Gauls,Menhir,9,3932,3932,3932,3932,5:02:29,1,1,Slows enemy scouts; Gaul-specific cranny bonus,Yes
-Gauls,Menhir,10,6566,6566,6566,6566,8:25:08,1,1,Slows enemy scouts; Gaul-specific cranny bonus,Yes
-Gauls,Menhir,11,10966,10966,10966,10966,14:03:35,1,1,Slows enemy scouts; Gaul-specific cranny bonus,Yes
-Gauls,Menhir,12,18314,18314,18314,18314,23:28:48,1,1,Slows enemy scouts; Gaul-specific cranny bonus,Yes
-Gauls,Menhir,13,30585,30585,30585,30585,39:12:42,1,1,Slows enemy scouts; Gaul-specific cranny bonus,Yes
-Gauls,Menhir,14,51077,51077,51077,51077,65:29:01,1,1,Slows enemy scouts; Gaul-specific cranny bonus,Yes
-Gauls,Menhir,15,85299,85299,85299,85299,109:21:27,1,1,Slows enemy scouts; Gaul-specific cranny bonus,Yes
-Gauls,Menhir,16,142449,142449,142449,142449,182:37:38,1,1,Slows enemy scouts; Gaul-specific cranny bonus,Yes
-Gauls,Menhir,17,237890,237890,237890,237890,304:59:15,1,1,Slows enemy scouts; Gaul-specific cranny bonus,Yes
-Gauls,Menhir,18,397276,397276,397276,397276,509:19:45,1,1,Slows enemy scouts; Gaul-specific cranny bonus,Yes
-Gauls,Menhir,19,663452,663452,663452,663452,850:34:48,1,1,Slows enemy scouts; Gaul-specific cranny bonus,Yes
-Gauls,Menhir,20,1107965,1107965,1107965,1107965,1420:28:07,1,1,Slows enemy scouts; Gaul-specific cranny bonus,Yes
+tribe,name,level,cost_wood,cost_clay,cost_iron,cost_crop,build_time_1x,population_gained,culture_points,special_effect,is_unique,effect_value
+all,Woodcutter,1,40,100,50,60,0:03:20,2,0,+production per level,No,
+all,Woodcutter,2,66,167,83,100,0:05:34,2,0,+production per level,No,
+all,Woodcutter,3,111,278,139,167,0:09:17,2,0,+production per level,No,
+all,Woodcutter,4,186,465,232,279,0:15:31,2,0,+production per level,No,
+all,Woodcutter,5,311,777,388,466,0:25:55,2,0,+production per level,No,
+all,Woodcutter,6,519,1298,649,779,0:43:17,2,0,+production per level,No,
+all,Woodcutter,7,867,2169,1084,1301,1:12:18,2,0,+production per level,No,
+all,Woodcutter,8,1449,3622,1811,2173,2:00:45,2,0,+production per level,No,
+all,Woodcutter,9,2419,6049,3024,3629,3:21:39,2,0,+production per level,No,
+all,Woodcutter,10,4041,10102,5051,6061,5:36:45,2,0,+production per level,No,
+all,Woodcutter,11,6748,16871,8435,10123,9:22:23,2,0,+production per level,No,
+all,Woodcutter,12,11270,28176,14088,16905,15:39:12,2,0,+production per level,No,
+all,Woodcutter,13,18821,47054,23527,28232,26:08:28,2,0,+production per level,No,
+all,Woodcutter,14,31432,78580,39290,47148,43:39:20,2,0,+production per level,No,
+all,Woodcutter,15,52491,131229,65614,78737,72:54:18,2,0,+production per level,No,
+all,Woodcutter,16,87661,219152,109576,131491,121:45:05,2,0,+production per level,No,
+all,Woodcutter,17,146394,365985,182992,219591,203:19:30,2,0,+production per level,No,
+all,Woodcutter,18,244478,611195,305597,366717,339:33:10,2,0,+production per level,No,
+all,Woodcutter,19,408278,1020696,510348,612417,567:03:12,2,0,+production per level,No,
+all,Woodcutter,20,681825,1704562,852281,1022737,946:58:45,2,0,+production per level,No,
+all,Clay Pit,1,80,40,80,50,0:03:20,2,0,+production per level,No,
+all,Clay Pit,2,133,66,133,83,0:05:34,2,0,+production per level,No,
+all,Clay Pit,3,223,111,223,139,0:09:17,2,0,+production per level,No,
+all,Clay Pit,4,372,186,372,232,0:15:31,2,0,+production per level,No,
+all,Clay Pit,5,622,311,622,388,0:25:55,2,0,+production per level,No,
+all,Clay Pit,6,1039,519,1039,649,0:43:17,2,0,+production per level,No,
+all,Clay Pit,7,1735,867,1735,1084,1:12:18,2,0,+production per level,No,
+all,Clay Pit,8,2898,1449,2898,1811,2:00:45,2,0,+production per level,No,
+all,Clay Pit,9,4839,2419,4839,3024,3:21:39,2,0,+production per level,No,
+all,Clay Pit,10,8082,4041,8082,5051,5:36:45,2,0,+production per level,No,
+all,Clay Pit,11,13497,6748,13497,8435,9:22:23,2,0,+production per level,No,
+all,Clay Pit,12,22540,11270,22540,14088,15:39:12,2,0,+production per level,No,
+all,Clay Pit,13,37643,18821,37643,23527,26:08:28,2,0,+production per level,No,
+all,Clay Pit,14,62864,31432,62864,39290,43:39:20,2,0,+production per level,No,
+all,Clay Pit,15,104983,52491,104983,65614,72:54:18,2,0,+production per level,No,
+all,Clay Pit,16,175322,87661,175322,109576,121:45:05,2,0,+production per level,No,
+all,Clay Pit,17,292788,146394,292788,182992,203:19:30,2,0,+production per level,No,
+all,Clay Pit,18,488956,244478,488956,305597,339:33:10,2,0,+production per level,No,
+all,Clay Pit,19,816556,408278,816556,510348,567:03:12,2,0,+production per level,No,
+all,Clay Pit,20,1363650,681825,1363650,852281,946:58:45,2,0,+production per level,No,
+all,Iron Mine,1,100,80,30,60,0:03:20,2,0,+production per level,No,
+all,Iron Mine,2,167,133,50,100,0:05:34,2,0,+production per level,No,
+all,Iron Mine,3,278,223,83,167,0:09:17,2,0,+production per level,No,
+all,Iron Mine,4,465,372,139,279,0:15:31,2,0,+production per level,No,
+all,Iron Mine,5,777,622,233,466,0:25:55,2,0,+production per level,No,
+all,Iron Mine,6,1298,1039,389,779,0:43:17,2,0,+production per level,No,
+all,Iron Mine,7,2169,1735,650,1301,1:12:18,2,0,+production per level,No,
+all,Iron Mine,8,3622,2898,1086,2173,2:00:45,2,0,+production per level,No,
+all,Iron Mine,9,6049,4839,1814,3629,3:21:39,2,0,+production per level,No,
+all,Iron Mine,10,10102,8082,3030,6061,5:36:45,2,0,+production per level,No,
+all,Iron Mine,11,16871,13497,5061,10123,9:22:23,2,0,+production per level,No,
+all,Iron Mine,12,28176,22540,8452,16905,15:39:12,2,0,+production per level,No,
+all,Iron Mine,13,47054,37643,14116,28232,26:08:28,2,0,+production per level,No,
+all,Iron Mine,14,78580,62864,23574,47148,43:39:20,2,0,+production per level,No,
+all,Iron Mine,15,131229,104983,39368,78737,72:54:18,2,0,+production per level,No,
+all,Iron Mine,16,219152,175322,65745,131491,121:45:05,2,0,+production per level,No,
+all,Iron Mine,17,365985,292788,109795,219591,203:19:30,2,0,+production per level,No,
+all,Iron Mine,18,611195,488956,183358,366717,339:33:10,2,0,+production per level,No,
+all,Iron Mine,19,1020696,816556,306208,612417,567:03:12,2,0,+production per level,No,
+all,Iron Mine,20,1704562,1363650,511368,1022737,946:58:45,2,0,+production per level,No,
+all,Cropland,1,70,90,70,20,0:04:10,1,0,+production per level,No,
+all,Cropland,2,116,150,116,33,0:06:57,1,0,+production per level,No,
+all,Cropland,3,195,251,195,55,0:11:37,1,0,+production per level,No,
+all,Cropland,4,326,419,326,93,0:19:24,1,0,+production per level,No,
+all,Cropland,5,544,700,544,155,0:32:24,1,0,+production per level,No,
+all,Cropland,6,909,1169,909,259,0:54:07,1,0,+production per level,No,
+all,Cropland,7,1518,1952,1518,433,1:30:22,1,0,+production per level,No,
+all,Cropland,8,2535,3260,2535,724,2:30:56,1,0,+production per level,No,
+all,Cropland,9,4234,5444,4234,1209,4:12:04,1,0,+production per level,No,
+all,Cropland,10,7072,9092,7072,2020,7:00:57,1,0,+production per level,No,
+all,Cropland,11,11810,15184,11810,3374,11:42:59,1,0,+production per level,No,
+all,Cropland,12,19723,25358,19723,5635,19:34:00,1,0,+production per level,No,
+all,Cropland,13,32937,42348,32937,9410,32:40:35,1,0,+production per level,No,
+all,Cropland,14,55006,70722,55006,15716,54:34:10,1,0,+production per level,No,
+all,Cropland,15,91860,118106,91860,26245,91:07:53,1,0,+production per level,No,
+all,Cropland,16,153406,197237,153406,43830,152:11:22,1,0,+production per level,No,
+all,Cropland,17,256189,329386,256189,73197,254:09:23,1,0,+production per level,No,
+all,Cropland,18,427836,550075,427836,122239,424:26:28,1,0,+production per level,No,
+all,Cropland,19,714487,918626,714487,204139,708:49:00,1,0,+production per level,No,
+all,Cropland,20,1193193,1534106,1193193,340912,1183:43:26,1,0,+production per level,No,
+all,Main Building,1,70,40,60,20,0:06:40,2,2,Reduces build time per level; demolish at lvl10,Yes,100
+all,Main Building,2,116,66,100,33,0:11:08,2,2,Reduces build time per level; demolish at lvl10,Yes,96
+all,Main Building,3,195,111,167,55,0:18:35,2,2,Reduces build time per level; demolish at lvl10,Yes,93
+all,Main Building,4,326,186,279,93,0:31:02,2,2,Reduces build time per level; demolish at lvl10,Yes,90
+all,Main Building,5,544,311,466,155,0:51:51,2,2,Reduces build time per level; demolish at lvl10,Yes,86
+all,Main Building,6,909,519,779,259,1:26:35,3,2,Reduces build time per level; demolish at lvl10,Yes,83
+all,Main Building,7,1518,867,1301,433,2:24:36,3,2,Reduces build time per level; demolish at lvl10,Yes,80
+all,Main Building,8,2535,1449,2173,724,4:01:30,3,2,Reduces build time per level; demolish at lvl10,Yes,77
+all,Main Building,9,4234,2419,3629,1209,6:43:18,3,2,Reduces build time per level; demolish at lvl10,Yes,75
+all,Main Building,10,7072,4041,6061,2020,11:13:31,3,2,Reduces build time per level; demolish at lvl10,Yes,72
+all,Main Building,11,11810,6748,10123,3374,18:44:47,4,2,Reduces build time per level; demolish at lvl10,Yes,69
+all,Main Building,12,19723,11270,16905,5635,31:18:24,4,2,Reduces build time per level; demolish at lvl10,Yes,67
+all,Main Building,13,32937,18821,28232,9410,52:16:56,4,2,Reduces build time per level; demolish at lvl10,Yes,64
+all,Main Building,14,55006,31432,47148,15716,87:18:41,4,2,Reduces build time per level; demolish at lvl10,Yes,62
+all,Main Building,15,91860,52491,78737,26245,145:48:36,4,2,Reduces build time per level; demolish at lvl10,Yes,60
+all,Main Building,16,153406,87661,131491,43830,243:30:11,5,2,Reduces build time per level; demolish at lvl10,Yes,58
+all,Main Building,17,256189,146394,219591,73197,406:39:00,5,2,Reduces build time per level; demolish at lvl10,Yes,56
+all,Main Building,18,427836,244478,366717,122239,679:06:21,5,2,Reduces build time per level; demolish at lvl10,Yes,54
+all,Main Building,19,714487,408278,612417,204139,1134:06:24,5,2,Reduces build time per level; demolish at lvl10,Yes,52
+all,Main Building,20,1193193,681825,1022737,340912,1893:57:30,5,2,Reduces build time per level; demolish at lvl10,Yes,50
+all,Warehouse,1,130,80,150,40,0:08:20,1,0,Stores wood/clay/iron; 800 cap at lvl1,No,
+all,Warehouse,2,217,133,250,66,0:13:55,1,0,Stores wood/clay/iron; 800 cap at lvl1,No,
+all,Warehouse,3,362,223,418,111,0:23:14,1,0,Stores wood/clay/iron; 800 cap at lvl1,No,
+all,Warehouse,4,605,372,698,186,0:38:48,2,0,Stores wood/clay/iron; 800 cap at lvl1,No,
+all,Warehouse,5,1011,622,1166,311,1:04:48,2,0,Stores wood/clay/iron; 800 cap at lvl1,No,
+all,Warehouse,6,1688,1039,1948,519,1:48:14,2,0,Stores wood/clay/iron; 800 cap at lvl1,No,
+all,Warehouse,7,2819,1735,3253,867,3:00:45,2,0,Stores wood/clay/iron; 800 cap at lvl1,No,
+all,Warehouse,8,4709,2898,5433,1449,5:01:52,3,0,Stores wood/clay/iron; 800 cap at lvl1,No,
+all,Warehouse,9,7864,4839,9074,2419,8:24:08,3,0,Stores wood/clay/iron; 800 cap at lvl1,No,
+all,Warehouse,10,13133,8082,15154,4041,14:01:54,3,0,Stores wood/clay/iron; 800 cap at lvl1,No,
+all,Warehouse,11,21933,13497,25307,6748,23:25:59,3,0,Stores wood/clay/iron; 800 cap at lvl1,No,
+all,Warehouse,12,36628,22540,42264,11270,39:08:00,3,0,Stores wood/clay/iron; 800 cap at lvl1,No,
+all,Warehouse,13,61170,37643,70581,18821,65:21:10,4,0,Stores wood/clay/iron; 800 cap at lvl1,No,
+all,Warehouse,14,102154,62864,117870,31432,109:08:21,4,0,Stores wood/clay/iron; 800 cap at lvl1,No,
+all,Warehouse,15,170598,104983,196843,52491,182:15:46,4,0,Stores wood/clay/iron; 800 cap at lvl1,No,
+all,Warehouse,16,284898,175322,328729,87661,304:22:44,4,0,Stores wood/clay/iron; 800 cap at lvl1,No,
+all,Warehouse,17,475780,292788,548977,146394,508:18:46,5,0,Stores wood/clay/iron; 800 cap at lvl1,No,
+all,Warehouse,18,794553,488956,916792,244478,848:52:56,5,0,Stores wood/clay/iron; 800 cap at lvl1,No,
+all,Warehouse,19,1326905,816556,1531044,408278,1417:38:00,5,0,Stores wood/clay/iron; 800 cap at lvl1,No,
+all,Warehouse,20,2215931,1363650,2556843,681825,2367:26:52,5,0,Stores wood/clay/iron; 800 cap at lvl1,No,
+all,Granary,1,160,100,100,70,0:08:20,1,0,Stores crop; 800 cap at lvl1,No,
+all,Granary,2,267,167,167,116,0:13:55,1,0,Stores crop; 800 cap at lvl1,No,
+all,Granary,3,446,278,278,195,0:23:14,1,0,Stores crop; 800 cap at lvl1,No,
+all,Granary,4,745,465,465,326,0:38:48,2,0,Stores crop; 800 cap at lvl1,No,
+all,Granary,5,1244,777,777,544,1:04:48,2,0,Stores crop; 800 cap at lvl1,No,
+all,Granary,6,2078,1298,1298,909,1:48:14,2,0,Stores crop; 800 cap at lvl1,No,
+all,Granary,7,3470,2169,2169,1518,3:00:45,2,0,Stores crop; 800 cap at lvl1,No,
+all,Granary,8,5796,3622,3622,2535,5:01:52,3,0,Stores crop; 800 cap at lvl1,No,
+all,Granary,9,9679,6049,6049,4234,8:24:08,3,0,Stores crop; 800 cap at lvl1,No,
+all,Granary,10,16164,10102,10102,7072,14:01:54,3,0,Stores crop; 800 cap at lvl1,No,
+all,Granary,11,26995,16871,16871,11810,23:25:59,3,0,Stores crop; 800 cap at lvl1,No,
+all,Granary,12,45081,28176,28176,19723,39:08:00,3,0,Stores crop; 800 cap at lvl1,No,
+all,Granary,13,75286,47054,47054,32937,65:21:10,4,0,Stores crop; 800 cap at lvl1,No,
+all,Granary,14,125728,78580,78580,55006,109:08:21,4,0,Stores crop; 800 cap at lvl1,No,
+all,Granary,15,209966,131229,131229,91860,182:15:46,4,0,Stores crop; 800 cap at lvl1,No,
+all,Granary,16,350644,219152,219152,153406,304:22:44,4,0,Stores crop; 800 cap at lvl1,No,
+all,Granary,17,585576,365985,365985,256189,508:18:46,5,0,Stores crop; 800 cap at lvl1,No,
+all,Granary,18,977912,611195,611195,427836,848:52:56,5,0,Stores crop; 800 cap at lvl1,No,
+all,Granary,19,1633113,1020696,1020696,714487,1417:38:00,5,0,Stores crop; 800 cap at lvl1,No,
+all,Granary,20,2727300,1704562,1704562,1193193,2367:26:52,5,0,Stores crop; 800 cap at lvl1,No,
+all,Rally Point,1,40,30,35,10,0:08:20,1,1,See incoming/outgoing troops; required for barracks,Yes,
+all,Rally Point,2,66,50,58,16,0:13:55,1,1,See incoming/outgoing troops; required for barracks,Yes,
+all,Rally Point,3,111,83,97,27,0:23:14,1,1,See incoming/outgoing troops; required for barracks,Yes,
+all,Rally Point,4,186,139,163,46,0:38:48,1,1,See incoming/outgoing troops; required for barracks,Yes,
+all,Rally Point,5,311,233,272,77,1:04:48,1,1,See incoming/outgoing troops; required for barracks,Yes,
+all,Rally Point,6,519,389,454,129,1:48:14,1,1,See incoming/outgoing troops; required for barracks,Yes,
+all,Rally Point,7,867,650,759,216,3:00:45,2,1,See incoming/outgoing troops; required for barracks,Yes,
+all,Rally Point,8,1449,1086,1267,362,5:01:52,2,1,See incoming/outgoing troops; required for barracks,Yes,
+all,Rally Point,9,2419,1814,2117,604,8:24:08,2,1,See incoming/outgoing troops; required for barracks,Yes,
+all,Rally Point,10,4041,3030,3536,1010,14:01:54,2,1,See incoming/outgoing troops; required for barracks,Yes,
+all,Rally Point,11,6748,5061,5905,1687,23:25:59,2,1,See incoming/outgoing troops; required for barracks,Yes,
+all,Rally Point,12,11270,8452,9861,2817,39:08:00,2,1,See incoming/outgoing troops; required for barracks,Yes,
+all,Rally Point,13,18821,14116,16468,4705,65:21:10,3,1,See incoming/outgoing troops; required for barracks,Yes,
+all,Rally Point,14,31432,23574,27503,7858,109:08:21,3,1,See incoming/outgoing troops; required for barracks,Yes,
+all,Rally Point,15,52491,39368,45930,13122,182:15:46,3,1,See incoming/outgoing troops; required for barracks,Yes,
+all,Rally Point,16,87661,65745,76703,21915,304:22:44,3,1,See incoming/outgoing troops; required for barracks,Yes,
+all,Rally Point,17,146394,109795,128094,36598,508:18:46,3,1,See incoming/outgoing troops; required for barracks,Yes,
+all,Rally Point,18,244478,183358,213918,61119,848:52:56,3,1,See incoming/outgoing troops; required for barracks,Yes,
+all,Rally Point,19,408278,306208,357243,102069,1417:38:00,4,1,See incoming/outgoing troops; required for barracks,Yes,
+all,Rally Point,20,681825,511368,596596,170456,2367:26:52,4,1,See incoming/outgoing troops; required for barracks,Yes,
+all,Marketplace,1,100,80,120,70,0:10:50,2,4,1 merchant per level; enables trading,Yes,
+all,Marketplace,2,167,133,200,116,0:18:05,2,4,1 merchant per level; enables trading,Yes,
+all,Marketplace,3,278,223,334,195,0:30:12,2,4,1 merchant per level; enables trading,Yes,
+all,Marketplace,4,465,372,558,326,0:50:27,2,4,1 merchant per level; enables trading,Yes,
+all,Marketplace,5,777,622,933,544,1:24:15,3,4,1 merchant per level; enables trading,Yes,
+all,Marketplace,6,1298,1039,1558,909,2:20:42,3,4,1 merchant per level; enables trading,Yes,
+all,Marketplace,7,2169,1735,2603,1518,3:54:59,3,4,1 merchant per level; enables trading,Yes,
+all,Marketplace,8,3622,2898,4347,2535,6:32:26,3,4,1 merchant per level; enables trading,Yes,
+all,Marketplace,9,6049,4839,7259,4234,10:55:22,3,4,1 merchant per level; enables trading,Yes,
+all,Marketplace,10,10102,8082,12123,7072,18:14:29,4,4,1 merchant per level; enables trading,Yes,
+all,Marketplace,11,16871,13497,20246,11810,30:27:47,4,4,1 merchant per level; enables trading,Yes,
+all,Marketplace,12,28176,22540,33811,19723,50:52:24,4,4,1 merchant per level; enables trading,Yes,
+all,Marketplace,13,47054,37643,56464,32937,84:57:31,4,4,1 merchant per level; enables trading,Yes,
+all,Marketplace,14,78580,62864,94296,55006,141:52:52,4,4,1 merchant per level; enables trading,Yes,
+all,Marketplace,15,131229,104983,157475,91860,236:56:30,5,4,1 merchant per level; enables trading,Yes,
+all,Marketplace,16,219152,175322,262983,153406,395:41:33,5,4,1 merchant per level; enables trading,Yes,
+all,Marketplace,17,365985,292788,439182,256189,660:48:23,5,4,1 merchant per level; enables trading,Yes,
+all,Marketplace,18,611195,488956,733434,427836,1103:32:49,5,4,1 merchant per level; enables trading,Yes,
+all,Marketplace,19,1020696,816556,1224835,714487,1842:55:25,5,4,1 merchant per level; enables trading,Yes,
+all,Marketplace,20,1704562,1363650,2045475,1193193,3077:40:56,6,4,1 merchant per level; enables trading,Yes,
+all,Embassy,1,180,130,150,80,0:30:00,3,3,Join/found alliance; raise max alliance size,Yes,
+all,Embassy,2,300,217,250,133,0:50:06,3,3,Join/found alliance; raise max alliance size,Yes,
+all,Embassy,3,502,362,418,223,1:23:40,3,3,Join/found alliance; raise max alliance size,Yes,
+all,Embassy,4,838,605,698,372,2:19:43,3,3,Join/found alliance; raise max alliance size,Yes,
+all,Embassy,5,1400,1011,1166,622,3:53:20,4,3,Join/found alliance; raise max alliance size,Yes,
+all,Embassy,6,2338,1688,1948,1039,6:29:40,4,3,Join/found alliance; raise max alliance size,Yes,
+all,Embassy,7,3904,2819,3253,1735,10:50:45,4,3,Join/found alliance; raise max alliance size,Yes,
+all,Embassy,8,6520,4709,5433,2898,18:06:46,4,3,Join/found alliance; raise max alliance size,Yes,
+all,Embassy,9,10889,7864,9074,4839,30:14:54,4,3,Join/found alliance; raise max alliance size,Yes,
+all,Embassy,10,18185,13133,15154,8082,50:30:53,5,3,Join/found alliance; raise max alliance size,Yes,
+all,Embassy,11,30369,21933,25307,13497,84:21:34,5,3,Join/found alliance; raise max alliance size,Yes,
+all,Embassy,12,50717,36628,42264,22540,140:52:50,5,3,Join/found alliance; raise max alliance size,Yes,
+all,Embassy,13,84697,61170,70581,37643,235:16:14,5,3,Join/found alliance; raise max alliance size,Yes,
+all,Embassy,14,141444,102154,117870,62864,392:54:06,5,3,Join/found alliance; raise max alliance size,Yes,
+all,Embassy,15,236212,170598,196843,104983,656:08:46,6,3,Join/found alliance; raise max alliance size,Yes,
+all,Embassy,16,394475,284898,328729,175322,1095:45:50,6,3,Join/found alliance; raise max alliance size,Yes,
+all,Embassy,17,658773,475780,548977,292788,1829:55:33,6,3,Join/found alliance; raise max alliance size,Yes,
+all,Embassy,18,1100151,794553,916792,488956,3055:58:35,6,3,Join/found alliance; raise max alliance size,Yes,
+all,Embassy,19,1837253,1326905,1531044,816556,5103:28:50,6,3,Join/found alliance; raise max alliance size,Yes,
+all,Embassy,20,3068212,2215931,2556843,1363650,8522:48:46,7,3,Join/found alliance; raise max alliance size,Yes,
+all,Cranny,1,40,50,30,10,0:03:20,1,1,Hides 200 resources from raiders at lvl1,No,
+all,Cranny,2,66,83,50,16,0:05:34,1,1,Hides 200 resources from raiders at lvl1,No,
+all,Cranny,3,111,139,83,27,0:09:17,1,1,Hides 200 resources from raiders at lvl1,No,
+all,Cranny,4,186,232,139,46,0:15:31,1,1,Hides 200 resources from raiders at lvl1,No,
+all,Cranny,5,311,388,233,77,0:25:55,1,1,Hides 200 resources from raiders at lvl1,No,
+all,Cranny,6,519,649,389,129,0:43:17,1,1,Hides 200 resources from raiders at lvl1,No,
+all,Cranny,7,867,1084,650,216,1:12:18,1,1,Hides 200 resources from raiders at lvl1,No,
+all,Cranny,8,1449,1811,1086,362,2:00:45,1,1,Hides 200 resources from raiders at lvl1,No,
+all,Cranny,9,2419,3024,1814,604,3:21:39,1,1,Hides 200 resources from raiders at lvl1,No,
+all,Cranny,10,4041,5051,3030,1010,5:36:45,1,1,Hides 200 resources from raiders at lvl1,No,
+all,Cranny,11,6748,8435,5061,1687,9:22:23,1,1,Hides 200 resources from raiders at lvl1,No,
+all,Cranny,12,11270,14088,8452,2817,15:39:12,1,1,Hides 200 resources from raiders at lvl1,No,
+all,Cranny,13,18821,23527,14116,4705,26:08:28,1,1,Hides 200 resources from raiders at lvl1,No,
+all,Cranny,14,31432,39290,23574,7858,43:39:20,1,1,Hides 200 resources from raiders at lvl1,No,
+all,Cranny,15,52491,65614,39368,13122,72:54:18,1,1,Hides 200 resources from raiders at lvl1,No,
+all,Cranny,16,87661,109576,65745,21915,121:45:05,1,1,Hides 200 resources from raiders at lvl1,No,
+all,Cranny,17,146394,182992,109795,36598,203:19:30,1,1,Hides 200 resources from raiders at lvl1,No,
+all,Cranny,18,244478,305597,183358,61119,339:33:10,1,1,Hides 200 resources from raiders at lvl1,No,
+all,Cranny,19,408278,510348,306208,102069,567:03:12,1,1,Hides 200 resources from raiders at lvl1,No,
+all,Cranny,20,681825,852281,511368,170456,946:58:45,1,1,Hides 200 resources from raiders at lvl1,No,
+all,Academy,1,220,160,90,40,0:30:00,4,3,Research new troops per level,Yes,
+all,Academy,2,367,267,150,66,0:50:06,4,3,Research new troops per level,Yes,
+all,Academy,3,613,446,251,111,1:23:40,4,3,Research new troops per level,Yes,
+all,Academy,4,1024,745,419,186,2:19:43,4,3,Research new troops per level,Yes,
+all,Academy,5,1711,1244,700,311,3:53:20,5,3,Research new troops per level,Yes,
+all,Academy,6,2857,2078,1169,519,6:29:40,5,3,Research new troops per level,Yes,
+all,Academy,7,4772,3470,1952,867,10:50:45,5,3,Research new troops per level,Yes,
+all,Academy,8,7969,5796,3260,1449,18:06:46,5,3,Research new troops per level,Yes,
+all,Academy,9,13309,9679,5444,2419,30:14:54,5,3,Research new troops per level,Yes,
+all,Academy,10,22226,16164,9092,4041,50:30:53,6,3,Research new troops per level,Yes,
+all,Academy,11,37118,26995,15184,6748,84:21:34,6,3,Research new troops per level,Yes,
+all,Academy,12,61987,45081,25358,11270,140:52:50,6,3,Research new troops per level,Yes,
+all,Academy,13,103519,75286,42348,18821,235:16:14,6,3,Research new troops per level,Yes,
+all,Academy,14,172876,125728,70722,31432,392:54:06,6,3,Research new troops per level,Yes,
+all,Academy,15,288704,209966,118106,52491,656:08:46,7,3,Research new troops per level,Yes,
+all,Academy,16,482136,350644,197237,87661,1095:45:50,7,3,Research new troops per level,Yes,
+all,Academy,17,805167,585576,329386,146394,1829:55:33,7,3,Research new troops per level,Yes,
+all,Academy,18,1344629,977912,550075,244478,3055:58:35,7,3,Research new troops per level,Yes,
+all,Academy,19,2245531,1633113,918626,408278,5103:28:50,7,3,Research new troops per level,Yes,
+all,Academy,20,3750037,2727300,1534106,681825,8522:48:46,8,3,Research new troops per level,Yes,
+all,Barracks,1,210,140,260,120,0:30:00,4,4,Train infantry; speed boost per level,Yes,100.0
+all,Barracks,2,350,233,434,200,0:50:06,4,4,Train infantry; speed boost per level,Yes,90.0
+all,Barracks,3,585,390,725,334,1:23:40,4,4,Train infantry; speed boost per level,Yes,81.0
+all,Barracks,4,978,652,1210,558,2:19:43,4,4,Train infantry; speed boost per level,Yes,72.9
+all,Barracks,5,1633,1088,2022,933,3:53:20,5,4,Train infantry; speed boost per level,Yes,65.61
+all,Barracks,6,2727,1818,3377,1558,6:29:40,5,4,Train infantry; speed boost per level,Yes,59.05
+all,Barracks,7,4555,3036,5639,2603,10:50:45,5,4,Train infantry; speed boost per level,Yes,53.14
+all,Barracks,8,7607,5071,9418,4347,18:06:46,5,4,Train infantry; speed boost per level,Yes,47.83
+all,Barracks,9,12704,8469,15729,7259,30:14:54,5,4,Train infantry; speed boost per level,Yes,43.05
+all,Barracks,10,21216,14144,26267,12123,50:30:53,6,4,Train infantry; speed boost per level,Yes,38.74
+all,Barracks,11,35431,23620,43867,20246,84:21:34,6,4,Train infantry; speed boost per level,Yes,34.87
+all,Barracks,12,59169,39446,73257,33811,140:52:50,6,4,Train infantry; speed boost per level,Yes,31.38
+all,Barracks,13,98813,65875,122340,56464,235:16:14,6,4,Train infantry; speed boost per level,Yes,28.24
+all,Barracks,14,165018,110012,204308,94296,392:54:06,6,4,Train infantry; speed boost per level,Yes,25.42
+all,Barracks,15,275581,183720,341196,157475,656:08:46,7,4,Train infantry; speed boost per level,Yes,22.88
+all,Barracks,16,460220,306813,569797,262983,1095:45:50,7,4,Train infantry; speed boost per level,Yes,20.59
+all,Barracks,17,768568,512379,951561,439182,1829:55:33,7,4,Train infantry; speed boost per level,Yes,18.53
+all,Barracks,18,1283510,855673,1589107,733434,3055:58:35,7,4,Train infantry; speed boost per level,Yes,16.68
+all,Barracks,19,2143461,1428974,2653810,1224835,5103:28:50,7,4,Train infantry; speed boost per level,Yes,15.01
+all,Barracks,20,3579581,2386387,4431862,2045475,8522:48:46,8,4,Train infantry; speed boost per level,Yes,13.51
+all,Stable,1,260,140,220,100,0:50:00,5,5,Train cavalry; speed boost per level,Yes,100.0
+all,Stable,2,434,233,367,167,1:23:30,5,5,Train cavalry; speed boost per level,Yes,90.0
+all,Stable,3,725,390,613,278,2:19:26,5,5,Train cavalry; speed boost per level,Yes,81.0
+all,Stable,4,1210,652,1024,465,3:52:52,5,5,Train cavalry; speed boost per level,Yes,72.9
+all,Stable,5,2022,1088,1711,777,6:28:53,6,5,Train cavalry; speed boost per level,Yes,65.61
+all,Stable,6,3377,1818,2857,1298,10:49:27,6,5,Train cavalry; speed boost per level,Yes,59.05
+all,Stable,7,5639,3036,4772,2169,18:04:35,6,5,Train cavalry; speed boost per level,Yes,53.14
+all,Stable,8,9418,5071,7969,3622,30:11:16,6,5,Train cavalry; speed boost per level,Yes,47.83
+all,Stable,9,15729,8469,13309,6049,50:24:50,6,5,Train cavalry; speed boost per level,Yes,43.05
+all,Stable,10,26267,14144,22226,10102,84:11:28,7,5,Train cavalry; speed boost per level,Yes,38.74
+all,Stable,11,43867,23620,37118,16871,140:35:57,7,5,Train cavalry; speed boost per level,Yes,34.87
+all,Stable,12,73257,39446,61987,28176,234:48:03,7,5,Train cavalry; speed boost per level,Yes,31.38
+all,Stable,13,122340,65875,103519,47054,392:07:03,7,5,Train cavalry; speed boost per level,Yes,28.24
+all,Stable,14,204308,110012,172876,78580,654:50:11,7,5,Train cavalry; speed boost per level,Yes,25.42
+all,Stable,15,341196,183720,288704,131229,1093:34:37,8,5,Train cavalry; speed boost per level,Yes,22.88
+all,Stable,16,569797,306813,482136,219152,1826:16:24,8,5,Train cavalry; speed boost per level,Yes,20.59
+all,Stable,17,951561,512379,805167,365985,3049:52:36,8,5,Train cavalry; speed boost per level,Yes,18.53
+all,Stable,18,1589107,855673,1344629,611195,5093:17:39,8,5,Train cavalry; speed boost per level,Yes,16.68
+all,Stable,19,2653810,1428974,2245531,1020696,8505:48:04,8,5,Train cavalry; speed boost per level,Yes,15.01
+all,Stable,20,4431862,2386387,3750037,1704562,14204:41:17,9,5,Train cavalry; speed boost per level,Yes,13.51
+all,Workshop,1,460,510,600,320,1:30:00,3,3,Train siege weapons,Yes,100.0
+all,Workshop,2,768,851,1002,534,2:30:18,3,3,Train siege weapons,Yes,90.0
+all,Workshop,3,1282,1422,1673,892,4:11:00,3,3,Train siege weapons,Yes,81.0
+all,Workshop,4,2142,2375,2794,1490,6:59:10,3,3,Train siege weapons,Yes,72.9
+all,Workshop,5,3577,3966,4666,2488,11:40:01,4,3,Train siege weapons,Yes,65.61
+all,Workshop,6,5975,6624,7793,4156,19:29:01,4,3,Train siege weapons,Yes,59.05
+all,Workshop,7,9978,11062,13015,6941,32:32:16,4,3,Train siege weapons,Yes,53.14
+all,Workshop,8,16663,18475,21735,11592,54:20:18,4,3,Train siege weapons,Yes,47.83
+all,Workshop,9,27828,30853,36298,19358,90:44:42,4,3,Train siege weapons,Yes,43.05
+all,Workshop,10,46473,51525,60617,32329,151:32:39,5,3,Train siege weapons,Yes,38.74
+all,Workshop,11,77610,86046,101231,53990,253:04:44,5,3,Train siege weapons,Yes,34.87
+all,Workshop,12,129610,143698,169056,90163,422:38:30,5,3,Train siege weapons,Yes,31.38
+all,Workshop,13,216448,239976,282324,150573,705:48:42,5,3,Train siege weapons,Yes,28.24
+all,Workshop,14,361469,400759,471482,251457,1178:42:20,5,3,Train siege weapons,Yes,25.42
+all,Workshop,15,603654,669269,787375,419933,1968:26:18,6,3,Train siege weapons,Yes,22.88
+all,Workshop,16,1008102,1117679,1314916,701289,3287:17:32,6,3,Train siege weapons,Yes,20.59
+all,Workshop,17,1683531,1866524,2195911,1171152,5489:46:41,6,3,Train siege weapons,Yes,18.53
+all,Workshop,18,2811498,3117096,3667171,1955824,9167:55:46,6,3,Train siege weapons,Yes,16.68
+all,Workshop,19,4695202,5205550,6124176,3266227,15310:26:32,6,3,Train siege weapons,Yes,15.01
+all,Workshop,20,7840987,8693269,10227375,5454600,25568:26:19,7,3,Train siege weapons,Yes,13.51
+all,Smithy,1,180,240,150,80,0:30:00,4,2,Upgrade troop attack/defense per level,Yes,1.5
+all,Smithy,2,300,400,250,133,0:50:06,4,2,Upgrade troop attack/defense per level,Yes,1.5
+all,Smithy,3,502,669,418,223,1:23:40,4,2,Upgrade troop attack/defense per level,Yes,1.5
+all,Smithy,4,838,1117,698,372,2:19:43,4,2,Upgrade troop attack/defense per level,Yes,1.5
+all,Smithy,5,1400,1866,1166,622,3:53:20,5,2,Upgrade troop attack/defense per level,Yes,1.5
+all,Smithy,6,2338,3117,1948,1039,6:29:40,5,2,Upgrade troop attack/defense per level,Yes,1.5
+all,Smithy,7,3904,5206,3253,1735,10:50:45,5,2,Upgrade troop attack/defense per level,Yes,1.5
+all,Smithy,8,6520,8694,5433,2898,18:06:46,5,2,Upgrade troop attack/defense per level,Yes,1.5
+all,Smithy,9,10889,14519,9074,4839,30:14:54,5,2,Upgrade troop attack/defense per level,Yes,1.5
+all,Smithy,10,18185,24247,15154,8082,50:30:53,6,2,Upgrade troop attack/defense per level,Yes,1.5
+all,Smithy,11,30369,40492,25307,13497,84:21:34,6,2,Upgrade troop attack/defense per level,Yes,1.5
+all,Smithy,12,50717,67622,42264,22540,140:52:50,6,2,Upgrade troop attack/defense per level,Yes,1.5
+all,Smithy,13,84697,112929,70581,37643,235:16:14,6,2,Upgrade troop attack/defense per level,Yes,1.5
+all,Smithy,14,141444,188592,117870,62864,392:54:06,6,2,Upgrade troop attack/defense per level,Yes,1.5
+all,Smithy,15,236212,314950,196843,104983,656:08:46,7,2,Upgrade troop attack/defense per level,Yes,1.5
+all,Smithy,16,394475,525966,328729,175322,1095:45:50,7,2,Upgrade troop attack/defense per level,Yes,1.5
+all,Smithy,17,658773,878364,548977,292788,1829:55:33,7,2,Upgrade troop attack/defense per level,Yes,1.5
+all,Smithy,18,1100151,1466868,916792,488956,3055:58:35,7,2,Upgrade troop attack/defense per level,Yes,1.5
+all,Smithy,19,1837253,2449670,1531044,816556,5103:28:50,7,2,Upgrade troop attack/defense per level,Yes,1.5
+all,Smithy,20,3068212,4090950,2556843,1363650,8522:48:46,8,2,Upgrade troop attack/defense per level,Yes,1.5
+all,Armoury,1,130,210,180,90,0:30:00,4,2,Upgrade troop defense per level,Yes,1.5
+all,Armoury,2,217,350,300,150,0:50:06,4,2,Upgrade troop defense per level,Yes,1.5
+all,Armoury,3,362,585,502,251,1:23:40,4,2,Upgrade troop defense per level,Yes,1.5
+all,Armoury,4,605,978,838,419,2:19:43,4,2,Upgrade troop defense per level,Yes,1.5
+all,Armoury,5,1011,1633,1400,700,3:53:20,5,2,Upgrade troop defense per level,Yes,1.5
+all,Armoury,6,1688,2727,2338,1169,6:29:40,5,2,Upgrade troop defense per level,Yes,1.5
+all,Armoury,7,2819,4555,3904,1952,10:50:45,5,2,Upgrade troop defense per level,Yes,1.5
+all,Armoury,8,4709,7607,6520,3260,18:06:46,5,2,Upgrade troop defense per level,Yes,1.5
+all,Armoury,9,7864,12704,10889,5444,30:14:54,5,2,Upgrade troop defense per level,Yes,1.5
+all,Armoury,10,13133,21216,18185,9092,50:30:53,6,2,Upgrade troop defense per level,Yes,1.5
+all,Armoury,11,21933,35431,30369,15184,84:21:34,6,2,Upgrade troop defense per level,Yes,1.5
+all,Armoury,12,36628,59169,50717,25358,140:52:50,6,2,Upgrade troop defense per level,Yes,1.5
+all,Armoury,13,61170,98813,84697,42348,235:16:14,6,2,Upgrade troop defense per level,Yes,1.5
+all,Armoury,14,102154,165018,141444,70722,392:54:06,6,2,Upgrade troop defense per level,Yes,1.5
+all,Armoury,15,170598,275581,236212,118106,656:08:46,7,2,Upgrade troop defense per level,Yes,1.5
+all,Armoury,16,284898,460220,394475,197237,1095:45:50,7,2,Upgrade troop defense per level,Yes,1.5
+all,Armoury,17,475780,768568,658773,329386,1829:55:33,7,2,Upgrade troop defense per level,Yes,1.5
+all,Armoury,18,794553,1283510,1100151,550075,3055:58:35,7,2,Upgrade troop defense per level,Yes,1.5
+all,Armoury,19,1326905,2143461,1837253,918626,5103:28:50,7,2,Upgrade troop defense per level,Yes,1.5
+all,Armoury,20,2215931,3579581,3068212,1534106,8522:48:46,8,2,Upgrade troop defense per level,Yes,1.5
+all,Townhall,1,1250,1000,1250,400,6:00:00,4,10,Host celebrations for culture points,Yes,
+all,Townhall,2,2087,1670,2087,668,10:01:12,4,10,Host celebrations for culture points,Yes,
+all,Townhall,3,3486,2788,3486,1115,16:44:00,4,10,Host celebrations for culture points,Yes,
+all,Townhall,4,5821,4657,5821,1862,27:56:41,5,10,Host celebrations for culture points,Yes,
+all,Townhall,5,9722,7777,9722,3111,46:40:04,5,10,Host celebrations for culture points,Yes,
+all,Townhall,6,16236,12989,16236,5195,77:56:06,5,10,Host celebrations for culture points,Yes,
+all,Townhall,7,27114,21691,27114,8676,130:09:06,5,10,Host celebrations for culture points,Yes,
+all,Townhall,8,45281,36225,45281,14490,217:21:12,6,10,Host celebrations for culture points,Yes,
+all,Townhall,9,75620,60496,75620,24198,362:58:48,6,10,Host celebrations for culture points,Yes,
+all,Townhall,10,126286,101029,126286,40411,606:10:37,6,10,Host celebrations for culture points,Yes,
+all,Townhall,11,210899,168719,210899,67487,1012:18:56,6,10,Host celebrations for culture points,Yes,
+all,Townhall,12,352201,281761,352201,112704,1690:34:01,7,10,Host celebrations for culture points,Yes,
+all,Townhall,13,588176,470541,588176,188216,2823:14:49,7,10,Host celebrations for culture points,Yes,
+all,Townhall,14,982254,785803,982254,314321,4714:49:22,7,10,Host celebrations for culture points,Yes,
+all,Townhall,15,1640365,1312292,1640365,524916,7873:45:14,7,10,Host celebrations for culture points,Yes,
+all,Townhall,16,2739410,2191528,2739410,876611,13149:10:09,8,10,Host celebrations for culture points,Yes,
+all,Townhall,17,4574815,3659852,4574815,1463940,21959:06:45,8,10,Host celebrations for culture points,Yes,
+all,Townhall,18,7639941,6111953,7639941,2444781,36671:43:05,8,10,Host celebrations for culture points,Yes,
+all,Townhall,19,12758701,10206961,12758701,4082784,61241:46:10,8,10,Host celebrations for culture points,Yes,
+all,Townhall,20,21307032,17045625,21307032,6818250,102273:45:18,9,10,Host celebrations for culture points,Yes,
+all,Residence,1,580,460,350,180,2:00:00,4,4,Expand to 3 villages; trains settlers,Yes,
+all,Residence,2,968,768,584,300,3:20:24,4,4,Expand to 3 villages; trains settlers,Yes,
+all,Residence,3,1617,1282,976,502,5:34:40,4,4,Expand to 3 villages; trains settlers,Yes,
+all,Residence,4,2701,2142,1630,838,9:18:53,5,4,Expand to 3 villages; trains settlers,Yes,
+all,Residence,5,4511,3577,2722,1400,15:33:21,5,4,Expand to 3 villages; trains settlers,Yes,
+all,Residence,6,7533,5975,4546,2338,25:58:42,5,4,Expand to 3 villages; trains settlers,Yes,
+all,Residence,7,12581,9978,7592,3904,43:23:02,5,4,Expand to 3 villages; trains settlers,Yes,
+all,Residence,8,21010,16663,12678,6520,72:27:04,6,4,Expand to 3 villages; trains settlers,Yes,
+all,Residence,9,35088,27828,21173,10889,120:59:36,6,4,Expand to 3 villages; trains settlers,Yes,
+all,Residence,10,58597,46473,35360,18185,202:03:32,6,4,Expand to 3 villages; trains settlers,Yes,
+all,Residence,11,97857,77610,59051,30369,337:26:18,6,4,Expand to 3 villages; trains settlers,Yes,
+all,Residence,12,163421,129610,98616,50717,563:31:20,7,4,Expand to 3 villages; trains settlers,Yes,
+all,Residence,13,272913,216448,164689,84697,941:04:56,7,4,Expand to 3 villages; trains settlers,Yes,
+all,Residence,14,455766,361469,275031,141444,1571:36:27,7,4,Expand to 3 villages; trains settlers,Yes,
+all,Residence,15,761129,603654,459302,236212,2624:35:04,7,4,Expand to 3 villages; trains settlers,Yes,
+all,Residence,16,1271086,1008102,767034,394475,4383:03:23,8,4,Expand to 3 villages; trains settlers,Yes,
+all,Residence,17,2122714,1683531,1280948,658773,7319:42:15,8,4,Expand to 3 villages; trains settlers,Yes,
+all,Residence,18,3544932,2811498,2139183,1100151,12223:54:21,8,4,Expand to 3 villages; trains settlers,Yes,
+all,Residence,19,5920037,4695202,3572436,1837253,20413:55:23,8,4,Expand to 3 villages; trains settlers,Yes,
+all,Residence,20,9886463,7840987,5965969,3068212,34091:15:06,9,4,Expand to 3 villages; trains settlers,Yes,
+all,Palace,1,1200,800,1000,600,5:00:00,6,5,Capital + expand; trains senators/chiefs,Yes,
+all,Palace,2,2004,1336,1670,1002,8:21:00,6,5,Capital + expand; trains senators/chiefs,Yes,
+all,Palace,3,3346,2231,2788,1673,13:56:40,6,5,Capital + expand; trains senators/chiefs,Yes,
+all,Palace,4,5588,3725,4657,2794,23:17:14,7,5,Capital + expand; trains senators/chiefs,Yes,
+all,Palace,5,9333,6222,7777,4666,38:53:23,7,5,Capital + expand; trains senators/chiefs,Yes,
+all,Palace,6,15587,10391,12989,7793,64:56:45,7,5,Capital + expand; trains senators/chiefs,Yes,
+all,Palace,7,26030,17353,21691,13015,108:27:35,7,5,Capital + expand; trains senators/chiefs,Yes,
+all,Palace,8,43470,28980,36225,21735,181:07:40,8,5,Capital + expand; trains senators/chiefs,Yes,
+all,Palace,9,72596,48397,60496,36298,302:29:00,8,5,Capital + expand; trains senators/chiefs,Yes,
+all,Palace,10,121235,80823,101029,60617,505:08:51,8,5,Capital + expand; trains senators/chiefs,Yes,
+all,Palace,11,202463,134975,168719,101231,843:35:47,8,5,Capital + expand; trains senators/chiefs,Yes,
+all,Palace,12,338113,225408,281761,169056,1408:48:21,9,5,Capital + expand; trains senators/chiefs,Yes,
+all,Palace,13,564649,376432,470541,282324,2352:42:21,9,5,Capital + expand; trains senators/chiefs,Yes,
+all,Palace,14,942964,628643,785803,471482,3929:01:08,9,5,Capital + expand; trains senators/chiefs,Yes,
+all,Palace,15,1574750,1049833,1312292,787375,6561:27:42,9,5,Capital + expand; trains senators/chiefs,Yes,
+all,Palace,16,2629833,1753222,2191528,1314916,10957:38:27,10,5,Capital + expand; trains senators/chiefs,Yes,
+all,Palace,17,4391822,2927881,3659852,2195911,18299:15:38,10,5,Capital + expand; trains senators/chiefs,Yes,
+all,Palace,18,7334343,4889562,6111953,3667171,30559:45:54,10,5,Capital + expand; trains senators/chiefs,Yes,
+all,Palace,19,12248353,8165569,10206961,6124176,51034:48:28,10,5,Capital + expand; trains senators/chiefs,Yes,
+all,Palace,20,20454751,13636500,17045625,10227375,85228:07:45,11,5,Capital + expand; trains senators/chiefs,Yes,
+all,Tournament Square,1,1000,1000,1000,1000,4:00:00,2,2,Boosts troop travel speed beyond 30 fields,Yes,20
+all,Tournament Square,2,1670,1670,1670,1670,6:40:48,2,2,Boosts troop travel speed beyond 30 fields,Yes,20
+all,Tournament Square,3,2788,2788,2788,2788,11:09:20,2,2,Boosts troop travel speed beyond 30 fields,Yes,20
+all,Tournament Square,4,4657,4657,4657,4657,18:37:47,2,2,Boosts troop travel speed beyond 30 fields,Yes,20
+all,Tournament Square,5,7777,7777,7777,7777,31:06:42,2,2,Boosts troop travel speed beyond 30 fields,Yes,20
+all,Tournament Square,6,12989,12989,12989,12989,51:57:24,3,2,Boosts troop travel speed beyond 30 fields,Yes,20
+all,Tournament Square,7,21691,21691,21691,21691,86:46:04,3,2,Boosts troop travel speed beyond 30 fields,Yes,20
+all,Tournament Square,8,36225,36225,36225,36225,144:54:08,3,2,Boosts troop travel speed beyond 30 fields,Yes,20
+all,Tournament Square,9,60496,60496,60496,60496,241:59:12,3,2,Boosts troop travel speed beyond 30 fields,Yes,20
+all,Tournament Square,10,101029,101029,101029,101029,404:07:04,3,2,Boosts troop travel speed beyond 30 fields,Yes,20
+all,Tournament Square,11,168719,168719,168719,168719,674:52:37,3,2,Boosts troop travel speed beyond 30 fields,Yes,20
+all,Tournament Square,12,281761,281761,281761,281761,1127:02:41,4,2,Boosts troop travel speed beyond 30 fields,Yes,20
+all,Tournament Square,13,470541,470541,470541,470541,1882:09:53,4,2,Boosts troop travel speed beyond 30 fields,Yes,20
+all,Tournament Square,14,785803,785803,785803,785803,3143:12:54,4,2,Boosts troop travel speed beyond 30 fields,Yes,20
+all,Tournament Square,15,1312292,1312292,1312292,1312292,5249:10:09,4,2,Boosts troop travel speed beyond 30 fields,Yes,20
+all,Tournament Square,16,2191528,2191528,2191528,2191528,8766:06:46,4,2,Boosts troop travel speed beyond 30 fields,Yes,20
+all,Tournament Square,17,3659852,3659852,3659852,3659852,14639:24:30,4,2,Boosts troop travel speed beyond 30 fields,Yes,20
+all,Tournament Square,18,6111953,6111953,6111953,6111953,24447:48:43,5,2,Boosts troop travel speed beyond 30 fields,Yes,20
+all,Tournament Square,19,10206961,10206961,10206961,10206961,40827:50:46,5,2,Boosts troop travel speed beyond 30 fields,Yes,20
+all,Tournament Square,20,17045625,17045625,17045625,17045625,68182:30:12,5,2,Boosts troop travel speed beyond 30 fields,Yes,20
+all,Trade Office,1,300,500,350,200,1:30:00,2,2,Increases merchant carry capacity,Yes,20
+all,Trade Office,2,501,835,584,334,2:30:18,2,2,Increases merchant carry capacity,Yes,20
+all,Trade Office,3,836,1394,976,557,4:11:00,2,2,Increases merchant carry capacity,Yes,20
+all,Trade Office,4,1397,2328,1630,931,6:59:10,2,2,Increases merchant carry capacity,Yes,20
+all,Trade Office,5,2333,3888,2722,1555,11:40:01,3,2,Increases merchant carry capacity,Yes,20
+all,Trade Office,6,3896,6494,4546,2597,19:29:01,3,2,Increases merchant carry capacity,Yes,20
+all,Trade Office,7,6507,10845,7592,4338,32:32:16,3,2,Increases merchant carry capacity,Yes,20
+all,Trade Office,8,10867,18112,12678,7245,54:20:18,3,2,Increases merchant carry capacity,Yes,20
+all,Trade Office,9,18149,30248,21173,12099,90:44:42,3,2,Increases merchant carry capacity,Yes,20
+all,Trade Office,10,30308,50514,35360,20205,151:32:39,4,2,Increases merchant carry capacity,Yes,20
+all,Trade Office,11,50615,84359,59051,33743,253:04:44,4,2,Increases merchant carry capacity,Yes,20
+all,Trade Office,12,84528,140880,98616,56352,422:38:30,4,2,Increases merchant carry capacity,Yes,20
+all,Trade Office,13,141162,235270,164689,94108,705:48:42,4,2,Increases merchant carry capacity,Yes,20
+all,Trade Office,14,235741,392901,275031,157160,1178:42:20,4,2,Increases merchant carry capacity,Yes,20
+all,Trade Office,15,393687,656146,459302,262458,1968:26:18,5,2,Increases merchant carry capacity,Yes,20
+all,Trade Office,16,657458,1095764,767034,438305,3287:17:32,5,2,Increases merchant carry capacity,Yes,20
+all,Trade Office,17,1097955,1829926,1280948,731970,5489:46:41,5,2,Increases merchant carry capacity,Yes,20
+all,Trade Office,18,1833585,3055976,2139183,1222390,9167:55:46,5,2,Increases merchant carry capacity,Yes,20
+all,Trade Office,19,3062088,5103480,3572436,2041392,15310:26:32,5,2,Increases merchant carry capacity,Yes,20
+all,Trade Office,20,5113687,8522812,5965969,3409125,25568:26:19,6,2,Increases merchant carry capacity,Yes,20
+all,Hero's Mansion,1,700,670,700,240,3:00:00,4,4,Equip hero items; capture oases,Yes,
+all,Hero's Mansion,2,1169,1118,1169,400,5:00:36,4,4,Equip hero items; capture oases,Yes,
+all,Hero's Mansion,3,1952,1868,1952,669,8:22:00,4,4,Equip hero items; capture oases,Yes,
+all,Hero's Mansion,4,3260,3120,3260,1117,13:58:20,4,4,Equip hero items; capture oases,Yes,
+all,Hero's Mansion,5,5444,5211,5444,1866,23:20:02,5,4,Equip hero items; capture oases,Yes,
+all,Hero's Mansion,6,9092,8702,9092,3117,38:58:03,5,4,Equip hero items; capture oases,Yes,
+all,Hero's Mansion,7,15184,14533,15184,5206,65:04:33,5,4,Equip hero items; capture oases,Yes,
+all,Hero's Mansion,8,25357,24271,25357,8694,108:40:36,5,4,Equip hero items; capture oases,Yes,
+all,Hero's Mansion,9,42347,40532,42347,14519,181:29:24,5,4,Equip hero items; capture oases,Yes,
+all,Hero's Mansion,10,70720,67689,70720,24247,303:05:18,6,4,Equip hero items; capture oases,Yes,
+all,Hero's Mansion,11,118103,113041,118103,40492,506:09:28,6,4,Equip hero items; capture oases,Yes,
+all,Hero's Mansion,12,197232,188780,197232,67622,845:17:00,6,4,Equip hero items; capture oases,Yes,
+all,Hero's Mansion,13,329378,315262,329378,112929,1411:37:24,6,4,Equip hero items; capture oases,Yes,
+all,Hero's Mansion,14,550062,526488,550062,188592,2357:24:41,6,4,Equip hero items; capture oases,Yes,
+all,Hero's Mansion,15,918604,879235,918604,314950,3936:52:37,7,4,Equip hero items; capture oases,Yes,
+all,Hero's Mansion,16,1534069,1468323,1534069,525966,6574:35:04,7,4,Equip hero items; capture oases,Yes,
+all,Hero's Mansion,17,2561896,2452100,2561896,878364,10979:33:22,7,4,Equip hero items; capture oases,Yes,
+all,Hero's Mansion,18,4278367,4095008,4278367,1466868,18335:51:32,7,4,Equip hero items; capture oases,Yes,
+all,Hero's Mansion,19,7144873,6838664,7144873,2449670,30620:53:05,7,4,Equip hero items; capture oases,Yes,
+all,Hero's Mansion,20,11931938,11420569,11931938,4090950,51136:52:39,8,4,Equip hero items; capture oases,Yes,
+all,Sawmill,1,400,350,350,100,1:30:00,1,1,+5% wood production per level (max 5),Yes,5
+all,Sawmill,2,668,584,584,167,2:30:18,1,1,+5% wood production per level (max 5),Yes,5
+all,Sawmill,3,1115,976,976,278,4:11:00,1,1,+5% wood production per level (max 5),Yes,5
+all,Sawmill,4,1862,1630,1630,465,6:59:10,1,1,+5% wood production per level (max 5),Yes,5
+all,Sawmill,5,3111,2722,2722,777,11:40:01,1,1,+5% wood production per level (max 5),Yes,5
+all,Brickyard,1,440,480,320,120,1:30:00,1,1,+5% clay production per level (max 5),Yes,5
+all,Brickyard,2,734,801,534,200,2:30:18,1,1,+5% clay production per level (max 5),Yes,5
+all,Brickyard,3,1227,1338,892,334,4:11:00,1,1,+5% clay production per level (max 5),Yes,5
+all,Brickyard,4,2049,2235,1490,558,6:59:10,1,1,+5% clay production per level (max 5),Yes,5
+all,Brickyard,5,3422,3733,2488,933,11:40:01,1,1,+5% clay production per level (max 5),Yes,5
+all,Iron Foundry,1,200,450,400,100,1:30:00,1,1,+5% iron production per level (max 5),Yes,5
+all,Iron Foundry,2,334,751,668,167,2:30:18,1,1,+5% iron production per level (max 5),Yes,5
+all,Iron Foundry,3,557,1255,1115,278,4:11:00,1,1,+5% iron production per level (max 5),Yes,5
+all,Iron Foundry,4,931,2095,1862,465,6:59:10,1,1,+5% iron production per level (max 5),Yes,5
+all,Iron Foundry,5,1555,3500,3111,777,11:40:01,1,1,+5% iron production per level (max 5),Yes,5
+all,Flour Mill,1,500,440,380,140,1:30:00,1,1,+5% crop production per level (max 5),Yes,5
+all,Flour Mill,2,835,734,634,233,2:30:18,1,1,+5% crop production per level (max 5),Yes,5
+all,Flour Mill,3,1394,1227,1059,390,4:11:00,1,1,+5% crop production per level (max 5),Yes,5
+all,Flour Mill,4,2328,2049,1769,652,6:59:10,1,1,+5% crop production per level (max 5),Yes,5
+all,Flour Mill,5,3888,3422,2955,1088,11:40:01,1,1,+5% crop production per level (max 5),Yes,5
+all,Bakery,1,500,440,380,140,2:00:00,1,1,+5% crop production per level (max 5); needs Flour Mill 5,Yes,5
+all,Bakery,2,835,734,634,233,3:20:24,1,1,+5% crop production per level (max 5); needs Flour Mill 5,Yes,5
+all,Bakery,3,1394,1227,1059,390,5:34:40,1,1,+5% crop production per level (max 5); needs Flour Mill 5,Yes,5
+all,Bakery,4,2328,2049,1769,652,9:18:53,1,1,+5% crop production per level (max 5); needs Flour Mill 5,Yes,5
+all,Bakery,5,3888,3422,2955,1088,15:33:21,1,1,+5% crop production per level (max 5); needs Flour Mill 5,Yes,5
+all,Great Warehouse,1,650,400,750,200,1:00:00,2,0,Triple-capacity warehouse (capital only with artifact),Yes,
+all,Great Warehouse,2,1085,668,1252,334,1:40:12,2,0,Triple-capacity warehouse (capital only with artifact),Yes,
+all,Great Warehouse,3,1812,1115,2091,557,2:47:20,3,0,Triple-capacity warehouse (capital only with artifact),Yes,
+all,Great Warehouse,4,3027,1862,3493,931,4:39:26,3,0,Triple-capacity warehouse (capital only with artifact),Yes,
+all,Great Warehouse,5,5055,3111,5833,1555,7:46:40,3,0,Triple-capacity warehouse (capital only with artifact),Yes,
+all,Great Warehouse,6,8442,5195,9741,2597,12:59:21,4,0,Triple-capacity warehouse (capital only with artifact),Yes,
+all,Great Warehouse,7,14099,8676,16268,4338,21:41:31,4,0,Triple-capacity warehouse (capital only with artifact),Yes,
+all,Great Warehouse,8,23546,14490,27169,7245,36:13:32,4,0,Triple-capacity warehouse (capital only with artifact),Yes,
+all,Great Warehouse,9,39322,24198,45372,12099,60:29:48,5,0,Triple-capacity warehouse (capital only with artifact),Yes,
+all,Great Warehouse,10,65669,40411,75772,20205,101:01:46,5,0,Triple-capacity warehouse (capital only with artifact),Yes,
+all,Great Warehouse,11,109667,67487,126539,33743,168:43:09,5,0,Triple-capacity warehouse (capital only with artifact),Yes,
+all,Great Warehouse,12,183144,112704,211320,56352,281:45:40,6,0,Triple-capacity warehouse (capital only with artifact),Yes,
+all,Great Warehouse,13,305851,188216,352905,94108,470:32:28,6,0,Triple-capacity warehouse (capital only with artifact),Yes,
+all,Great Warehouse,14,510772,314321,589352,157160,785:48:13,6,0,Triple-capacity warehouse (capital only with artifact),Yes,
+all,Great Warehouse,15,852990,524916,984219,262458,1312:17:32,7,0,Triple-capacity warehouse (capital only with artifact),Yes,
+all,Great Warehouse,16,1424493,876611,1643646,438305,2191:31:41,7,0,Triple-capacity warehouse (capital only with artifact),Yes,
+all,Great Warehouse,17,2378903,1463940,2744889,731970,3659:51:07,7,0,Triple-capacity warehouse (capital only with artifact),Yes,
+all,Great Warehouse,18,3972769,2444781,4583964,1222390,6111:57:10,8,0,Triple-capacity warehouse (capital only with artifact),Yes,
+all,Great Warehouse,19,6634525,4082784,7655221,2041392,10206:57:41,8,0,Triple-capacity warehouse (capital only with artifact),Yes,
+all,Great Warehouse,20,11079656,6818250,12784219,3409125,17045:37:33,8,0,Triple-capacity warehouse (capital only with artifact),Yes,
+all,Great Granary,1,800,500,500,350,1:00:00,2,0,Triple-capacity granary (capital only with artifact),Yes,
+all,Great Granary,2,1336,835,835,584,1:40:12,2,0,Triple-capacity granary (capital only with artifact),Yes,
+all,Great Granary,3,2231,1394,1394,976,2:47:20,3,0,Triple-capacity granary (capital only with artifact),Yes,
+all,Great Granary,4,3725,2328,2328,1630,4:39:26,3,0,Triple-capacity granary (capital only with artifact),Yes,
+all,Great Granary,5,6222,3888,3888,2722,7:46:40,3,0,Triple-capacity granary (capital only with artifact),Yes,
+all,Great Granary,6,10391,6494,6494,4546,12:59:21,4,0,Triple-capacity granary (capital only with artifact),Yes,
+all,Great Granary,7,17353,10845,10845,7592,21:41:31,4,0,Triple-capacity granary (capital only with artifact),Yes,
+all,Great Granary,8,28980,18112,18112,12678,36:13:32,4,0,Triple-capacity granary (capital only with artifact),Yes,
+all,Great Granary,9,48397,30248,30248,21173,60:29:48,5,0,Triple-capacity granary (capital only with artifact),Yes,
+all,Great Granary,10,80823,50514,50514,35360,101:01:46,5,0,Triple-capacity granary (capital only with artifact),Yes,
+all,Great Granary,11,134975,84359,84359,59051,168:43:09,5,0,Triple-capacity granary (capital only with artifact),Yes,
+all,Great Granary,12,225408,140880,140880,98616,281:45:40,6,0,Triple-capacity granary (capital only with artifact),Yes,
+all,Great Granary,13,376432,235270,235270,164689,470:32:28,6,0,Triple-capacity granary (capital only with artifact),Yes,
+all,Great Granary,14,628643,392901,392901,275031,785:48:13,6,0,Triple-capacity granary (capital only with artifact),Yes,
+all,Great Granary,15,1049833,656146,656146,459302,1312:17:32,7,0,Triple-capacity granary (capital only with artifact),Yes,
+all,Great Granary,16,1753222,1095764,1095764,767034,2191:31:41,7,0,Triple-capacity granary (capital only with artifact),Yes,
+all,Great Granary,17,2927881,1829926,1829926,1280948,3659:51:07,7,0,Triple-capacity granary (capital only with artifact),Yes,
+all,Great Granary,18,4889562,3055976,3055976,2139183,6111:57:10,8,0,Triple-capacity granary (capital only with artifact),Yes,
+all,Great Granary,19,8165569,5103480,5103480,3572436,10206:57:41,8,0,Triple-capacity granary (capital only with artifact),Yes,
+all,Great Granary,20,13636500,8522812,8522812,5965969,17045:37:33,8,0,Triple-capacity granary (capital only with artifact),Yes,
+all,Great Barracks,1,1300,840,1560,720,1:00:00,5,3,Train 3x infantry simultaneously at 3x cost,Yes,100.0
+all,Great Barracks,2,2171,1402,2605,1202,1:40:12,5,3,Train 3x infantry simultaneously at 3x cost,Yes,90.0
+all,Great Barracks,3,3625,2342,4350,2008,2:47:20,5,3,Train 3x infantry simultaneously at 3x cost,Yes,81.0
+all,Great Barracks,4,6054,3912,7265,3353,4:39:26,6,3,Train 3x infantry simultaneously at 3x cost,Yes,72.9
+all,Great Barracks,5,10111,6533,12133,5600,7:46:40,6,3,Train 3x infantry simultaneously at 3x cost,Yes,65.61
+all,Great Barracks,6,16885,10910,20263,9352,12:59:21,6,3,Train 3x infantry simultaneously at 3x cost,Yes,59.05
+all,Great Barracks,7,28199,18221,33839,15618,21:41:31,6,3,Train 3x infantry simultaneously at 3x cost,Yes,53.14
+all,Great Barracks,8,47093,30429,56511,26082,36:13:32,7,3,Train 3x infantry simultaneously at 3x cost,Yes,47.83
+all,Great Barracks,9,78645,50817,94374,43557,60:29:48,7,3,Train 3x infantry simultaneously at 3x cost,Yes,43.05
+all,Great Barracks,10,131338,84864,157606,72741,101:01:46,7,3,Train 3x infantry simultaneously at 3x cost,Yes,38.74
+all,Great Barracks,11,219335,141724,263202,121477,168:43:09,7,3,Train 3x infantry simultaneously at 3x cost,Yes,34.87
+all,Great Barracks,12,366289,236679,439547,202868,281:45:40,8,3,Train 3x infantry simultaneously at 3x cost,Yes,31.38
+all,Great Barracks,13,611703,395254,734044,338789,470:32:28,8,3,Train 3x infantry simultaneously at 3x cost,Yes,28.24
+all,Great Barracks,14,1021544,660075,1225853,565778,785:48:13,8,3,Train 3x infantry simultaneously at 3x cost,Yes,25.42
+all,Great Barracks,15,1705980,1102325,2047176,944850,1312:17:32,8,3,Train 3x infantry simultaneously at 3x cost,Yes,22.88
+all,Great Barracks,16,2848986,1840883,3418784,1577900,2191:31:41,9,3,Train 3x infantry simultaneously at 3x cost,Yes,20.59
+all,Great Barracks,17,4757807,3074275,5709369,2635093,3659:51:07,9,3,Train 3x infantry simultaneously at 3x cost,Yes,18.53
+all,Great Barracks,18,7945538,5134040,9534646,4400606,6111:57:10,9,3,Train 3x infantry simultaneously at 3x cost,Yes,16.68
+all,Great Barracks,19,13269050,8573847,15922860,7349012,10206:57:41,9,3,Train 3x infantry simultaneously at 3x cost,Yes,15.01
+all,Great Barracks,20,22159313,14318325,26591176,12272850,17045:37:33,10,3,Train 3x infantry simultaneously at 3x cost,Yes,13.51
+all,Great Stable,1,1560,840,1320,600,1:00:00,5,3,Train 3x cavalry simultaneously at 3x cost,Yes,100.0
+all,Great Stable,2,2605,1402,2204,1002,1:40:12,5,3,Train 3x cavalry simultaneously at 3x cost,Yes,90.0
+all,Great Stable,3,4350,2342,3681,1673,2:47:20,5,3,Train 3x cavalry simultaneously at 3x cost,Yes,81.0
+all,Great Stable,4,7265,3912,6147,2794,4:39:26,6,3,Train 3x cavalry simultaneously at 3x cost,Yes,72.9
+all,Great Stable,5,12133,6533,10266,4666,7:46:40,6,3,Train 3x cavalry simultaneously at 3x cost,Yes,65.61
+all,Great Stable,6,20263,10910,17145,7793,12:59:21,6,3,Train 3x cavalry simultaneously at 3x cost,Yes,59.05
+all,Great Stable,7,33839,18221,28633,13015,21:41:31,6,3,Train 3x cavalry simultaneously at 3x cost,Yes,53.14
+all,Great Stable,8,56511,30429,47817,21735,36:13:32,7,3,Train 3x cavalry simultaneously at 3x cost,Yes,47.83
+all,Great Stable,9,94374,50817,79855,36298,60:29:48,7,3,Train 3x cavalry simultaneously at 3x cost,Yes,43.05
+all,Great Stable,10,157606,84864,133358,60617,101:01:46,7,3,Train 3x cavalry simultaneously at 3x cost,Yes,38.74
+all,Great Stable,11,263202,141724,222709,101231,168:43:09,7,3,Train 3x cavalry simultaneously at 3x cost,Yes,34.87
+all,Great Stable,12,439547,236679,371924,169056,281:45:40,8,3,Train 3x cavalry simultaneously at 3x cost,Yes,31.38
+all,Great Stable,13,734044,395254,621114,282324,470:32:28,8,3,Train 3x cavalry simultaneously at 3x cost,Yes,28.24
+all,Great Stable,14,1225853,660075,1037261,471482,785:48:13,8,3,Train 3x cavalry simultaneously at 3x cost,Yes,25.42
+all,Great Stable,15,2047176,1102325,1732225,787375,1312:17:32,8,3,Train 3x cavalry simultaneously at 3x cost,Yes,22.88
+all,Great Stable,16,3418784,1840883,2892817,1314916,2191:31:41,9,3,Train 3x cavalry simultaneously at 3x cost,Yes,20.59
+all,Great Stable,17,5709369,3074275,4831004,2195911,3659:51:07,9,3,Train 3x cavalry simultaneously at 3x cost,Yes,18.53
+all,Great Stable,18,9534646,5134040,8067778,3667171,6111:57:10,9,3,Train 3x cavalry simultaneously at 3x cost,Yes,16.68
+all,Great Stable,19,15922860,8573847,13473189,6124176,10206:57:41,9,3,Train 3x cavalry simultaneously at 3x cost,Yes,15.01
+all,Great Stable,20,26591176,14318325,22500226,10227375,17045:37:33,10,3,Train 3x cavalry simultaneously at 3x cost,Yes,13.51
+all,Stonemason,1,155,130,125,70,0:30:00,2,2,Protects buildings from catapults (capital only),Yes,2
+all,Stonemason,2,258,217,208,116,0:50:06,2,2,Protects buildings from catapults (capital only),Yes,2
+all,Stonemason,3,432,362,348,195,1:23:40,2,2,Protects buildings from catapults (capital only),Yes,2
+all,Stonemason,4,721,605,582,326,2:19:43,2,2,Protects buildings from catapults (capital only),Yes,2
+all,Stonemason,5,1205,1011,972,544,3:53:20,3,2,Protects buildings from catapults (capital only),Yes,2
+all,Stonemason,6,2013,1688,1623,909,6:29:40,3,2,Protects buildings from catapults (capital only),Yes,2
+all,Stonemason,7,3362,2819,2711,1518,10:50:45,3,2,Protects buildings from catapults (capital only),Yes,2
+all,Stonemason,8,5614,4709,4528,2535,18:06:46,3,2,Protects buildings from catapults (capital only),Yes,2
+all,Stonemason,9,9376,7864,7562,4234,30:14:54,3,2,Protects buildings from catapults (capital only),Yes,2
+all,Stonemason,10,15659,13133,12628,7072,50:30:53,4,2,Protects buildings from catapults (capital only),Yes,2
+all,Treasury,1,2500,2000,2400,1200,8:00:00,4,10,Stores artifacts; 1 diet per 10 levels,Yes,
+all,Treasury,2,4175,3340,4008,2004,13:21:36,4,10,Stores artifacts; 1 diet per 10 levels,Yes,
+all,Treasury,3,6972,5577,6693,3346,22:18:40,5,10,Stores artifacts; 1 diet per 10 levels,Yes,
+all,Treasury,4,11643,9314,11177,5588,37:15:34,5,10,Stores artifacts; 1 diet per 10 levels,Yes,
+all,Treasury,5,19444,15555,18667,9333,62:13:25,5,10,Stores artifacts; 1 diet per 10 levels,Yes,
+all,Treasury,6,32472,25978,31174,15587,103:54:48,6,10,Stores artifacts; 1 diet per 10 levels,Yes,
+all,Treasury,7,54229,43383,52060,26030,173:32:08,6,10,Stores artifacts; 1 diet per 10 levels,Yes,
+all,Treasury,8,90563,72451,86941,43470,289:48:16,6,10,Stores artifacts; 1 diet per 10 levels,Yes,
+all,Treasury,9,151241,120993,145192,72596,483:58:25,7,10,Stores artifacts; 1 diet per 10 levels,Yes,
+all,Treasury,10,252573,202059,242470,121235,808:14:09,7,10,Stores artifacts; 1 diet per 10 levels,Yes,
+all,Treasury,11,421798,337438,404926,202463,1349:45:15,7,10,Stores artifacts; 1 diet per 10 levels,Yes,
+all,Treasury,12,704402,563522,676226,338113,2254:05:22,8,10,Stores artifacts; 1 diet per 10 levels,Yes,
+all,Treasury,13,1176352,941082,1129298,564649,3764:19:46,8,10,Stores artifacts; 1 diet per 10 levels,Yes,
+all,Treasury,14,1964509,1571607,1885929,942964,6286:25:49,8,10,Stores artifacts; 1 diet per 10 levels,Yes,
+all,Treasury,15,3280730,2624584,3149501,1574750,10498:20:19,9,10,Stores artifacts; 1 diet per 10 levels,Yes,
+all,Treasury,16,5478820,4383056,5259667,2629833,17532:13:32,9,10,Stores artifacts; 1 diet per 10 levels,Yes,
+all,Treasury,17,9149630,7319704,8783645,4391822,29278:49:01,9,10,Stores artifacts; 1 diet per 10 levels,Yes,
+all,Treasury,18,15279882,12223906,14668687,7334343,48895:37:27,10,10,Stores artifacts; 1 diet per 10 levels,Yes,
+all,Treasury,19,25517403,20413923,24496707,12248353,81655:41:33,10,10,Stores artifacts; 1 diet per 10 levels,Yes,
+all,Treasury,20,42614064,34091251,40909502,20454751,136365:00:24,10,10,Stores artifacts; 1 diet per 10 levels,Yes,
+Romans,City Wall,1,70,90,170,70,0:30:00,2,2,Strongest wall; high defense bonus but fragile to rams,Yes,
+Romans,City Wall,2,116,150,283,116,0:50:06,2,2,Strongest wall; high defense bonus but fragile to rams,Yes,
+Romans,City Wall,3,195,251,474,195,1:23:40,2,2,Strongest wall; high defense bonus but fragile to rams,Yes,
+Romans,City Wall,4,326,419,791,326,2:19:43,2,2,Strongest wall; high defense bonus but fragile to rams,Yes,
+Romans,City Wall,5,544,700,1322,544,3:53:20,2,2,Strongest wall; high defense bonus but fragile to rams,Yes,
+Romans,City Wall,6,909,1169,2208,909,6:29:40,2,2,Strongest wall; high defense bonus but fragile to rams,Yes,
+Romans,City Wall,7,1518,1952,3687,1518,10:50:45,2,2,Strongest wall; high defense bonus but fragile to rams,Yes,
+Romans,City Wall,8,2535,3260,6158,2535,18:06:46,2,2,Strongest wall; high defense bonus but fragile to rams,Yes,
+Romans,City Wall,9,4234,5444,10284,4234,30:14:54,2,2,Strongest wall; high defense bonus but fragile to rams,Yes,
+Romans,City Wall,10,7072,9092,17175,7072,50:30:53,2,2,Strongest wall; high defense bonus but fragile to rams,Yes,
+Romans,City Wall,11,11810,15184,28682,11810,84:21:34,2,2,Strongest wall; high defense bonus but fragile to rams,Yes,
+Romans,City Wall,12,19723,25358,47899,19723,140:52:50,2,2,Strongest wall; high defense bonus but fragile to rams,Yes,
+Romans,City Wall,13,32937,42348,79992,32937,235:16:14,2,2,Strongest wall; high defense bonus but fragile to rams,Yes,
+Romans,City Wall,14,55006,70722,133586,55006,392:54:06,2,2,Strongest wall; high defense bonus but fragile to rams,Yes,
+Romans,City Wall,15,91860,118106,223089,91860,656:08:46,2,2,Strongest wall; high defense bonus but fragile to rams,Yes,
+Romans,City Wall,16,153406,197237,372559,153406,1095:45:50,2,2,Strongest wall; high defense bonus but fragile to rams,Yes,
+Romans,City Wall,17,256189,329386,622174,256189,1829:55:33,2,2,Strongest wall; high defense bonus but fragile to rams,Yes,
+Romans,City Wall,18,427836,550075,1039032,427836,3055:58:35,2,2,Strongest wall; high defense bonus but fragile to rams,Yes,
+Romans,City Wall,19,714487,918626,1735183,714487,5103:28:50,2,2,Strongest wall; high defense bonus but fragile to rams,Yes,
+Romans,City Wall,20,1193193,1534106,2897756,1193193,8522:48:46,2,2,Strongest wall; high defense bonus but fragile to rams,Yes,
+Romans,Horse Drinking Trough,1,780,420,660,320,2:00:00,2,2,Reduces cavalry crop upkeep by 1 per 5 levels,Yes,0
+Romans,Horse Drinking Trough,2,1302,701,1102,534,3:20:24,2,2,Reduces cavalry crop upkeep by 1 per 5 levels,Yes,0
+Romans,Horse Drinking Trough,3,2175,1171,1840,892,5:34:40,2,2,Reduces cavalry crop upkeep by 1 per 5 levels,Yes,0
+Romans,Horse Drinking Trough,4,3632,1956,3073,1490,9:18:53,2,2,Reduces cavalry crop upkeep by 1 per 5 levels,Yes,0
+Romans,Horse Drinking Trough,5,6066,3266,5133,2488,15:33:21,3,2,Reduces cavalry crop upkeep by 1 per 5 levels,Yes,1
+Romans,Horse Drinking Trough,6,10131,5455,8572,4156,25:58:42,3,2,Reduces cavalry crop upkeep by 1 per 5 levels,Yes,1
+Romans,Horse Drinking Trough,7,16919,9110,14316,6941,43:23:02,3,2,Reduces cavalry crop upkeep by 1 per 5 levels,Yes,1
+Romans,Horse Drinking Trough,8,28255,15214,23908,11592,72:27:04,3,2,Reduces cavalry crop upkeep by 1 per 5 levels,Yes,1
+Romans,Horse Drinking Trough,9,47187,25408,39927,19358,120:59:36,3,2,Reduces cavalry crop upkeep by 1 per 5 levels,Yes,1
+Romans,Horse Drinking Trough,10,78803,42432,66679,32329,202:03:32,4,2,Reduces cavalry crop upkeep by 1 per 5 levels,Yes,2
+Romans,Horse Drinking Trough,11,131601,70862,111354,53990,337:26:18,4,2,Reduces cavalry crop upkeep by 1 per 5 levels,Yes,2
+Romans,Horse Drinking Trough,12,219773,118339,185962,90163,563:31:20,4,2,Reduces cavalry crop upkeep by 1 per 5 levels,Yes,2
+Romans,Horse Drinking Trough,13,367022,197627,310557,150573,941:04:56,4,2,Reduces cavalry crop upkeep by 1 per 5 levels,Yes,2
+Romans,Horse Drinking Trough,14,612926,330037,518630,251457,1571:36:27,4,2,Reduces cavalry crop upkeep by 1 per 5 levels,Yes,2
+Romans,Horse Drinking Trough,15,1023588,551162,866112,419933,2624:35:04,5,2,Reduces cavalry crop upkeep by 1 per 5 levels,Yes,3
+Romans,Horse Drinking Trough,16,1709392,920441,1446408,701289,4383:03:23,5,2,Reduces cavalry crop upkeep by 1 per 5 levels,Yes,3
+Romans,Horse Drinking Trough,17,2854684,1537137,2415502,1171152,7319:42:15,5,2,Reduces cavalry crop upkeep by 1 per 5 levels,Yes,3
+Romans,Horse Drinking Trough,18,4767323,2567020,4033889,1955824,12223:54:21,5,2,Reduces cavalry crop upkeep by 1 per 5 levels,Yes,3
+Romans,Horse Drinking Trough,19,7961430,4286923,6736594,3266227,20413:55:23,5,2,Reduces cavalry crop upkeep by 1 per 5 levels,Yes,3
+Romans,Horse Drinking Trough,20,13295588,7159162,11250113,5454600,34091:15:06,6,2,Reduces cavalry crop upkeep by 1 per 5 levels,Yes,4
+Teutons,Earth Wall,1,120,200,0,80,0:20:00,2,2,Hard to destroy; moderate defense bonus,Yes,
+Teutons,Earth Wall,2,200,334,0,133,0:33:24,2,2,Hard to destroy; moderate defense bonus,Yes,
+Teutons,Earth Wall,3,334,557,0,223,0:55:46,2,2,Hard to destroy; moderate defense bonus,Yes,
+Teutons,Earth Wall,4,558,931,0,372,1:33:08,2,2,Hard to destroy; moderate defense bonus,Yes,
+Teutons,Earth Wall,5,933,1555,0,622,2:35:33,2,2,Hard to destroy; moderate defense bonus,Yes,
+Teutons,Earth Wall,6,1558,2597,0,1039,4:19:47,2,2,Hard to destroy; moderate defense bonus,Yes,
+Teutons,Earth Wall,7,2603,4338,0,1735,7:13:50,2,2,Hard to destroy; moderate defense bonus,Yes,
+Teutons,Earth Wall,8,4347,7245,0,2898,12:04:30,2,2,Hard to destroy; moderate defense bonus,Yes,
+Teutons,Earth Wall,9,7259,12099,0,4839,20:09:56,2,2,Hard to destroy; moderate defense bonus,Yes,
+Teutons,Earth Wall,10,12123,20205,0,8082,33:40:35,2,2,Hard to destroy; moderate defense bonus,Yes,
+Teutons,Earth Wall,11,20246,33743,0,13497,56:14:23,2,2,Hard to destroy; moderate defense bonus,Yes,
+Teutons,Earth Wall,12,33811,56352,0,22540,93:55:13,2,2,Hard to destroy; moderate defense bonus,Yes,
+Teutons,Earth Wall,13,56464,94108,0,37643,156:50:49,2,2,Hard to destroy; moderate defense bonus,Yes,
+Teutons,Earth Wall,14,94296,157160,0,62864,261:56:04,2,2,Hard to destroy; moderate defense bonus,Yes,
+Teutons,Earth Wall,15,157475,262458,0,104983,437:25:50,2,2,Hard to destroy; moderate defense bonus,Yes,
+Teutons,Earth Wall,16,262983,438305,0,175322,730:30:33,2,2,Hard to destroy; moderate defense bonus,Yes,
+Teutons,Earth Wall,17,439182,731970,0,292788,1219:57:02,2,2,Hard to destroy; moderate defense bonus,Yes,
+Teutons,Earth Wall,18,733434,1222390,0,488956,2037:19:03,2,2,Hard to destroy; moderate defense bonus,Yes,
+Teutons,Earth Wall,19,1224835,2041392,0,816556,3402:19:13,2,2,Hard to destroy; moderate defense bonus,Yes,
+Teutons,Earth Wall,20,2045475,3409125,0,1363650,5681:52:31,2,2,Hard to destroy; moderate defense bonus,Yes,
+Teutons,Brewery,1,1460,2000,1120,680,6:00:00,3,3,Boosts troop attack from this village during parties,Yes,1
+Teutons,Brewery,2,2438,3340,1870,1135,10:01:12,3,3,Boosts troop attack from this village during parties,Yes,1
+Teutons,Brewery,3,4071,5577,3123,1896,16:44:00,3,3,Boosts troop attack from this village during parties,Yes,1
+Teutons,Brewery,4,6799,9314,5216,3167,27:56:41,3,3,Boosts troop attack from this village during parties,Yes,1
+Teutons,Brewery,5,11355,15555,8711,5289,46:40:04,4,3,Boosts troop attack from this village during parties,Yes,1
+Teutons,Brewery,6,18964,25978,14547,8832,77:56:06,4,3,Boosts troop attack from this village during parties,Yes,1
+Teutons,Brewery,7,31670,43383,24294,14750,130:09:06,4,3,Boosts troop attack from this village during parties,Yes,1
+Teutons,Brewery,8,52889,72451,40572,24633,217:21:12,4,3,Boosts troop attack from this village during parties,Yes,1
+Teutons,Brewery,9,88325,120993,67756,41137,362:58:48,4,3,Boosts troop attack from this village during parties,Yes,1
+Teutons,Brewery,10,147503,202059,113153,68700,606:10:37,5,3,Boosts troop attack from this village during parties,Yes,1
+Teutons,Brewery,11,246330,337438,188965,114729,1012:18:56,5,3,Boosts troop attack from this village during parties,Yes,1
+Teutons,Brewery,12,411371,563522,315572,191597,1690:34:01,5,3,Boosts troop attack from this village during parties,Yes,1
+Teutons,Brewery,13,686990,941082,527006,319968,2823:14:49,5,3,Boosts troop attack from this village during parties,Yes,1
+Teutons,Brewery,14,1147273,1571607,880100,534346,4714:49:22,5,3,Boosts troop attack from this village during parties,Yes,1
+Teutons,Brewery,15,1915946,2624584,1469767,892358,7873:45:14,6,3,Boosts troop attack from this village during parties,Yes,1
+Teutons,Brewery,16,3199631,4383056,2454511,1490239,13149:10:09,6,3,Boosts troop attack from this village during parties,Yes,1
+Teutons,Brewery,17,5343384,7319704,4099034,2488699,21959:06:45,6,3,Boosts troop attack from this village during parties,Yes,1
+Teutons,Brewery,18,8923451,12223906,6845387,4156128,36671:43:05,6,3,Boosts troop attack from this village during parties,Yes,1
+Teutons,Brewery,19,14902163,20413923,11431796,6940733,61241:46:10,6,3,Boosts troop attack from this village during parties,Yes,1
+Teutons,Brewery,20,24886613,34091251,19091100,11591025,102273:45:18,7,3,Boosts troop attack from this village during parties,Yes,1
+Teutons,Trapper,1,100,100,100,80,0:30:00,2,2,Traps enemy troops per level (up to 1000 at max),No,
+Teutons,Trapper,2,167,167,167,133,0:50:06,2,2,Traps enemy troops per level (up to 1000 at max),No,
+Teutons,Trapper,3,278,278,278,223,1:23:40,2,2,Traps enemy troops per level (up to 1000 at max),No,
+Teutons,Trapper,4,465,465,465,372,2:19:43,2,2,Traps enemy troops per level (up to 1000 at max),No,
+Teutons,Trapper,5,777,777,777,622,3:53:20,2,2,Traps enemy troops per level (up to 1000 at max),No,
+Teutons,Trapper,6,1298,1298,1298,1039,6:29:40,2,2,Traps enemy troops per level (up to 1000 at max),No,
+Teutons,Trapper,7,2169,2169,2169,1735,10:50:45,2,2,Traps enemy troops per level (up to 1000 at max),No,
+Teutons,Trapper,8,3622,3622,3622,2898,18:06:46,2,2,Traps enemy troops per level (up to 1000 at max),No,
+Teutons,Trapper,9,6049,6049,6049,4839,30:14:54,2,2,Traps enemy troops per level (up to 1000 at max),No,
+Teutons,Trapper,10,10102,10102,10102,8082,50:30:53,2,2,Traps enemy troops per level (up to 1000 at max),No,
+Teutons,Trapper,11,16871,16871,16871,13497,84:21:34,2,2,Traps enemy troops per level (up to 1000 at max),No,
+Teutons,Trapper,12,28176,28176,28176,22540,140:52:50,2,2,Traps enemy troops per level (up to 1000 at max),No,
+Teutons,Trapper,13,47054,47054,47054,37643,235:16:14,2,2,Traps enemy troops per level (up to 1000 at max),No,
+Teutons,Trapper,14,78580,78580,78580,62864,392:54:06,2,2,Traps enemy troops per level (up to 1000 at max),No,
+Teutons,Trapper,15,131229,131229,131229,104983,656:08:46,2,2,Traps enemy troops per level (up to 1000 at max),No,
+Teutons,Trapper,16,219152,219152,219152,175322,1095:45:50,2,2,Traps enemy troops per level (up to 1000 at max),No,
+Teutons,Trapper,17,365985,365985,365985,292788,1829:55:33,2,2,Traps enemy troops per level (up to 1000 at max),No,
+Teutons,Trapper,18,611195,611195,611195,488956,3055:58:35,2,2,Traps enemy troops per level (up to 1000 at max),No,
+Teutons,Trapper,19,1020696,1020696,1020696,816556,5103:28:50,2,2,Traps enemy troops per level (up to 1000 at max),No,
+Teutons,Trapper,20,1704562,1704562,1704562,1363650,8522:48:46,2,2,Traps enemy troops per level (up to 1000 at max),No,
+Gauls,Palisade,1,160,100,80,60,0:20:00,2,2,Balanced defense; hard to destroy; moderate bonus,Yes,
+Gauls,Palisade,2,267,167,133,100,0:33:24,2,2,Balanced defense; hard to destroy; moderate bonus,Yes,
+Gauls,Palisade,3,446,278,223,167,0:55:46,2,2,Balanced defense; hard to destroy; moderate bonus,Yes,
+Gauls,Palisade,4,745,465,372,279,1:33:08,2,2,Balanced defense; hard to destroy; moderate bonus,Yes,
+Gauls,Palisade,5,1244,777,622,466,2:35:33,2,2,Balanced defense; hard to destroy; moderate bonus,Yes,
+Gauls,Palisade,6,2078,1298,1039,779,4:19:47,2,2,Balanced defense; hard to destroy; moderate bonus,Yes,
+Gauls,Palisade,7,3470,2169,1735,1301,7:13:50,2,2,Balanced defense; hard to destroy; moderate bonus,Yes,
+Gauls,Palisade,8,5796,3622,2898,2173,12:04:30,2,2,Balanced defense; hard to destroy; moderate bonus,Yes,
+Gauls,Palisade,9,9679,6049,4839,3629,20:09:56,2,2,Balanced defense; hard to destroy; moderate bonus,Yes,
+Gauls,Palisade,10,16164,10102,8082,6061,33:40:35,2,2,Balanced defense; hard to destroy; moderate bonus,Yes,
+Gauls,Palisade,11,26995,16871,13497,10123,56:14:23,2,2,Balanced defense; hard to destroy; moderate bonus,Yes,
+Gauls,Palisade,12,45081,28176,22540,16905,93:55:13,2,2,Balanced defense; hard to destroy; moderate bonus,Yes,
+Gauls,Palisade,13,75286,47054,37643,28232,156:50:49,2,2,Balanced defense; hard to destroy; moderate bonus,Yes,
+Gauls,Palisade,14,125728,78580,62864,47148,261:56:04,2,2,Balanced defense; hard to destroy; moderate bonus,Yes,
+Gauls,Palisade,15,209966,131229,104983,78737,437:25:50,2,2,Balanced defense; hard to destroy; moderate bonus,Yes,
+Gauls,Palisade,16,350644,219152,175322,131491,730:30:33,2,2,Balanced defense; hard to destroy; moderate bonus,Yes,
+Gauls,Palisade,17,585576,365985,292788,219591,1219:57:02,2,2,Balanced defense; hard to destroy; moderate bonus,Yes,
+Gauls,Palisade,18,977912,611195,488956,366717,2037:19:03,2,2,Balanced defense; hard to destroy; moderate bonus,Yes,
+Gauls,Palisade,19,1633113,1020696,816556,612417,3402:19:13,2,2,Balanced defense; hard to destroy; moderate bonus,Yes,
+Gauls,Palisade,20,2727300,1704562,1363650,1022737,5681:52:31,2,2,Balanced defense; hard to destroy; moderate bonus,Yes,
+Gauls,Menhir,1,65,65,65,65,0:05:00,1,1,Slows enemy scouts; Gaul-specific cranny bonus,Yes,
+Gauls,Menhir,2,108,108,108,108,0:08:21,1,1,Slows enemy scouts; Gaul-specific cranny bonus,Yes,
+Gauls,Menhir,3,181,181,181,181,0:13:56,1,1,Slows enemy scouts; Gaul-specific cranny bonus,Yes,
+Gauls,Menhir,4,302,302,302,302,0:23:17,1,1,Slows enemy scouts; Gaul-specific cranny bonus,Yes,
+Gauls,Menhir,5,505,505,505,505,0:38:53,1,1,Slows enemy scouts; Gaul-specific cranny bonus,Yes,
+Gauls,Menhir,6,844,844,844,844,1:04:56,1,1,Slows enemy scouts; Gaul-specific cranny bonus,Yes,
+Gauls,Menhir,7,1409,1409,1409,1409,1:48:27,1,1,Slows enemy scouts; Gaul-specific cranny bonus,Yes,
+Gauls,Menhir,8,2354,2354,2354,2354,3:01:07,1,1,Slows enemy scouts; Gaul-specific cranny bonus,Yes,
+Gauls,Menhir,9,3932,3932,3932,3932,5:02:29,1,1,Slows enemy scouts; Gaul-specific cranny bonus,Yes,
+Gauls,Menhir,10,6566,6566,6566,6566,8:25:08,1,1,Slows enemy scouts; Gaul-specific cranny bonus,Yes,
+Gauls,Menhir,11,10966,10966,10966,10966,14:03:35,1,1,Slows enemy scouts; Gaul-specific cranny bonus,Yes,
+Gauls,Menhir,12,18314,18314,18314,18314,23:28:48,1,1,Slows enemy scouts; Gaul-specific cranny bonus,Yes,
+Gauls,Menhir,13,30585,30585,30585,30585,39:12:42,1,1,Slows enemy scouts; Gaul-specific cranny bonus,Yes,
+Gauls,Menhir,14,51077,51077,51077,51077,65:29:01,1,1,Slows enemy scouts; Gaul-specific cranny bonus,Yes,
+Gauls,Menhir,15,85299,85299,85299,85299,109:21:27,1,1,Slows enemy scouts; Gaul-specific cranny bonus,Yes,
+Gauls,Menhir,16,142449,142449,142449,142449,182:37:38,1,1,Slows enemy scouts; Gaul-specific cranny bonus,Yes,
+Gauls,Menhir,17,237890,237890,237890,237890,304:59:15,1,1,Slows enemy scouts; Gaul-specific cranny bonus,Yes,
+Gauls,Menhir,18,397276,397276,397276,397276,509:19:45,1,1,Slows enemy scouts; Gaul-specific cranny bonus,Yes,
+Gauls,Menhir,19,663452,663452,663452,663452,850:34:48,1,1,Slows enemy scouts; Gaul-specific cranny bonus,Yes,
+Gauls,Menhir,20,1107965,1107965,1107965,1107965,1420:28:07,1,1,Slows enemy scouts; Gaul-specific cranny bonus,Yes,
