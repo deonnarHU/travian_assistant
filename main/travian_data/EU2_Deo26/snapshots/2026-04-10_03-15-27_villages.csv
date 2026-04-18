@@ -1,5 +1,4 @@
 village_name,coord_x,coord_y,res_wood,res_clay,res_iron,res_crop,applied_template,group,is_capital
 00 Shaemoor,13,70,4,4,4,6,,(0/20),
 01 Dinivity's Reach,102,117,4,4,4,6,,(0/20),
-02 Fort Trinity,101,117,4,4,4,6,,(0/20),
-03 Ebonhawke,102,116,4,4,4,6,,(0/20),
+02 Ebonhawke,101,117,4,4,4,6,,(0/20),

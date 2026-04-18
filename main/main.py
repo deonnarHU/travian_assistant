@@ -166,7 +166,9 @@ def snapshots_dir(server, account):  return account_dir(server, account) / "snap
 def villages_file(server, account):  return account_dir(server, account) / "villages.csv"
 
 def _vkey(server, account, village_name):
-    safe = village_name.replace(" ", "_").replace("/", "-")
+    # Strip characters invalid in Windows filenames: \ / : * ? " < > |
+    import re as _re_vkey
+    safe = _re_vkey.sub(r'[\\/:*?"<>|]', '', village_name).replace(" ", "_")
     return account_dir(server, account) / f"{account_key(server,account)}_{safe}"
 
 def layout_file(server, account, village_name):
@@ -4182,6 +4184,359 @@ class SupportTroopsImportDialog(tk.Toplevel):
             self._on_complete()
 
 
+# ─── Farm Stats — parser, data layer, import dialog ──────────────────────────
+
+def farmstats_dir(server, account):
+    d = account_dir(server, account) / "farmstats"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+def _farmstats_week_start(ref_dt=None):
+    """Return the Monday 00:30 UTC+1 that starts the Travian week containing ref_dt.
+    If ref_dt is None, uses now."""
+    from datetime import datetime as _dt2, timedelta as _td2
+    if ref_dt is None:
+        ref_dt = _dt2.now()
+    days_since_mon = ref_dt.weekday()   # 0 = Monday
+    monday = ref_dt - _td2(days=days_since_mon)
+    baseline = monday.replace(hour=0, minute=30, second=0, microsecond=0)
+    if ref_dt < baseline:
+        baseline -= _td2(weeks=1)
+    return baseline
+
+def _farmstats_filename(week_start_dt):
+    """topfarm_YYYY-MM-DD.csv where date is the Monday of that week."""
+    return f"topfarm_{week_start_dt.strftime('%Y-%m-%d')}.csv"
+
+def current_farmstats_file(server, account):
+    """Return the Path for this week's farmstats CSV (creates dir if needed)."""
+    ws = _farmstats_week_start()
+    return farmstats_dir(server, account) / _farmstats_filename(ws)
+
+def load_farmstats(server, account):
+    """Load this week's farmstats CSV.
+    Returns list of row-dicts: {timestamp, avatar: resources, ...}"""
+    f = current_farmstats_file(server, account)
+    if not f.exists():
+        return []
+    try:
+        with open(f, newline="", encoding="utf-8") as fh:
+            return list(csv.DictReader(fh))
+    except Exception:
+        return []
+
+def save_farmstats_row(server, account, timestamp, parsed):
+    """Append one snapshot row to this week's farmstats CSV.
+    Automatically starts a new file when a new Travian week begins.
+    Columns: timestamp, then one column per avatar seen in this file."""
+    f = current_farmstats_file(server, account)
+    existing = load_farmstats(server, account)
+
+    known_avatars = [c for c in existing[0].keys() if c != "timestamp"] if existing else []
+    new_avatars   = [r["avatar"] for r in parsed if r["avatar"] not in known_avatars]
+    all_avatars   = known_avatars + new_avatars
+
+    new_row = {"timestamp": timestamp}
+    for r in parsed:
+        new_row[r["avatar"]] = str(r["resources"])
+    for av in all_avatars:
+        new_row.setdefault(av, "")
+
+    fieldnames = ["timestamp"] + all_avatars
+    if new_avatars or not f.exists():
+        rows_to_write = []
+        for old in existing:
+            for av in new_avatars:
+                old.setdefault(av, "")
+            rows_to_write.append(old)
+        rows_to_write.append(new_row)
+        with open(f, "w", newline="", encoding="utf-8") as fh:
+            w = csv.DictWriter(fh, fieldnames=fieldnames, extrasaction="ignore")
+            w.writeheader()
+            w.writerows(rows_to_write)
+    else:
+        with open(f, "a", newline="", encoding="utf-8") as fh:
+            w = csv.DictWriter(fh, fieldnames=fieldnames, extrasaction="ignore")
+            w.writerow(new_row)
+
+def parse_top_robbers(raw_text: str) :
+    """
+    Parse the Travian Statistics page paste to extract 'Robbers of the week'.
+
+    Finds the section header, skips the column header row, then reads entries.
+    Handles two paste formats:
+      A) All fields on one line (tab or space separated):
+           "1. \t\t snufkin \t ‭3,998,893‬"
+      B) Each field on its own line:
+           "1."
+           "snufkin"
+           "‭3,998,893‬"
+
+    Numbers may contain unicode directional marks and comma separators.
+    Returns [{"rank": int, "avatar": str, "resources": int}, ...].
+    Top-10 rows + the personal (rank > 10) row are both captured.
+    """
+    import re as _re
+
+    def _clean(s: str) -> str:
+        """Strip unicode bidi/formatting marks, commas, NBSP."""
+        return _re.sub(
+            r'[\u200e\u200f\u202a-\u202e\u2066-\u2069\xad\xa0,\u200b]',
+            '', s
+        ).strip()
+
+    def _is_int(s: str) -> bool:
+        return bool(_re.match(r'^\d+$', s))
+
+    def _to_int(s: str):
+        c = _clean(s)
+        try:
+            return int(c) if _is_int(c) else None
+        except ValueError:
+            return None
+
+    def _parse_rank(token: str):
+        c = _clean(token).rstrip('.')
+        try:
+            v = int(c)
+            return v if v > 0 else None
+        except ValueError:
+            return None
+
+    lines = [_clean(ln) for ln in raw_text.splitlines()]
+    # Remove completely empty lines from consideration for section detection
+    # but keep them for structure (blank line = section end)
+
+    # ── Find "Robbers of the week" section ────────────────────────────────────
+    section_start = None
+    for i, ln in enumerate(lines):
+        if ln.lower() == "robbers of the week":
+            section_start = i
+            break
+    if section_start is None:
+        return []
+
+    # Skip the header row ("No." / "Player(s)" / "Resources" — one or three lines)
+    working_start = section_start + 1
+    # Skip up to 3 lines that look like column headers
+    for _ in range(3):
+        if working_start >= len(lines):
+            break
+        peek = lines[working_start].lower()
+        if peek in ("no.", "player(s)", "resources", "points") or \
+           "player" in peek or peek.startswith("no."):
+            working_start += 1
+        else:
+            break
+
+    # ── Detect format: single-line vs one-field-per-line ─────────────────────
+    # Check if first data line has 3+ tokens (single-line format)
+    # or just 1 token (per-line format)
+    single_line_format = False
+    for ln in lines[working_start:working_start + 3]:
+        if not ln:
+            continue
+        tokens = ln.split()
+        if len(tokens) >= 3 and _parse_rank(tokens[0]) is not None:
+            single_line_format = True
+        break
+
+    entries = []
+
+    SECTION_HEADERS = {
+        "pvp of the week", "pve of the week", "defenders of the week",
+        "robbers of the week", "top 10",
+    }
+
+    if single_line_format:
+        # ── Format A: rank / name / resources all on one line ─────────────────
+        for ln in lines[working_start:]:
+            if not ln:
+                break
+            if ln.lower() in SECTION_HEADERS:
+                break
+            tokens = ln.split()
+            if len(tokens) < 3:
+                continue
+            rank = _parse_rank(tokens[0])
+            if rank is None:
+                continue
+            # Last all-digit token = resources
+            res_idx = None
+            for i in range(len(tokens) - 1, 0, -1):
+                if _is_int(tokens[i]):
+                    res_idx = i
+                    break
+            if res_idx is None or res_idx < 2:
+                continue
+            avatar = ' '.join(tokens[1:res_idx])
+            if not avatar:
+                continue
+            entries.append({"rank": rank, "avatar": avatar,
+                             "resources": int(tokens[res_idx])})
+            if rank > 10:
+                break   # personal row — stop here
+
+    else:
+        # ── Format B: each field on its own line ──────────────────────────────
+        # Triplet state machine: looking for rank → name → resources
+        i = working_start
+        while i < len(lines):
+            ln = lines[i]
+            if not ln:
+                i += 1
+                continue
+            if ln.lower() in SECTION_HEADERS:
+                break
+
+            # Try to read a rank
+            rank = _parse_rank(ln)
+            if rank is None:
+                i += 1
+                continue
+
+            # Next non-empty line = avatar name
+            j = i + 1
+            while j < len(lines) and not lines[j]:
+                j += 1
+            if j >= len(lines):
+                break
+            avatar = lines[j]
+            # Avatar line must NOT be a number (would mean we skipped a field)
+            if _to_int(avatar) is not None:
+                i += 1
+                continue
+
+            # Next non-empty line = resources
+            k = j + 1
+            while k < len(lines) and not lines[k]:
+                k += 1
+            if k >= len(lines):
+                break
+            resources = _to_int(lines[k])
+            if resources is None:
+                i += 1
+                continue
+
+            entries.append({"rank": rank, "avatar": avatar,
+                             "resources": resources})
+            i = k + 1
+            if rank > 10:
+                break   # personal row — stop here
+
+    if not entries:
+        return []
+
+    top10    = sorted([e for e in entries if 1 <= e["rank"] <= 10],
+                      key=lambda e: e["rank"])
+    personal = [e for e in entries if e["rank"] > 10]
+    return top10 + personal[:1]
+
+
+class ImportFarmStatsDialog(tk.Toplevel):
+    """Paste the Travian Statistics → Top Robbers of the week page."""
+
+    def __init__(self, master, server, account, on_complete=None):
+        super().__init__(master)
+        self.server      = server
+        self.account     = account
+        self._on_complete = on_complete
+        self._parsed = []
+        self.title("Import Farm Stats — Top Robbers")
+        self.configure(bg=BG_DARK)
+        self.geometry("680x560")
+        self.grab_set()
+        self._build()
+
+    def _build(self):
+        pad = tk.Frame(self, bg=BG_DARK)
+        pad.pack(fill="both", expand=True, padx=20, pady=16)
+
+        tk.Label(pad, text="Import Top Robbers of the Week",
+                 font=FONT_HEADING, bg=BG_DARK, fg=TEXT_PRIMARY).pack(anchor="w", pady=(0, 4))
+        tk.Label(pad,
+                 text="Paste the full Travian Statistics page.\n"
+                      "The parser will automatically find the 'Robbers of the week' section\n"
+                      "and extract ranks 1–10 plus your personal row.",
+                 font=FONT_SMALL, bg=BG_DARK, fg=TEXT_MUTED,
+                 justify="left").pack(anchor="w", pady=(0, 8))
+
+        txt_frame = tk.Frame(pad, bg=BORDER)
+        txt_frame.pack(fill="both", expand=True)
+        self._txt = tk.Text(txt_frame, bg=BG_MID, fg=TEXT_PRIMARY,
+                            insertbackground=ACCENT, font=("Consolas", 9),
+                            relief="flat", bd=6, wrap="none",
+                            selectbackground=BG_HOVER)
+        sb = tk.Scrollbar(txt_frame, command=self._txt.yview,
+                          bg=BG_MID, troughcolor=BG_DARK, relief="flat", bd=0, width=8)
+        self._txt.config(yscrollcommand=sb.set)
+        sb.pack(side="right", fill="y")
+        self._txt.pack(fill="both", expand=True)
+
+        preview_frame = tk.Frame(pad, bg=BORDER, height=100)
+        preview_frame.pack(fill="x", pady=(6, 0))
+        preview_frame.pack_propagate(False)
+        self._preview = tk.Text(preview_frame, bg=BG_MID, fg=COL_FULL_GREEN,
+                                font=("Consolas", 8), relief="flat", bd=4,
+                                state="disabled", wrap="word", height=6)
+        self._preview.pack(fill="both", expand=True)
+
+        btn_row = tk.Frame(pad, bg=BG_DARK)
+        btn_row.pack(fill="x", pady=(8, 0))
+        styled_button(btn_row, "🔍  Parse",  command=self._parse,  accent=True).pack(side="left")
+        styled_button(btn_row, "✅  Import", command=self._import, small=True).pack(side="left", padx=6)
+        self._status = tk.Label(btn_row, text="", font=FONT_SMALL,
+                                bg=BG_DARK, fg=COL_FULL_GREEN)
+        self._status.pack(side="left", padx=8)
+        styled_button(btn_row, "Close", command=self.destroy, small=True).pack(side="right")
+
+    def _set_preview(self, text, color=None):
+        self._preview.config(state="normal")
+        self._preview.delete("1.0", "end")
+        self._preview.insert("end", text)
+        if color:
+            self._preview.config(fg=color)
+        self._preview.config(state="disabled")
+        self._preview.update_idletasks()
+
+    def _parse(self):
+        raw = self._txt.get("1.0", "end")
+        try:
+            self._parsed = parse_top_robbers(raw)
+        except Exception as e:
+            import traceback
+            self._set_preview(
+                f"❌  Parser error: {e}\n\n{traceback.format_exc()[-800:]}",
+                COL_RED)
+            self._parsed = []
+            return
+        if not self._parsed:
+            self._set_preview(
+                "❌  'Robbers of the week' section not found.\n"
+                "Paste the full statistics page — the parser finds the section automatically.",
+                COL_RED)
+            return
+        lines = [f"✔  Parsed {len(self._parsed)} row(s):"]
+        for r in self._parsed:
+            prefix = f"#{r['rank']:>3d}" if r['rank'] <= 10 else f" ↳ #{r['rank']} (you)"
+            lines.append(f"  {prefix}  {r['avatar']:<24s}  {r['resources']:>12,} resources")
+        self._set_preview("\n".join(lines), COL_FULL_GREEN)
+
+    def _import(self):
+        if not self._parsed:
+            self._parse()
+        if not self._parsed:
+            return
+        from datetime import datetime as _dt
+        ts = _dt.now().strftime("%Y-%m-%d %H:%M")
+        save_farmstats_row(self.server, self.account, ts, self._parsed)
+        self._status.config(
+            text=f"✅  Saved snapshot {ts}",
+            fg=COL_FULL_GREEN)
+        if self._on_complete:
+            self._on_complete()
+
+
 # ─── Main Application Window ──────────────────────────────────────────────────
 
 class MainApp(tk.Frame):
@@ -5911,27 +6266,795 @@ class MainApp(tk.Frame):
     # ── Statistics views ──────────────────────────────────────────────────────
 
     def _show_farm_top_stats(self):
+        from datetime import datetime as _dt, timedelta as _td
         self._clear_center()
         outer = tk.Frame(self.center, bg=BG_DARK)
         outer.pack(fill="both", expand=True)
 
+        # ── Header + import button ─────────────────────────────────────────────
         hdr = tk.Frame(outer, bg=BG_DARK)
         hdr.pack(fill="x", padx=24, pady=(24, 0))
         tk.Label(hdr, text="Farm Top Stats",
                  font=FONT_TITLE, bg=BG_DARK, fg=TEXT_PRIMARY).pack(side="left")
-        make_separator(outer).pack(fill="x", padx=24, pady=12)
+        styled_button(hdr, "📥  Import Farm Data",
+                      command=self._open_farm_import,
+                      accent=True, small=True).pack(side="right")
+        make_separator(outer).pack(fill="x", padx=24, pady=10)
 
-        card = tk.Frame(outer, bg=BG_PANEL)
-        card.pack(fill="both", expand=True, padx=24, pady=(0, 24))
-        inner = tk.Frame(card, bg=BG_PANEL)
-        inner.pack(expand=True)
-        tk.Label(inner, text="📊", font=("Georgia", 32),
-                 bg=BG_PANEL, fg=TEXT_MUTED).pack(pady=(60, 8))
-        tk.Label(inner, text="Farm Top Stats", font=FONT_HEADING,
-                 bg=BG_PANEL, fg=TEXT_SECONDARY).pack()
-        tk.Label(inner, text="Coming soon — statistics on farming activity across villages.",
-                 font=FONT_SMALL, bg=BG_PANEL, fg=TEXT_MUTED,
-                 wraplength=440, justify="center").pack(pady=(6, 0))
+        # ── Load + deduplicate data ────────────────────────────────────────────
+        raw_rows = load_farmstats(self.server, self.account)
+
+        if not raw_rows:
+            card = tk.Frame(outer, bg=BG_PANEL)
+            card.pack(fill="both", expand=True, padx=24, pady=(0, 24))
+            inner = tk.Frame(card, bg=BG_PANEL)
+            inner.pack(expand=True)
+            tk.Label(inner, text="🌾", font=("Georgia", 32),
+                     bg=BG_PANEL, fg=TEXT_MUTED).pack(pady=(60, 8))
+            tk.Label(inner, text="No farm data yet",
+                     font=FONT_HEADING, bg=BG_PANEL, fg=TEXT_SECONDARY).pack()
+            tk.Label(inner, text="Click 'Import Farm Data' and paste the Top Robbers table.",
+                     font=FONT_SMALL, bg=BG_PANEL, fg=TEXT_MUTED,
+                     wraplength=440, justify="center").pack(pady=(6, 0))
+            return
+
+        FMT = "%Y-%m-%d %H:%M"
+
+        def _parse_res(v):
+            try: return int(v) if v else None
+            except (ValueError, TypeError): return None
+
+        def _floor_hour(ts_str):
+            """Round timestamp down to the most recent :30 boundary.
+            e.g. 14:12 → 13:30,  14:45 → 14:30,  14:30 → 14:30"""
+            try:
+                dt = _dt.strptime(ts_str, FMT)
+                if dt.minute >= 30:
+                    return dt.replace(minute=30, second=0, microsecond=0)
+                else:
+                    # Before :30 → belongs to the previous hour's :30 slot
+                    prev = dt - _td(hours=1)
+                    return prev.replace(minute=30, second=0, microsecond=0)
+            except ValueError:
+                return None
+
+        # Deduplicate: round each row's timestamp to its :30 bracket.
+        # If a bracket already has an entry, keep the FIRST one — this prevents
+        # a second import in the same hour from collapsing the delta to near-zero.
+        avatars = [c for c in raw_rows[0].keys() if c != "timestamp"]
+        rows = []
+        seen_hours = set()   # floored brackets already recorded
+        for r in raw_rows:
+            floored = _floor_hour(r["timestamp"])
+            if floored is None:
+                rows.append(r)
+                continue
+            if floored in seen_hours:
+                continue   # already have an entry for this bracket → skip
+            seen_hours.add(floored)
+            rows.append(r)
+
+        timestamps = [r["timestamp"] for r in rows]
+        series = {av: [_parse_res(r.get(av, "")) for r in rows] for av in avatars}
+
+        # ── Monday 00:30 UTC+1 baseline (first data tick of the week) ────────────
+        def _week_start(ref_dt):
+            """Return the most recent Monday 00:30 UTC+1 before ref_dt.
+            Travian updates at :30 past each hour, so the week baseline is Mon 00:30."""
+            days_since_mon = ref_dt.weekday()   # 0=Monday
+            monday = ref_dt - _td(days=days_since_mon)
+            baseline = monday.replace(hour=0, minute=30, second=0, microsecond=0)
+            # If ref_dt is before Monday 00:30, step back one more week
+            if ref_dt < baseline:
+                baseline -= _td(weeks=1)
+            return baseline
+
+        def _hours_since_week_start(ts_str):
+            try:
+                dt = _dt.strptime(ts_str, FMT)
+                ws = _week_start(dt)
+                return (dt - ws).total_seconds() / 3600
+            except ValueError:
+                return None
+
+        def _per_hour_rate(av, idx):
+            """
+            Returns (rate_per_hour, t_from_str, t_to_str).
+            Time delta is computed using FLOORED (:30-boundary) timestamps
+            so that two entries in adjacent brackets (e.g. 01:29 and 01:30)
+            are treated as exactly 1 hour apart, not 1 minute apart.
+            """
+            curr_v = series[av][idx]
+            if curr_v is None:
+                return None, None, None
+            t_to = timestamps[idx]
+
+            # Find the nearest earlier snapshot with a value for this avatar
+            prev_idx = None
+            for k in range(idx - 1, -1, -1):
+                if series[av][k] is not None:
+                    prev_idx = k
+                    break
+
+            if prev_idx is None:
+                # Only one data point — use Monday 00:30 baseline
+                h = _hours_since_week_start(t_to)
+                if h is None or h <= 0:
+                    h = 1.0
+                try:
+                    ws = _week_start(_dt.strptime(t_to, FMT))
+                    t_from = ws.strftime(FMT)
+                except ValueError:
+                    t_from = "Monday 00:30"
+                return curr_v / h, t_from, t_to
+
+            prev_v = series[av][prev_idx]
+            t_from = timestamps[prev_idx]
+
+            # Use floored (:30-boundary) times for the delta so sub-hour
+            # gaps between adjacent brackets count as a full hour
+            ft0 = _floor_hour(t_from)
+            ft1 = _floor_hour(t_to)
+            if ft0 is not None and ft1 is not None:
+                dh = (ft1 - ft0).total_seconds() / 3600
+            else:
+                try:
+                    dh = (_dt.strptime(t_to, FMT) - _dt.strptime(t_from, FMT)
+                          ).total_seconds() / 3600
+                except ValueError:
+                    dh = 1.0
+            if dh <= 0:
+                dh = 1.0
+            return max(0.0, (curr_v - prev_v) / dh), t_from, t_to
+
+        # ── Mode selector ──────────────────────────────────────────────────────
+        ctrl = tk.Frame(outer, bg=BG_DARK)
+        ctrl.pack(fill="x", padx=24, pady=(0, 6))
+
+        mode_var = tk.StringVar(value="Player")
+
+        for label in ("Player", "Top 10", "Player Comparison", "Rankings"):
+            tk.Radiobutton(
+                ctrl, text=label, variable=mode_var, value=label,
+                bg=BG_DARK, fg=TEXT_PRIMARY, selectcolor=BG_MID,
+                activebackground=BG_DARK, activeforeground=ACCENT,
+                font=FONT_SMALL, relief="flat", bd=0,
+                command=lambda: _rebuild_view()
+            ).pack(side="left", padx=(0, 12))
+
+        # Player dropdown (shown in Player mode)
+        player_ctrl = tk.Frame(outer, bg=BG_DARK)
+        tk.Label(player_ctrl, text="Player:", font=FONT_SMALL,
+                 bg=BG_DARK, fg=TEXT_MUTED).pack(side="left")
+        selected_var = tk.StringVar(value=avatars[0] if avatars else "")
+        dd = tk.OptionMenu(player_ctrl, selected_var, *avatars)
+        dd.config(bg=BG_MID, fg=TEXT_PRIMARY, font=FONT_SMALL,
+                  activebackground=BG_HOVER, activeforeground=TEXT_PRIMARY,
+                  highlightthickness=0, bd=0, relief="flat")
+        dd["menu"].config(bg=BG_MID, fg=TEXT_PRIMARY, font=FONT_SMALL,
+                          activebackground=ACCENT_DIM, activeforeground=TEXT_PRIMARY)
+        dd.pack(side="left", padx=(6, 0))
+
+        # Comparison controls (shown in Player Comparison mode)
+        cmp_ctrl = tk.Frame(outer, bg=BG_DARK)
+        # Default: first two players pre-selected
+        selected_players = set(avatars[:2])
+
+        def _open_player_picker():
+            """Popup with a checkbox per avatar; updates selected_players and redraws."""
+            dlg = tk.Toplevel(outer)
+            dlg.title("Select Players")
+            dlg.configure(bg=BG_DARK)
+            dlg.grab_set()
+            dlg.resizable(False, False)
+
+            tk.Label(dlg, text="Select players to compare:",
+                     font=FONT_HEADING, bg=BG_DARK, fg=TEXT_PRIMARY).pack(
+                         anchor="w", padx=20, pady=(16, 8))
+
+            scroll_f, inner = scrollable_frame(dlg, bg=BG_DARK)
+            scroll_f.pack(fill="both", expand=True, padx=20)
+            scroll_f.config(height=min(400, len(avatars) * 28 + 16))
+
+            checks = {}
+            for av in avatars:
+                var = tk.BooleanVar(value=(av in selected_players))
+                checks[av] = var
+                row = tk.Frame(inner, bg=BG_DARK)
+                row.pack(fill="x", pady=1)
+                tk.Checkbutton(
+                    row, variable=var, text=av,
+                    bg=BG_DARK, fg=TEXT_PRIMARY,
+                    selectcolor=BG_MID, activebackground=BG_DARK,
+                    activeforeground=ACCENT, font=FONT_SMALL,
+                    relief="flat", bd=0, anchor="w"
+                ).pack(side="left", fill="x", expand=True)
+
+            btn_row = tk.Frame(dlg, bg=BG_DARK)
+            btn_row.pack(fill="x", padx=20, pady=(8, 16))
+
+            def _select_all():
+                for v in checks.values(): v.set(True)
+            def _select_none():
+                for v in checks.values(): v.set(False)
+
+            styled_button(btn_row, "All",  command=_select_all,  small=True).pack(side="left")
+            styled_button(btn_row, "None", command=_select_none, small=True).pack(side="left", padx=6)
+
+            def _apply():
+                selected_players.clear()
+                selected_players.update(av for av, v in checks.items() if v.get())
+                _update_btn_label()
+                _redraw_cmp_ref[0]()
+                dlg.destroy()
+
+            styled_button(btn_row, "Apply", command=_apply,
+                          accent=True, small=True).pack(side="right")
+            styled_button(btn_row, "Cancel", command=dlg.destroy,
+                          small=True).pack(side="right", padx=6)
+
+        def _update_btn_label():
+            n = len(selected_players)
+            sel_btn.config(text=f"👥  Select Players  ({n} selected)")
+
+        sel_btn = styled_button(cmp_ctrl, "", command=_open_player_picker,
+                                accent=True, small=True)
+        sel_btn.pack(side="left")
+        _update_btn_label()
+
+        # Mutable ref so _open_player_picker can call the latest _redraw_cmp
+        _redraw_cmp_ref = [lambda: None]
+
+
+        # ── Graph container (swapped out per mode) ─────────────────────────────
+        graph_outer = tk.Frame(outer, bg=BG_DARK)
+        graph_outer.pack(fill="both", expand=True, padx=24, pady=(0, 24))
+
+        # ── Drawing constants ──────────────────────────────────────────────────
+        PAD_L, PAD_R, PAD_T, PAD_B = 92, 24, 20, 56
+        GRID_CLR  = BORDER
+        LABEL_CLR = TEXT_SECONDARY
+        AXIS_CLR  = TEXT_PRIMARY
+        VAL_CLR   = TEXT_PRIMARY
+        F_AXIS    = ("Consolas", 9)
+        F_LABEL   = ("Consolas", 10, "bold")
+        F_VALUE   = ("Consolas", 9, "bold")
+        F_FOOTER  = ("Consolas", 9)
+        LINE_COLORS = [ACCENT, "#4a9eda", COL_FULL_GREEN, COL_ORANGE,
+                       "#e056d0", "#56d0d0", COL_YELLOW, "#b07cff",
+                       "#ff7c7c", "#7cff9f", "#7cb4ff"]
+
+        def _fmt_val(v):
+            if v >= 1e6: return f"{v/1e6:.2f}M"
+            if v >= 1e3: return f"{v/1e3:.0f}K"
+            return str(int(v))
+
+        def _draw_grid(canvas, W, H, max_v, steps=4):
+            dw = W - PAD_L - PAD_R
+            dh = H - PAD_T - PAD_B
+            for i in range(steps + 1):
+                yv = max_v * i / steps
+                y  = PAD_T + dh - dh * i / steps
+                canvas.create_line(PAD_L, y, W - PAD_R, y,
+                                   fill=GRID_CLR, dash=(2, 4))
+                canvas.create_text(PAD_L - 6, y, text=_fmt_val(yv),
+                                   font=F_AXIS, fill=LABEL_CLR, anchor="e")
+
+        def _x_labels(canvas, W, H, labels):
+            dw = W - PAD_L - PAD_R
+            n  = len(labels)
+            if n < 2:
+                return
+            for i, lbl in enumerate(labels):
+                x = PAD_L + dw * i / (n - 1)
+                short = lbl[5:] if len(lbl) > 5 else lbl   # HH:MM part
+                canvas.create_text(x, H - PAD_B + 6, text=short,
+                                   font=F_AXIS, fill=LABEL_CLR,
+                                   anchor="n", angle=35)
+
+        def _draw_line_chart(canvas, all_series, labels, title_y, highlight=None, x_positions=None):
+            """
+            all_series:  list of (name, [values]) — values aligned with labels/x_positions.
+            x_positions: optional list of floats 0.0–1.0, one per label, representing
+                         proportional time position on the X axis.  If None, evenly spaced.
+            """
+            canvas.delete("all")
+            W = canvas.winfo_width()
+            H = canvas.winfo_height()
+            if W < 40 or H < 40:
+                return
+            dw = W - PAD_L - PAD_R
+            dh = H - PAD_T - PAD_B
+            n  = len(labels)
+            if n < 1:
+                return
+
+            # Build x coordinate for each data index
+            if x_positions and len(x_positions) == n:
+                def _xi(i): return PAD_L + dw * x_positions[i]
+            else:
+                def _xi(i): return PAD_L + (dw * i / max(n - 1, 1))
+
+            all_vals = [v for _, vals in all_series for v in vals if v is not None and v > 0]
+            max_v = max(all_vals) if all_vals else 1
+            _draw_grid(canvas, W, H, max_v)
+
+            # X-axis labels at their proportional positions
+            for i, lbl in enumerate(labels):
+                x = _xi(i)
+                short = lbl[5:] if len(lbl) > 5 else lbl
+                canvas.create_text(x, H - PAD_B + 6, text=short,
+                                   font=F_AXIS, fill=LABEL_CLR,
+                                   anchor="n", angle=35)
+
+            for si, (name, vals) in enumerate(all_series):
+                color = ACCENT if name == highlight else LINE_COLORS[si % len(LINE_COLORS)]
+                lw    = 3 if name == highlight else 1
+                pts   = []
+                for i, v in enumerate(vals):
+                    if v is None:
+                        continue
+                    x = _xi(i)
+                    y = PAD_T + dh - dh * v / max_v
+                    pts.append((x, y))
+                    r = 4 if name == highlight else 3
+                    canvas.create_oval(x-r, y-r, x+r, y+r, fill=color, outline="")
+                for i in range(1, len(pts)):
+                    canvas.create_line(pts[i-1][0], pts[i-1][1],
+                                       pts[i][0],   pts[i][1],
+                                       fill=color, width=lw, smooth=True)
+            canvas.create_text(12, H // 2, text=title_y,
+                               font=F_FOOTER, fill=AXIS_CLR,
+                               anchor="center", angle=90)
+
+        def _draw_bar_chart(canvas, entries, title_y):
+            canvas.delete("all")
+            W = canvas.winfo_width()
+            H = canvas.winfo_height()
+            if W < 40 or H < 40 or not entries:
+                return
+            dw = W - PAD_L - PAD_R
+            dh = H - PAD_T - PAD_B
+            n  = len(entries)
+            max_v = max((v for _, v in entries if v is not None), default=1) or 1
+            bar_h = max(6, dh / n - 4)
+
+            for i, (lbl, v) in enumerate(entries):
+                y = PAD_T + i * (dh / n) + (dh / n - bar_h) / 2
+                if v is not None and v > 0:
+                    bw = dw * v / max_v
+                    color = ACCENT if i == 0 else LINE_COLORS[(i + 1) % len(LINE_COLORS)]
+                    canvas.create_rectangle(PAD_L, y, PAD_L + bw, y + bar_h,
+                                            fill=color, outline="", width=0)
+                    canvas.create_text(PAD_L + bw + 6, y + bar_h / 2,
+                                       text=_fmt_val(v), font=F_VALUE,
+                                       fill=VAL_CLR, anchor="w")
+                short = lbl if len(lbl) <= 16 else lbl[:15] + "…"
+                canvas.create_text(PAD_L - 6, y + bar_h / 2, text=short,
+                                   font=F_LABEL, fill=VAL_CLR, anchor="e")
+
+            canvas.create_text(W // 2, H - 10, text=title_y,
+                               font=F_FOOTER, fill=AXIS_CLR, anchor="s")
+
+
+        # ── View builders ──────────────────────────────────────────────────────
+        _current_canvases = []
+
+        def _clear_graph_outer():
+            for w in graph_outer.winfo_children():
+                w.destroy()
+            _current_canvases.clear()
+
+        def _build_player_view():
+            _clear_graph_outer()
+            cmp_ctrl.pack_forget()
+            player_ctrl.pack(fill="x", padx=24, pady=(0, 6))
+            graph_outer.columnconfigure(0, weight=1)
+            graph_outer.columnconfigure(1, weight=1)
+            graph_outer.rowconfigure(0, weight=1)
+
+            lf = tk.Frame(graph_outer, bg=BG_PANEL)
+            lf.grid(row=0, column=0, sticky="nsew", padx=(0, 6))
+            tk.Label(lf, text="Cumulative Resources Robbed",
+                     font=("Consolas", 10, "bold"), bg=BG_PANEL, fg=TEXT_PRIMARY).pack(pady=(8, 0))
+            lc = tk.Canvas(lf, bg=BG_PANEL, highlightthickness=0, bd=0)
+            lc.pack(fill="both", expand=True, padx=8, pady=(4, 8))
+
+            rf = tk.Frame(graph_outer, bg=BG_PANEL)
+            rf.grid(row=0, column=1, sticky="nsew", padx=(6, 0))
+            rf_title = tk.Label(rf, text="Resources / Hour",
+                                font=("Consolas", 10, "bold"), bg=BG_PANEL, fg=TEXT_PRIMARY)
+            rf_title.pack(pady=(8, 0))
+            rc = tk.Canvas(rf, bg=BG_PANEL, highlightthickness=0, bd=0)
+            rc.pack(fill="both", expand=True, padx=8, pady=(4, 8))
+
+            _current_canvases.extend([lc, rc])
+
+            def _redraw_player(*_):
+                av = selected_var.get()
+                if av not in series:
+                    return
+                vals_cum = series[av]
+                rates, t_from_last, t_to_last = [], None, None
+                for i in range(len(timestamps)):
+                    rate, tf, tt = _per_hour_rate(av, i)
+                    rates.append(rate)
+                    if rate is not None:
+                        t_from_last, t_to_last = tf, tt
+
+                if t_from_last and t_to_last:
+                    rf_title.config(
+                        text=f"Resources / Hour  ({t_from_last[5:]} → {t_to_last[5:]})")
+                else:
+                    rf_title.config(text="Resources / Hour")
+
+                # ── Compute time-proportional X positions ─────────────────────
+                # Floor each timestamp to its :30 bracket
+                floored = [_floor_hour(ts) for ts in timestamps]
+
+                # Prepend Monday 00:30 as a zero anchor for the cumulative chart
+                # so the line starts at 0 and rises correctly to the first value
+                try:
+                    first_ft = next(ft for ft in floored if ft is not None)
+                    anchor_dt = _week_start(first_ft)
+                except StopIteration:
+                    anchor_dt = None
+
+                if anchor_dt and anchor_dt < (floored[0] or anchor_dt):
+                    cum_labels = [anchor_dt.strftime(FMT)] + timestamps
+                    cum_vals   = [0] + list(vals_cum)
+                    cum_floored = [anchor_dt] + floored
+                else:
+                    cum_labels  = timestamps
+                    cum_vals    = list(vals_cum)
+                    cum_floored = floored
+
+                # Build x_pos over the extended timeline (anchor + real points)
+                valid_ft = [ft for ft in cum_floored if ft is not None]
+                if len(valid_ft) >= 2:
+                    t_min = min(valid_ft)
+                    t_max = max(valid_ft)
+                    span  = (t_max - t_min).total_seconds()
+                    if span > 0:
+                        x_pos_cum = [
+                            ((ft - t_min).total_seconds() / span) if ft else 0.0
+                            for ft in cum_floored
+                        ]
+                        # Rate chart uses only real timestamps, same span
+                        x_pos_rate = [
+                            ((ft - t_min).total_seconds() / span) if ft else 0.0
+                            for ft in floored
+                        ]
+                    else:
+                        x_pos_cum  = [0.5] * len(cum_floored)
+                        x_pos_rate = [0.5] * len(floored)
+                else:
+                    x_pos_cum  = None
+                    x_pos_rate = None
+
+                lc.after_idle(lambda xpc=x_pos_cum, cl=cum_labels, cv=cum_vals:
+                    _draw_line_chart(lc, [(av, cv)], cl, "resources",
+                                     highlight=av, x_positions=xpc))
+
+                # Also prepend a 0-rate anchor for the rate chart at Monday 00:30,
+                # so it starts flat at zero and rises to the first measured rate
+                if anchor_dt and (not floored[0] or anchor_dt < floored[0]):
+                    rate_labels   = [anchor_dt.strftime(FMT)] + timestamps
+                    rate_vals_anc = [0] + rates
+                    rate_x = ([0.0] + [
+                        ((ft - t_min).total_seconds() / span) if ft and span > 0 else 0.0
+                        for ft in floored
+                    ]) if x_pos_rate is not None else None
+                else:
+                    rate_labels   = timestamps
+                    rate_vals_anc = rates
+                    rate_x        = x_pos_rate
+
+                rc.after_idle(lambda rl=rate_labels, rv=rate_vals_anc, rx=rate_x:
+                    _draw_line_chart(rc, [(av, rv)], rl, "res/hr",
+                                     highlight=av, x_positions=rx))
+
+            selected_var.trace_add("write", _redraw_player)
+            lc.bind("<Configure>", _redraw_player)
+            rc.bind("<Configure>", _redraw_player)
+            graph_outer.after(80, _redraw_player)
+
+        def _build_top10_view():
+            _clear_graph_outer()
+            player_ctrl.pack_forget()
+            graph_outer.columnconfigure(0, weight=1)
+            graph_outer.columnconfigure(1, weight=0)
+            graph_outer.rowconfigure(0, weight=1)
+
+            cf = tk.Frame(graph_outer, bg=BG_PANEL)
+            cf.grid(row=0, column=0, sticky="nsew")
+            cf_title = tk.Label(cf, text="Resources / Hour",
+                                font=("Consolas", 10, "bold"), bg=BG_PANEL, fg=TEXT_PRIMARY)
+            cf_title.pack(pady=(8, 0))
+            c = tk.Canvas(cf, bg=BG_PANEL, highlightthickness=0, bd=0)
+            c.pack(fill="both", expand=True, padx=8, pady=(4, 8))
+            _current_canvases.append(c)
+
+            def _redraw_top10(*_):
+                entries = []
+                t_from_global = t_to_global = None
+                for av in avatars:
+                    # Latest snapshot with data for this avatar
+                    last_idx = None
+                    for i in range(len(timestamps) - 1, -1, -1):
+                        if series[av][i] is not None:
+                            last_idx = i
+                            break
+                    if last_idx is None:
+                        continue
+                    rate, tf, tt = _per_hour_rate(av, last_idx)
+                    if rate is None:
+                        continue
+                    entries.append((av, rate))
+                    # Collect the most recent t_from and t_to across all players
+                    if tf and (t_from_global is None or tf > t_from_global):
+                        t_from_global = tf
+                    if tt and (t_to_global is None or tt > t_to_global):
+                        t_to_global = tt
+
+                entries.sort(key=lambda e: e[1], reverse=True)
+
+                if t_from_global and t_to_global:
+                    cf_title.config(
+                        text=f"Resources / Hour  ({t_from_global[5:]} → {t_to_global[5:]})")
+
+                c.after_idle(lambda: _draw_bar_chart(c, entries, "resources / hour"))
+
+            c.bind("<Configure>", _redraw_top10)
+            graph_outer.after(80, _redraw_top10)
+
+        def _build_comparison_view():
+            _clear_graph_outer()
+            player_ctrl.pack_forget()
+            # cmp_ctrl is shown by _rebuild_view — already packed above graph_outer
+            graph_outer.columnconfigure(0, weight=1)
+            graph_outer.columnconfigure(1, weight=1)
+            graph_outer.rowconfigure(0, weight=1)
+            graph_outer.rowconfigure(1, weight=0)
+
+            lf = tk.Frame(graph_outer, bg=BG_PANEL)
+            lf.grid(row=0, column=0, sticky="nsew", padx=(0, 6))
+            tk.Label(lf, text="Cumulative Resources Robbed",
+                     font=("Consolas", 10, "bold"), bg=BG_PANEL, fg=TEXT_PRIMARY).pack(pady=(8, 0))
+            lc = tk.Canvas(lf, bg=BG_PANEL, highlightthickness=0, bd=0)
+            lc.pack(fill="both", expand=True, padx=8, pady=(4, 8))
+
+            rf = tk.Frame(graph_outer, bg=BG_PANEL)
+            rf.grid(row=0, column=1, sticky="nsew", padx=(6, 0))
+            rf_title = tk.Label(rf, text="Resources / Hour",
+                                font=("Consolas", 10, "bold"), bg=BG_PANEL, fg=TEXT_PRIMARY)
+            rf_title.pack(pady=(8, 0))
+            rc = tk.Canvas(rf, bg=BG_PANEL, highlightthickness=0, bd=0)
+            rc.pack(fill="both", expand=True, padx=8, pady=(4, 8))
+
+            # Legend row spanning both columns
+            legend_frame = tk.Frame(graph_outer, bg=BG_DARK)
+            legend_frame.grid(row=1, column=0, columnspan=2,
+                              sticky="ew", pady=(6, 0))
+
+            _current_canvases.extend([lc, rc])
+
+            def _rebuild_legend(chosen):
+                for w in legend_frame.winfo_children():
+                    w.destroy()
+                for si, av in enumerate(chosen):
+                    color = LINE_COLORS[si % len(LINE_COLORS)]
+                    item = tk.Frame(legend_frame, bg=BG_DARK)
+                    item.pack(side="left", padx=(0, 16))
+                    # Coloured swatch
+                    swatch = tk.Canvas(item, width=14, height=14,
+                                       bg=BG_DARK, highlightthickness=0, bd=0)
+                    swatch.pack(side="left")
+                    swatch.create_oval(1, 1, 13, 13, fill=color, outline="")
+                    tk.Label(item, text=av,
+                             font=("Consolas", 9, "bold"),
+                             bg=BG_DARK, fg=color).pack(side="left", padx=(4, 0))
+
+            def _redraw_cmp(*_):
+                chosen = [av for av in avatars if av in selected_players]
+                if not chosen:
+                    lc.delete("all")
+                    rc.delete("all")
+                    for w in legend_frame.winfo_children():
+                        w.destroy()
+                    return
+
+                _rebuild_legend(chosen)
+
+                # Build cum + rate series for each chosen player
+                cum_series  = []
+                rate_series = []
+                t_from_last = t_to_last = None
+                for si, av in enumerate(chosen):
+                    vals_cum = series.get(av, [None] * len(timestamps))
+                    rates = []
+                    for i in range(len(timestamps)):
+                        rate, tf, tt = _per_hour_rate(av, i)
+                        rates.append(rate)
+                        if rate is not None:
+                            if tf: t_from_last = tf
+                            if tt: t_to_last   = tt
+                    cum_series.append((av, vals_cum))
+                    rate_series.append((av, rates))
+
+                if t_from_last and t_to_last:
+                    rf_title.config(
+                        text=f"Resources / Hour  ({t_from_last[5:]} → {t_to_last[5:]})")
+                else:
+                    rf_title.config(text="Resources / Hour")
+
+                # Time-proportional X positions with Monday 00:30 anchor
+                floored  = [_floor_hour(ts) for ts in timestamps]
+                try:
+                    anchor_dt = _week_start(next(ft for ft in floored if ft is not None))
+                except StopIteration:
+                    anchor_dt = None
+
+                # Prepend anchor to cumulative series (value=0 for all players)
+                if anchor_dt and (not floored[0] or anchor_dt < floored[0]):
+                    cum_labels  = [anchor_dt.strftime(FMT)] + timestamps
+                    cum_floored = [anchor_dt] + floored
+                    cum_series_anc = [(av, [0] + list(vals)) for av, vals in cum_series]
+                else:
+                    cum_labels     = timestamps
+                    cum_floored    = floored
+                    cum_series_anc = cum_series
+
+                valid_ft = [ft for ft in cum_floored if ft is not None]
+                if len(valid_ft) >= 2:
+                    t_min = min(valid_ft)
+                    t_max = max(valid_ft)
+                    span  = (t_max - t_min).total_seconds()
+                    if span > 0:
+                        x_pos_cum  = [((ft - t_min).total_seconds() / span) if ft else 0.0
+                                      for ft in cum_floored]
+                        x_pos_rate = [((ft - t_min).total_seconds() / span) if ft else 0.0
+                                      for ft in floored]
+                    else:
+                        x_pos_cum  = [0.5] * len(cum_floored)
+                        x_pos_rate = [0.5] * len(floored)
+                else:
+                    x_pos_cum = x_pos_rate = None
+
+                lc.after_idle(lambda xpc=x_pos_cum, cl=cum_labels, cs=cum_series_anc:
+                    _draw_line_chart(lc, cs, cl, "resources", x_positions=xpc))
+
+                # Prepend 0-rate anchor for each player's rate series
+                if anchor_dt and (not floored[0] or anchor_dt < floored[0]):
+                    rate_labels_anc = [anchor_dt.strftime(FMT)] + timestamps
+                    rate_series_anc = [(av, [0] + list(vals)) for av, vals in rate_series]
+                    rate_x = ([0.0] + [
+                        ((ft - t_min).total_seconds() / span) if ft and span > 0 else 0.0
+                        for ft in floored
+                    ]) if x_pos_rate is not None else None
+                else:
+                    rate_labels_anc = timestamps
+                    rate_series_anc = rate_series
+                    rate_x          = x_pos_rate
+
+                rc.after_idle(lambda rl=rate_labels_anc, rs=rate_series_anc, rx=rate_x:
+                    _draw_line_chart(rc, rs, rl, "res/hr", x_positions=rx))
+
+            # Register in mutable ref so picker dialog can trigger it
+            _redraw_cmp_ref[0] = _redraw_cmp
+
+            lc.bind("<Configure>", _redraw_cmp)
+            rc.bind("<Configure>", _redraw_cmp)
+            graph_outer.after(80, _redraw_cmp)
+
+        def _build_rankings_view():
+            _clear_graph_outer()
+            cmp_ctrl.pack_forget()
+            player_ctrl.pack_forget()
+            graph_outer.columnconfigure(0, weight=1)
+            graph_outer.rowconfigure(0, weight=1)
+
+            panel = tk.Frame(graph_outer, bg=BG_PANEL)
+            panel.grid(row=0, column=0, sticky="nsew")
+
+            # ── Compute rankings ──────────────────────────────────────────────
+            entries = []
+            for av in avatars:
+                last_idx = None
+                for i in range(len(timestamps) - 1, -1, -1):
+                    if series[av][i] is not None:
+                        last_idx = i
+                        break
+                if last_idx is None:
+                    continue
+                rate, _, _ = _per_hour_rate(av, last_idx)
+                if rate is not None:
+                    entries.append((av, rate))
+            entries.sort(key=lambda e: e[1], reverse=True)
+
+            # ── Header ────────────────────────────────────────────────────────
+            hdr = tk.Frame(panel, bg=BG_MID)
+            hdr.pack(fill="x", padx=1, pady=(1, 0))
+            hdr.columnconfigure(0, minsize=52)
+            hdr.columnconfigure(1, weight=1)
+            hdr.columnconfigure(2, minsize=160)
+            for col, text, anchor in [
+                (0, "#",               "center"),
+                (1, "Player",          "w"),
+                (2, "Resources / Hour","e"),
+            ]:
+                tk.Label(hdr, text=text,
+                         font=("Consolas", 10, "bold"),
+                         bg=BG_MID, fg=TEXT_MUTED,
+                         anchor=anchor, padx=12, pady=6
+                         ).grid(row=0, column=col, sticky="ew")
+
+            # ── Scrollable rows ───────────────────────────────────────────────
+            scroll_outer, inner = scrollable_frame(panel, bg=BG_PANEL)
+            scroll_outer.pack(fill="both", expand=True, padx=1, pady=(0, 1))
+
+            for rank, (av, rate) in enumerate(entries, 1):
+                r   = (rank - 1) * 2      # data row
+                r_s = (rank - 1) * 2 + 1  # separator row
+                bg  = BG_MID if rank % 2 == 0 else BG_PANEL
+
+                rank_color = ACCENT if rank == 1 else (
+                    TEXT_SECONDARY if rank <= 3 else TEXT_MUTED)
+                tk.Label(inner, text=str(rank),
+                         font=("Consolas", 11, "bold"),
+                         bg=bg, fg=rank_color,
+                         anchor="center", padx=12, pady=7
+                         ).grid(row=r, column=0, sticky="ew")
+
+                tk.Label(inner, text=av,
+                         font=("Consolas", 11),
+                         bg=bg, fg=TEXT_PRIMARY,
+                         anchor="w", padx=12, pady=7
+                         ).grid(row=r, column=1, sticky="ew")
+
+                val_str = _fmt_val(rate)
+                tk.Label(inner, text=val_str,
+                         font=("Consolas", 11, "bold"),
+                         bg=bg, fg=ACCENT if rank == 1 else TEXT_PRIMARY,
+                         anchor="e", padx=12, pady=7
+                         ).grid(row=r, column=2, sticky="ew")
+
+                tk.Frame(inner, bg=BORDER, height=1
+                         ).grid(row=r_s, column=0, columnspan=3, sticky="ew")
+
+            inner.columnconfigure(0, minsize=52)
+            inner.columnconfigure(1, weight=1)
+            inner.columnconfigure(2, minsize=160)
+
+            if not entries:
+                tk.Label(inner, text="No data available.",
+                         font=FONT_SMALL, bg=BG_PANEL, fg=TEXT_MUTED
+                         ).grid(row=1, column=0, columnspan=3, pady=20)
+
+        def _rebuild_view(*_):
+            mode = mode_var.get()
+            if mode == "Player":
+                cmp_ctrl.pack_forget()
+                _build_player_view()
+            elif mode == "Top 10":
+                cmp_ctrl.pack_forget()
+                _build_top10_view()
+            elif mode == "Rankings":
+                cmp_ctrl.pack_forget()
+                _build_rankings_view()
+            else:
+                # Show cmp_ctrl between radio buttons and graphs
+                cmp_ctrl.pack(fill="x", padx=24, pady=(0, 6),
+                              before=graph_outer)
+                _build_comparison_view()
+
+        mode_var.trace_add("write", _rebuild_view)
+        _rebuild_view()   # initial build
+
+    def _open_farm_import(self):
+        ImportFarmStatsDialog(self, self.server, self.account,
+                              on_complete=self._show_farm_top_stats)
+
 
     # ── Village views ─────────────────────────────────────────────────────────
 
