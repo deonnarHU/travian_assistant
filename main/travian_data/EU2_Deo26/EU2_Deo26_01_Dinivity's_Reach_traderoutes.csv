@@ -1,0 +1,2 @@
+route_id,target,wood,clay,iron,crop,merchants,frequency_min,departure_time,travel_minutes,active
+2,03 Rata Sum,0,0,0,10000,5,60,23:00,2,1

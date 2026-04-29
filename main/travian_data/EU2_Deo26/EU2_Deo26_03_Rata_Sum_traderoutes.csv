@@ -1,0 +1,2 @@
+route_id,target,wood,clay,iron,crop,merchants,frequency_min,departure_time,travel_minutes,active
+1,02 Fort Trinity,0,0,0,1000,1,60,23:00,4,1
