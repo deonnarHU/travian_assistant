@@ -104,17 +104,8 @@ MAX_BUILDING_LEVEL = 20   # default for most buildings
 
 # 22 inner village building slots
 # slot_id: (label, locked_building or None)
-# Slots 1-18: resource fields (building names come from current_buildings CSV)
-# Slots 19-40: city buildings
+# City building slots 19-40 only (resource fields 1-18 are on the Resource Layout page)
 VILLAGE_SLOTS = {
-    # Resource fields (tribe-agnostic labels; actual building name stored in CSV)
-    1:  ("Res 1",  None),   2:  ("Res 2",  None),   3:  ("Res 3",  None),
-    4:  ("Res 4",  None),   5:  ("Res 5",  None),   6:  ("Res 6",  None),
-    7:  ("Res 7",  None),   8:  ("Res 8",  None),   9:  ("Res 9",  None),
-    10: ("Res 10", None),   11: ("Res 11", None),   12: ("Res 12", None),
-    13: ("Res 13", None),   14: ("Res 14", None),   15: ("Res 15", None),
-    16: ("Res 16", None),   17: ("Res 17", None),   18: ("Res 18", None),
-    # City building slots
     19: ("Slot 19", None),  20: ("Slot 20", None),  21: ("Slot 21", None),
     22: ("Slot 22", None),  23: ("Slot 23", None),  24: ("Slot 24", None),
     25: ("Slot 25", None),  26: ("Slot 26", None),  27: ("Slot 27", None),
@@ -2157,7 +2148,7 @@ class VillageLayoutPlanner(tk.Frame):
         make_separator(inner, bg=BORDER).pack(fill="x", pady=(0, 4))
 
         # ── First pass: initialise StringVars so _available_buildings works ──
-        for slot_id in range(1, 41):
+        for slot_id in range(19, 41):
             _, locked = VILLAGE_SLOTS[slot_id]
             if locked:
                 ln = wall_building if locked == "__WALL__" else locked
@@ -2169,7 +2160,7 @@ class VillageLayoutPlanner(tk.Frame):
             self._level_vars[slot_id] = tk.StringVar(value=saved_l)
 
         # ── Second pass: build rows ──
-        for slot_id in range(1, 41):
+        for slot_id in range(19, 41):
             _, locked = VILLAGE_SLOTS[slot_id]
             is_locked = locked is not None
             locked_name = (wall_building if locked == "__WALL__" else locked) if locked else None
@@ -2217,7 +2208,7 @@ class VillageLayoutPlanner(tk.Frame):
     def _save(self):
         layout = {}
         wall_building = WALL_BY_TRIBE.get(self.tribe, "Wall")
-        for slot_id in range(1, 41):
+        for slot_id in range(19, 41):
             _, locked = VILLAGE_SLOTS[slot_id]
             if locked == "__WALL__": building = wall_building
             elif locked:             building = locked
@@ -2236,7 +2227,7 @@ class VillageLayoutPlanner(tk.Frame):
         """Read current UI state into a layout dict (same as _save but without writing)."""
         layout = {}
         wall_building = WALL_BY_TRIBE.get(self.tribe, "Wall")
-        for slot_id in range(1, 41):
+        for slot_id in range(19, 41):
             _, locked = VILLAGE_SLOTS[slot_id]
             if locked == "__WALL__": building = wall_building
             elif locked:             building = locked
@@ -2266,7 +2257,7 @@ class VillageLayoutPlanner(tk.Frame):
         if not layout:
             return
         wall_building = WALL_BY_TRIBE.get(self.tribe, "Wall")
-        for slot_id in range(1, 41):
+        for slot_id in range(19, 41):
             _, locked = VILLAGE_SLOTS[slot_id]
             if locked:
                 continue   # never overwrite fixed slots
@@ -2426,19 +2417,12 @@ class VillageBuildingsView(tk.Frame):
                      width=lw if lw else 10, anchor="w").pack(side="left", padx=4)
         make_separator(inner, bg=BORDER).pack(fill="x", pady=(0, 4))
 
-        tk.Label(inner, text="  Resource Fields  (slots 1–18)",
-                 font=FONT_SMALL, bg=BG_DARK, fg=TEXT_MUTED,
-                 anchor="w").pack(fill="x", padx=4, pady=(0, 4))
-
         # First pass: initialise cur StringVars
-        for slot_id in range(1, 41):
+        for slot_id in range(19, 41):
             _, locked = VILLAGE_SLOTS[slot_id]
             locked_name = (wall_building if locked == "__WALL__" else locked) if locked else None
             cur = self.current.get(slot_id, {})
             pl  = self.layout.get(slot_id, {})
-            # Slots 1-18 are resource fields — treat their building name as locked
-            if slot_id <= 18:
-                locked_name = cur.get("building", "") or locked_name or ""
             default_b = locked_name or cur.get("building", "") or ""
             self._cur_building_vars[slot_id] = tk.StringVar(
                 value=default_b if default_b else "— Empty —")
@@ -2447,24 +2431,13 @@ class VillageBuildingsView(tk.Frame):
             self._planned_levels[slot_id] = int(pl.get("level", 0))
 
         # Second pass: build rows
-        for slot_id in range(1, 41):
+        for slot_id in range(19, 41):
             _, locked = VILLAGE_SLOTS[slot_id]
             locked_name = (wall_building if locked == "__WALL__" else locked) if locked else None
-            # Slots 1-18: resource fields — show their building name as read-only
-            if slot_id <= 18:
-                locked_name = self.current.get(slot_id, {}).get("building", "") or locked_name or ""
             p_data     = self.layout.get(slot_id, {})
             p_building = p_data.get("building", "")
             p_level    = int(p_data.get("level", 0))
             c_level    = int(self.current.get(slot_id, {}).get("level", 0))
-
-            # Visual separator between resource fields (1-18) and city buildings (19-40)
-            if slot_id == 19:
-                sep = tk.Frame(inner, bg=ACCENT, height=2)
-                sep.pack(fill="x", pady=(6, 2))
-                tk.Label(inner, text="  City Buildings  (slots 19–40)",
-                         font=FONT_SMALL, bg=BG_DARK, fg=ACCENT,
-                         anchor="w").pack(fill="x", padx=4, pady=(0, 4))
 
             row_bg = BG_MID if slot_id % 2 == 0 else BG_DARK
             row = tk.Frame(inner, bg=row_bg)
@@ -2545,7 +2518,7 @@ class VillageBuildingsView(tk.Frame):
         """Recalculate overall progress from current UI state and update label."""
         planned_total = 0
         current_total = 0
-        for slot_id in range(1, 41):
+        for slot_id in range(19, 41):
             p_level = self._planned_levels.get(slot_id, 0)
             planned_total += p_level
             if p_level > 0:
@@ -2578,7 +2551,7 @@ class VillageBuildingsView(tk.Frame):
         # Gather current free-slot contents as a list of (building, level) pairs
         pool = []
         free_slots = []
-        for slot_id in range(1, 41):
+        for slot_id in range(19, 41):
             _, locked = VILLAGE_SLOTS[slot_id]
             if locked:
                 continue
@@ -2631,7 +2604,7 @@ class VillageBuildingsView(tk.Frame):
     def _save(self):
         buildings = {}
         wall_building = WALL_BY_TRIBE.get(self.tribe, "Wall")
-        for slot_id in range(1, 41):
+        for slot_id in range(19, 41):
             _, locked = VILLAGE_SLOTS[slot_id]
             if locked == "__WALL__": building = wall_building
             elif locked:             building = locked
@@ -3015,6 +2988,9 @@ class VillageResourceLayoutView(tk.Frame):
             self._status.pack(side="left", padx=(16, 0))
             styled_button(hdr, "💾  Save", command=self._save,
                           accent=True).pack(side="left")
+            styled_button(hdr, "📥  Import from HTML",
+                          command=self._open_html_import,
+                          small=True).pack(side="left", padx=(8, 0))
 
         make_separator(self).pack(fill="x", padx=24, pady=10)
         cap_note = "  👑 Capital — fields can reach level 20" if self.is_capital else \
@@ -3063,6 +3039,16 @@ class VillageResourceLayoutView(tk.Frame):
             icon_lbl.pack(side="left", padx=4)
             t_var.trace_add("write", lambda *_, v=t_var, lbl=icon_lbl, bg=row_bg:
                             lbl.config(text=_RES_ICONS.get(v.get(), ""), bg=bg))
+
+    def _open_html_import(self):
+        def _on_done():
+            for w in self.winfo_children():
+                w.destroy()
+            self._type_vars  = {}
+            self._level_vars = {}
+            self._load_and_build()
+        ImportBuildingsHTMLDialog(self, self.server, self.account,
+                                  self.village_name, on_complete=_on_done)
 
     def _save(self):
         slots = []
@@ -4571,8 +4557,8 @@ class ImportBuildingsHTMLDialog(tk.Toplevel):
 
     def _parse(self):
         raw = self._txt.get("1.0", "end")
-        self._parsed = parse_village_buildings_html(raw)
-        if not self._parsed:
+        all_parsed = parse_village_buildings_html(raw)
+        if not all_parsed:
             self._set_preview(
                 "❌  No building slots found.\n"
                 "Supported pages: dorf1.php (resource fields) and dorf2.php (city buildings).\n"
@@ -4580,26 +4566,53 @@ class ImportBuildingsHTMLDialog(tk.Toplevel):
                 "  Browser → F12 → Elements → right-click <body> → Copy element.",
                 COL_RED)
             return
-        lines = [f"✔  Found {len(self._parsed)} building slot(s):"]
-        for sid in sorted(self._parsed):
-            b = self._parsed[sid]
-            lines.append(f"  Slot {sid:>2d}:  {b['building']:<28s}  Level {b['level']}")
+        # Split: slots 1-18 → resource layout, slots 19+ → city buildings
+        self._parsed_resources  = {sid: d for sid, d in all_parsed.items() if sid <= 18}
+        self._parsed_buildings  = {sid: d for sid, d in all_parsed.items() if sid >= 19}
+        lines = []
+        if self._parsed_resources:
+            lines.append(f"✔  Resource fields ({len(self._parsed_resources)} slots) → Resource Layout page:")
+            for sid in sorted(self._parsed_resources):
+                b = self._parsed_resources[sid]
+                lines.append(f"  Slot {sid:>2d}:  {b['building']:<14s}  Level {b['level']}")
+        if self._parsed_buildings:
+            lines.append(f"✔  City buildings ({len(self._parsed_buildings)} slots) → Buildings page:")
+            for sid in sorted(self._parsed_buildings):
+                b = self._parsed_buildings[sid]
+                lines.append(f"  Slot {sid:>2d}:  {b['building']:<28s}  Level {b['level']}")
         self._set_preview("\n".join(lines), COL_FULL_GREEN)
 
     def _import(self):
-        if not self._parsed:
+        if not (hasattr(self, "_parsed_resources") or hasattr(self, "_parsed_buildings")):
             self._parse()
-        if not self._parsed:
+        res  = getattr(self, "_parsed_resources", {})
+        blds = getattr(self, "_parsed_buildings", {})
+        if not res and not blds:
             return
-        # Merge with existing — keep existing slots not present in HTML parse
-        existing = load_current_buildings(self.server, self.account, self.village_name)
-        merged = dict(existing)
-        merged.update(self._parsed)
-        save_current_buildings(self.server, self.account, self.village_name, merged)
-        self._status.config(
-            text=f"✅  Imported {len(self._parsed)} slot(s).",
-            fg=COL_FULL_GREEN)
-        self._parsed = {}
+
+        total = 0
+
+        # Route slots 1-18 → resource layout (type + level)
+        if res:
+            existing_res = load_resource_layout(self.server, self.account, self.village_name)
+            slot_map = {int(r["slot"]): r for r in existing_res}
+            for sid, d in res.items():
+                slot_map[sid] = {"slot": str(sid), "type": d["building"], "level": str(d["level"])}
+            merged_res = [slot_map[i] for i in range(1, 19) if i in slot_map]
+            save_resource_layout(self.server, self.account, self.village_name, merged_res)
+            total += len(res)
+
+        # Route slots 19+ → current buildings
+        if blds:
+            existing_bld = load_current_buildings(self.server, self.account, self.village_name)
+            merged_bld = dict(existing_bld)
+            merged_bld.update(blds)
+            save_current_buildings(self.server, self.account, self.village_name, merged_bld)
+            total += len(blds)
+
+        self._status.config(text=f"✅  Imported {total} slot(s).", fg=COL_FULL_GREEN)
+        self._parsed_resources = {}
+        self._parsed_buildings = {}
         if self._on_complete:
             self._on_complete()
 
@@ -5263,11 +5276,12 @@ class MainApp(tk.Frame):
         bool_vars: dict = {}
 
         def _save_roles():
-            new_roles = {}
+            # Load existing roles and merge — only update villages currently visible
+            existing = load_village_roles(self.server, self.account)
             for vname, fvars in bool_vars.items():
-                new_roles[vname] = {flag: "1" if var.get() else "0"
-                                    for flag, var in fvars.items()}
-            save_village_roles(self.server, self.account, new_roles)
+                existing[vname] = {flag: "1" if var.get() else "0"
+                                   for flag, var in fvars.items()}
+            save_village_roles(self.server, self.account, existing)
             status_lbl.config(text="✓ Saved", fg=COL_FULL_GREEN)
             fade_label(status_lbl, after_ms=3000)
 
@@ -5353,60 +5367,60 @@ class MainApp(tk.Frame):
                     vname  = v["village_name"]
                     is_cap = v.get("is_capital", "") == "1"
 
-                # Village name
-                tk.Label(tbl, text=("👑 " if is_cap else "   ") + vname,
-                         font=FONT_SMALL, bg=bg,
-                         fg=ACCENT if is_cap else TEXT_PRIMARY,
-                         anchor="w", padx=6, pady=3
-                         ).grid(row=r, column=0, sticky="nsew", padx=(0,1), pady=(0,1))
+                    # Village name
+                    tk.Label(tbl, text=("👑 " if is_cap else "   ") + vname,
+                             font=FONT_SMALL, bg=bg,
+                             fg=ACCENT if is_cap else TEXT_PRIMARY,
+                             anchor="w", padx=6, pady=3
+                             ).grid(row=r, column=0, sticky="nsew", padx=(0,1), pady=(0,1))
 
-                # Capital toggle
-                cap_btn = tk.Button(
-                    tbl, text="★" if is_cap else "☆",
-                    font=FONT_SMALL,
-                    bg=ACCENT_DIM if is_cap else bg,
-                    fg=ACCENT if is_cap else TEXT_MUTED,
-                    activebackground=BG_HOVER, activeforeground=ACCENT,
-                    relief="flat", bd=0, cursor="hand2",
-                    command=lambda vn=vname: _on_capital_click(vn))
-                if self.is_archived:
-                    cap_btn.config(state="disabled")
-                cap_btn.grid(row=r, column=1, sticky="nsew", padx=(0,1), pady=(0,1))
-
-                # Template dropdown
-                cur_tmpl = v.get("applied_template", "") or "— None —"
-                t_var = tk.StringVar(value=cur_tmpl if cur_tmpl in tmpl_opts else "— None —")
-                t_var_map[vname] = t_var
-                state = "disabled" if self.is_archived else "readonly"
-                cb = styled_combo(tbl, t_var, tmpl_opts, width=18, state=state)
-                cb.grid(row=r, column=2, sticky="nsew", padx=(0,1), pady=(0,1))
-
-                # Boolean flag checkboxes
-                vflags = roles_map.get(vname, {})
-                bool_vars[vname] = {}
-                for ci, flag in enumerate(bool_flags, start=3):
-                    bvar = tk.BooleanVar(value=vflags.get(flag, "0") == "1")
-                    bool_vars[vname][flag] = bvar
-
-                    # Small and Large are mutually exclusive
-                    if flag == "Small":
-                        cmd = lambda vn=vname, bv=bvar: (
-                            bool_vars[vn]["Large"].set(False) if bv.get() else None)
-                    elif flag == "Large":
-                        cmd = lambda vn=vname, bv=bvar: (
-                            bool_vars[vn]["Small"].set(False) if bv.get() else None)
-                    else:
-                        cmd = None
-
-                    cb2 = tk.Checkbutton(tbl, variable=bvar, command=cmd,
-                                         bg=bg, activebackground=bg,
-                                         fg=COL_FULL_GREEN, activeforeground=COL_FULL_GREEN,
-                                         selectcolor=bg, relief="flat", bd=0)
+                    # Capital toggle
+                    cap_btn = tk.Button(
+                        tbl, text="★" if is_cap else "☆",
+                        font=FONT_SMALL,
+                        bg=ACCENT_DIM if is_cap else bg,
+                        fg=ACCENT if is_cap else TEXT_MUTED,
+                        activebackground=BG_HOVER, activeforeground=ACCENT,
+                        relief="flat", bd=0, cursor="hand2",
+                        command=lambda vn=vname: _on_capital_click(vn))
                     if self.is_archived:
-                        cb2.config(state="disabled")
-                    cb2.grid(row=r, column=ci, sticky="nsew", padx=(0,1), pady=(0,1))
+                        cap_btn.config(state="disabled")
+                    cap_btn.grid(row=r, column=1, sticky="nsew", padx=(0,1), pady=(0,1))
 
-                row_idx += 1   # one row per village
+                    # Template dropdown
+                    cur_tmpl = v.get("applied_template", "") or "— None —"
+                    t_var = tk.StringVar(value=cur_tmpl if cur_tmpl in tmpl_opts else "— None —")
+                    t_var_map[vname] = t_var
+                    state = "disabled" if self.is_archived else "readonly"
+                    cb = styled_combo(tbl, t_var, tmpl_opts, width=18, state=state)
+                    cb.grid(row=r, column=2, sticky="nsew", padx=(0,1), pady=(0,1))
+
+                    # Boolean flag checkboxes
+                    vflags = roles_map.get(vname, {})
+                    bool_vars[vname] = {}
+                    for ci, flag in enumerate(bool_flags, start=3):
+                        bvar = tk.BooleanVar(value=vflags.get(flag, "0") == "1")
+                        bool_vars[vname][flag] = bvar
+
+                        # Small and Large are mutually exclusive
+                        if flag == "Small":
+                            cmd = lambda vn=vname, bv=bvar: (
+                                bool_vars[vn]["Large"].set(False) if bv.get() else None)
+                        elif flag == "Large":
+                            cmd = lambda vn=vname, bv=bvar: (
+                                bool_vars[vn]["Small"].set(False) if bv.get() else None)
+                        else:
+                            cmd = None
+
+                        cb2 = tk.Checkbutton(tbl, variable=bvar, command=cmd,
+                                             bg=bg, activebackground=bg,
+                                             fg=COL_FULL_GREEN, activeforeground=COL_FULL_GREEN,
+                                             selectcolor=bg, relief="flat", bd=0)
+                        if self.is_archived:
+                            cb2.config(state="disabled")
+                        cb2.grid(row=r, column=ci, sticky="nsew", padx=(0,1), pady=(0,1))
+
+                    row_idx += 1   # one row per village
 
         # Wire the save button's command now that _save_roles is defined
         if not self.is_archived:
