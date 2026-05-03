@@ -104,15 +104,25 @@ MAX_BUILDING_LEVEL = 20   # default for most buildings
 
 # 22 inner village building slots
 # slot_id: (label, locked_building or None)
+# Slots 1-18: resource fields (building names come from current_buildings CSV)
+# Slots 19-40: city buildings
 VILLAGE_SLOTS = {
-    1:  ("Slot 1",  None),   2:  ("Slot 2",  None),   3:  ("Slot 3",  None),
-    4:  ("Slot 4",  None),   5:  ("Slot 5",  None),   6:  ("Slot 6",  None),
-    7:  ("Slot 7",  None),   8:  ("Slot 8",  None),   9:  ("Slot 9",  None),
-    10: ("Slot 10", None),   11: ("Slot 11", None),   12: ("Slot 12", None),
-    13: ("Slot 13", None),   14: ("Slot 14", None),   15: ("Slot 15", None),
-    16: ("Slot 16", None),   17: ("Slot 17", None),   18: ("Slot 18", None),
-    19: ("Rally Point", "Rally Point"),  # locked
-    20: ("Wall",    "__WALL__"),          # tribe-specific wall, locked
+    # Resource fields (tribe-agnostic labels; actual building name stored in CSV)
+    1:  ("Res 1",  None),   2:  ("Res 2",  None),   3:  ("Res 3",  None),
+    4:  ("Res 4",  None),   5:  ("Res 5",  None),   6:  ("Res 6",  None),
+    7:  ("Res 7",  None),   8:  ("Res 8",  None),   9:  ("Res 9",  None),
+    10: ("Res 10", None),   11: ("Res 11", None),   12: ("Res 12", None),
+    13: ("Res 13", None),   14: ("Res 14", None),   15: ("Res 15", None),
+    16: ("Res 16", None),   17: ("Res 17", None),   18: ("Res 18", None),
+    # City building slots
+    19: ("Slot 19", None),  20: ("Slot 20", None),  21: ("Slot 21", None),
+    22: ("Slot 22", None),  23: ("Slot 23", None),  24: ("Slot 24", None),
+    25: ("Slot 25", None),  26: ("Slot 26", None),  27: ("Slot 27", None),
+    28: ("Slot 28", None),  29: ("Slot 29", None),  30: ("Slot 30", None),
+    31: ("Slot 31", None),  32: ("Slot 32", None),  33: ("Slot 33", None),
+    34: ("Slot 34", None),  35: ("Slot 35", None),  36: ("Slot 36", None),
+    37: ("Slot 37", None),  38: ("Slot 38", None),  39: ("Rally Point", "Rally Point"),
+    40: ("Wall",    "__WALL__"),  # tribe-specific wall, locked
 }
 
 BUILDING_LEVELS = [str(i) for i in range(0, 21)]   # 0–20, default full range
@@ -373,7 +383,8 @@ def get_troop_stats(tribe: str) -> dict:
 
 def calc_queue_hourly_cost(building: str, building_level: int,
                             troop_name: str, troop_stats: dict,
-                            speed_mult: float = 1.0) -> dict:
+                            speed_mult: float = 1.0,
+                            recruitment_pct: int = 0) -> dict:
     """
     Return {wood, clay, iron, crop} per hour for one building queuing one troop type.
 
@@ -382,6 +393,9 @@ def calc_queue_hourly_cost(building: str, building_level: int,
     remaining at that level (e.g. level 1 = 100%, level 5 ≈ 65.61%).
     Falls back to 100% (no reduction) if the value is missing.
 
+    recruitment_pct: alliance Recruitment bonus (0–25%).
+    Applied as a flat % increase on top of the building-reduced production rate
+    (e.g. +4% → troops_per_hour × 1.04, rounded).
     Great Barracks / Great Stable: 3× resource cost, same time reduction as Barracks/Stable.
     Speed servers: training_time / speed_mult.
     """
@@ -404,10 +418,12 @@ def calc_queue_hourly_cost(building: str, building_level: int,
     else:
         reduced_sec = base_sec   # no data → assume no reduction
 
-    if reduced_sec <= 0:
-        return {"wood": 0, "clay": 0, "iron": 0, "crop": 0}
-
     troops_per_hour = 3600.0 / reduced_sec
+
+    # Alliance Recruitment bonus: flat % increase on production output
+    if recruitment_pct > 0:
+        troops_per_hour *= (1.0 + recruitment_pct / 100.0)
+
     cost_mult = 3.0 if building in ("Great Barracks", "Great Stable") else 1.0
 
     return {
@@ -695,7 +711,15 @@ def parse_trade_routes(raw_text: str) -> list:
     """
     Parse raw paste from Travian's Trade Routes page.
     Returns list of dicts matching TRADE_ROUTE_FIELDS (without route_id).
-    Extracts data between "Create new trade route" and "Add route to village".
+
+    The real page format:
+      - One "Create new trade route" header for all routes from this village
+      - Each route starts with "To: NAME" then "Travel time: HH:MM:SSh"
+      - Each route has up to 24 departure slots (one per clock hour), each slot
+        has 6 values: wood, clay, iron, crop, HH:MM, merchant_count
+      - Route ends at "Add route to village"; next route may follow immediately
+      - All slots in a route carry identical resources — we store the first slot
+        and set frequency_min=60 (hourly departures)
     """
     import re as _re2
 
@@ -705,64 +729,92 @@ def parse_trade_routes(raw_text: str) -> list:
     lines = [_cl(ln) for ln in raw_text.splitlines()]
     lines = [ln for ln in lines if ln]
 
-    # Find bounds
-    start = end = None
+    # Find the first "Create new trade route" — all routes follow from there
+    global_start = None
     for i, ln in enumerate(lines):
         if ln.lower().startswith("create new trade route"):
-            start = i + 1
-        if ln.lower().startswith("add route to village") and start is not None:
-            end = i
+            global_start = i + 1
             break
-    if start is None or end is None:
+    if global_start is None:
         return []
 
-    block = lines[start:end]
-
     routes = []
-    i = 0
-    while i < len(block):
-        ln = block[i]
+    i = global_start
 
-        # "To: X" starts a route
+    while i < len(lines):
+        ln = lines[i]
+
+        # Terminal lines — stop parsing
+        if ln.lower() in ("no trade route selected", "activate all"):
+            break
+
+        # "To: NAME" starts a new route
         m = _re2.match(r'^To:\s*(.+)$', ln, _re2.IGNORECASE)
         if m:
             target = m.group(1).strip()
-            route  = {"target": target, "wood": "0", "clay": "0",
-                      "iron": "0", "crop": "0", "merchants": "1",
-                      "frequency_min": "60", "departure_time": "",
-                      "travel_minutes": "0", "active": "1"}
+            route = {
+                "target": target, "wood": "0", "clay": "0",
+                "iron": "0", "crop": "0", "merchants": "1",
+                "frequency_min": "60", "departure_time": "",
+                "travel_minutes": "0", "active": "1",
+            }
 
-            # Travel time on next line: "Travel time: H:MM:SSh"
-            if i + 1 < len(block):
-                tm = _re2.match(r'Travel time:\s*(\d+):(\d+):(\d+)', block[i + 1], _re2.IGNORECASE)
+            # Optional travel time on next line: "Travel time: HH:MM:SSh"
+            if i + 1 < len(lines):
+                tm = _re2.match(r'Travel time:\s*(\d+):(\d+):(\d+)',
+                                lines[i + 1], _re2.IGNORECASE)
                 if tm:
-                    mins = int(tm.group(1)) * 60 + int(tm.group(2)) + round(int(tm.group(3)) / 60)
+                    mins = (int(tm.group(1)) * 60 + int(tm.group(2))
+                            + round(int(tm.group(3)) / 60))
                     route["travel_minutes"] = str(mins)
+                    i += 2
+                else:
                     i += 1
+            else:
+                i += 1
 
-            # Scan following lines for resources, time, merchant count
-            j = i + 1
-            res_found = []
-            while j < len(block) and j < i + 10:
-                candidate = block[j]
-                # pure integer → resource value
+            # Skip "Resource" header if present
+            if i < len(lines) and lines[i].lower() == "resource":
+                i += 1
+
+            # Read departure slots until "Add route to village" or next "To:"
+            # Slot format (6 consecutive values): wood clay iron crop HH:MM merchants
+            # We read only the FIRST complete slot for the route's resource values.
+            first_slot_done = False
+            slot_buf = []
+
+            while i < len(lines):
+                candidate = lines[i]
+
+                # End of this route
+                if candidate.lower().startswith("add route to village"):
+                    i += 1   # consume; next line may be another "To:"
+                    break
+
+                # Next route starts — don't consume
+                if _re2.match(r'^To:\s*', candidate, _re2.IGNORECASE):
+                    break
+
+                # Accumulate numeric / time values into slot buffer
                 if _re2.fullmatch(r'\d+', candidate):
-                    res_found.append(candidate)
-                # HH:MM → departure time
+                    slot_buf.append(candidate)
                 elif _re2.fullmatch(r'\d{1,2}:\d{2}', candidate):
-                    route["departure_time"] = candidate
-                j += 1
+                    slot_buf.append(candidate)
 
-            # First 4 integers are wood, clay, iron, crop
-            res_keys = ["wood", "clay", "iron", "crop"]
-            for ki, val in enumerate(res_found[:4]):
-                route[res_keys[ki]] = val
-            # 5th integer (if present) is merchant count
-            if len(res_found) >= 5:
-                route["merchants"] = res_found[4]
+                # Once 6 values collected: parse the first slot
+                if len(slot_buf) >= 6 and not first_slot_done:
+                    route["wood"]           = slot_buf[0]
+                    route["clay"]           = slot_buf[1]
+                    route["iron"]           = slot_buf[2]
+                    route["crop"]           = slot_buf[3]
+                    route["departure_time"] = slot_buf[4]
+                    route["merchants"]      = slot_buf[5]
+                    route["frequency_min"]  = "60"
+                    first_slot_done = True
+
+                i += 1
 
             routes.append(route)
-            i = j
         else:
             i += 1
 
@@ -856,51 +908,84 @@ def parse_troop_overview(raw_text: str, tribe: str) -> dict:
         village_troops[vname] = counts
 
     # ── Parse sidebar: group names and coordinates ─────────────────────────
-    # Pattern in the sidebar:
-    #   Group Name
-    #   19. Vigántpetend
-    #   ‭(‭89‬|‭53‬)‬        ← coords line
+    # Sidebar structure after "Village groups":
+    #   (N/M)                    ← group count line, skip
+    #   Group Name               ← group header (no number prefix, no coords)
+    #   05 Thunderhead Keep      ← village name (has number prefix)
+    #   ‭(103|116)‬               ← coord line
+    #   ... more villages ...
+    #   Next Group Name
+    #   ...
     village_coords = {}
     village_groups = {}
 
     coord_pat = _re.compile(r'\(?\s*(-?\d+)\s*\|\s*(-?\d+)\s*\)?$')
-    i = 0
-    current_group = ""
-    # Known non-group lines to skip
-    skip_prefixes = {"village", "sum", "deonnar", "task overview", "homepage",
-                     "© ", "info box", "link list", "privacy", "switch",
-                     "hero", "server time", "alliance"}
 
-    while i < len(lines):
-        ln = lines[i]
-        # Coord line right after a village name line
-        coord_m = coord_pat.search(ln)
-        if coord_m and i > 0:
-            prev = _clean(lines[i - 1])
-            # Village names now include the number prefix (e.g. "19. Vigántpetend")
-            if prev in village_troops:
-                village_coords[prev] = (coord_m.group(1), coord_m.group(2))
-                if current_group:
-                    village_groups[prev] = current_group
+    # Find the "Village groups" anchor in the raw lines
+    sidebar_start = None
+    for i, ln in enumerate(lines):
+        if _clean(ln).lower() == "village groups":
+            sidebar_start = i + 1
+            break
+
+    if sidebar_start is not None:
+        current_group = ""
+        i = sidebar_start
+
+        # Skip the "(N/M)" count line
+        if i < len(lines) and _re.match(r'^\(?\d+/\d+\)?$', _clean(lines[i])):
             i += 1
-            continue
 
-        # Check if this looks like a group header
-        lln = ln.lower()
-        is_skip = any(lln.startswith(s) for s in skip_prefixes)
-        has_number_prefix = bool(_re.match(r'^\d+\.', ln))
-        is_known_village = ln in village_troops
+        while i < len(lines):
+            ln = _clean(lines[i])
 
-        if (not is_skip and not has_number_prefix and not is_known_village
-                and len(ln) > 2 and len(ln) < 60
-                and not coord_pat.search(ln)):
-            # Candidate group header — accept if next non-blank is a village line
-            for j in range(i + 1, min(i + 4, len(lines))):
-                nxt = lines[j]
-                if _re.match(r'^\d+\.', nxt) or nxt in village_troops:
-                    current_group = ln
-                    break
-        i += 1
+            # Stop at known terminal lines
+            if any(ln.lower().startswith(s) for s in (
+                    "task overview", "homepage", "© ", "privacy settings")):
+                break
+
+            coord_m = coord_pat.search(ln)
+            if coord_m:
+                # Coord line — look back to find the village name it belongs to
+                if i > 0:
+                    prev = _clean(lines[i - 1])
+                    if prev in village_troops:
+                        village_coords[prev] = (coord_m.group(1), coord_m.group(2))
+                        if current_group:
+                            village_groups[prev] = current_group
+                i += 1
+                continue
+
+            # Village name: starts with a digit prefix like "05 Thunderhead Keep"
+            if _re.match(r'^\d', ln) and ln in village_troops:
+                if current_group:
+                    village_groups[ln] = current_group
+                i += 1
+                continue
+
+            # Skip the player name line and population/loyalty/villages lines
+            if any(ln.lower().startswith(s) for s in (
+                    "population:", "loyalty:", "villages", "village groups",
+                    "switch to", "server time", "alliance", "link list",
+                    "edit link", "hero", "sum", " ")):
+                i += 1
+                continue
+
+            # Skip pure numeric lines (resource values at top of page)
+            if _re.fullmatch(r'\d+', ln):
+                i += 1
+                continue
+
+            # Skip count lines like "(6/20)"
+            if _re.match(r'^\(?\d+/\d+\)?$', ln):
+                i += 1
+                continue
+
+            # Anything left that's non-empty and not a coord is a group name
+            if ln and len(ln) > 1:
+                current_group = ln
+
+            i += 1
 
     return {
         "troop_columns":   [canonical for _, canonical in troop_columns],
@@ -1091,6 +1176,21 @@ def save_alliance_info(server, account, info: dict):
         w = csv.DictWriter(f, fieldnames=ALLIANCE_FIELDS)
         w.writeheader()
         w.writerows(rows)
+
+def get_recruitment_pct(level: int, speed: str = "1x") -> int:
+    """Return the Recruitment bonus % for a given alliance level, read from alliance_bonuses.csv."""
+    csv_path = DATA_DIR / "general" / speed / "alliance_bonuses.csv"
+    if not csv_path.exists():
+        csv_path = DATA_DIR / "general" / "1x" / "alliance_bonuses.csv"
+    try:
+        with open(csv_path, newline="", encoding="utf-8") as f:
+            for row in csv.DictReader(f):
+                if row.get("bonus_type") == "Recruitment" and int(row.get("level", -1)) == level:
+                    return int(row.get("value", 0))
+    except Exception:
+        pass
+    return 0
+
 
 def load_alliance_bonus_table() -> dict:
     """Return {bonus_type: {level(int): {value, description}}} from general CSV."""
@@ -2057,7 +2157,7 @@ class VillageLayoutPlanner(tk.Frame):
         make_separator(inner, bg=BORDER).pack(fill="x", pady=(0, 4))
 
         # ── First pass: initialise StringVars so _available_buildings works ──
-        for slot_id in range(1, 21):
+        for slot_id in range(1, 41):
             _, locked = VILLAGE_SLOTS[slot_id]
             if locked:
                 ln = wall_building if locked == "__WALL__" else locked
@@ -2069,7 +2169,7 @@ class VillageLayoutPlanner(tk.Frame):
             self._level_vars[slot_id] = tk.StringVar(value=saved_l)
 
         # ── Second pass: build rows ──
-        for slot_id in range(1, 21):
+        for slot_id in range(1, 41):
             _, locked = VILLAGE_SLOTS[slot_id]
             is_locked = locked is not None
             locked_name = (wall_building if locked == "__WALL__" else locked) if locked else None
@@ -2117,7 +2217,7 @@ class VillageLayoutPlanner(tk.Frame):
     def _save(self):
         layout = {}
         wall_building = WALL_BY_TRIBE.get(self.tribe, "Wall")
-        for slot_id in range(1, 21):
+        for slot_id in range(1, 41):
             _, locked = VILLAGE_SLOTS[slot_id]
             if locked == "__WALL__": building = wall_building
             elif locked:             building = locked
@@ -2136,7 +2236,7 @@ class VillageLayoutPlanner(tk.Frame):
         """Read current UI state into a layout dict (same as _save but without writing)."""
         layout = {}
         wall_building = WALL_BY_TRIBE.get(self.tribe, "Wall")
-        for slot_id in range(1, 21):
+        for slot_id in range(1, 41):
             _, locked = VILLAGE_SLOTS[slot_id]
             if locked == "__WALL__": building = wall_building
             elif locked:             building = locked
@@ -2166,7 +2266,7 @@ class VillageLayoutPlanner(tk.Frame):
         if not layout:
             return
         wall_building = WALL_BY_TRIBE.get(self.tribe, "Wall")
-        for slot_id in range(1, 21):
+        for slot_id in range(1, 41):
             _, locked = VILLAGE_SLOTS[slot_id]
             if locked:
                 continue   # never overwrite fixed slots
@@ -2262,6 +2362,20 @@ class VillageBuildingsView(tk.Frame):
 
     # ── Build UI ──────────────────────────────────────────────────────────────
 
+    def _open_html_import(self):
+        def _on_done():
+            for w in self.winfo_children():
+                w.destroy()
+            self._cur_building_vars = {}
+            self._cur_level_vars    = {}
+            self._progress_bars     = {}
+            self._cur_combos        = {}
+            self._cur_level_combos  = {}
+            self._planned_levels    = {}
+            self._load_and_build()
+        ImportBuildingsHTMLDialog(self, self.server, self.account,
+                                  self.village_name, on_complete=_on_done)
+
     def _load_and_build(self):
         self.layout  = load_layout(self.server, self.account, self.village_name)
         self.current = load_current_buildings(self.server, self.account, self.village_name)
@@ -2282,6 +2396,9 @@ class VillageBuildingsView(tk.Frame):
                           small=True).pack(side="left", padx=(0, 6))
             styled_button(hdr, "💾  Save Current State", command=self._save,
                           accent=True).pack(side="left")
+            styled_button(hdr, "📥  Import from HTML",
+                          command=self._open_html_import,
+                          small=True).pack(side="left", padx=(8, 0))
 
         make_separator(self).pack(fill="x", padx=24, pady=10)
 
@@ -2309,12 +2426,19 @@ class VillageBuildingsView(tk.Frame):
                      width=lw if lw else 10, anchor="w").pack(side="left", padx=4)
         make_separator(inner, bg=BORDER).pack(fill="x", pady=(0, 4))
 
+        tk.Label(inner, text="  Resource Fields  (slots 1–18)",
+                 font=FONT_SMALL, bg=BG_DARK, fg=TEXT_MUTED,
+                 anchor="w").pack(fill="x", padx=4, pady=(0, 4))
+
         # First pass: initialise cur StringVars
-        for slot_id in range(1, 21):
+        for slot_id in range(1, 41):
             _, locked = VILLAGE_SLOTS[slot_id]
             locked_name = (wall_building if locked == "__WALL__" else locked) if locked else None
             cur = self.current.get(slot_id, {})
             pl  = self.layout.get(slot_id, {})
+            # Slots 1-18 are resource fields — treat their building name as locked
+            if slot_id <= 18:
+                locked_name = cur.get("building", "") or locked_name or ""
             default_b = locked_name or cur.get("building", "") or ""
             self._cur_building_vars[slot_id] = tk.StringVar(
                 value=default_b if default_b else "— Empty —")
@@ -2323,13 +2447,24 @@ class VillageBuildingsView(tk.Frame):
             self._planned_levels[slot_id] = int(pl.get("level", 0))
 
         # Second pass: build rows
-        for slot_id in range(1, 21):
+        for slot_id in range(1, 41):
             _, locked = VILLAGE_SLOTS[slot_id]
             locked_name = (wall_building if locked == "__WALL__" else locked) if locked else None
+            # Slots 1-18: resource fields — show their building name as read-only
+            if slot_id <= 18:
+                locked_name = self.current.get(slot_id, {}).get("building", "") or locked_name or ""
             p_data     = self.layout.get(slot_id, {})
             p_building = p_data.get("building", "")
             p_level    = int(p_data.get("level", 0))
             c_level    = int(self.current.get(slot_id, {}).get("level", 0))
+
+            # Visual separator between resource fields (1-18) and city buildings (19-40)
+            if slot_id == 19:
+                sep = tk.Frame(inner, bg=ACCENT, height=2)
+                sep.pack(fill="x", pady=(6, 2))
+                tk.Label(inner, text="  City Buildings  (slots 19–40)",
+                         font=FONT_SMALL, bg=BG_DARK, fg=ACCENT,
+                         anchor="w").pack(fill="x", padx=4, pady=(0, 4))
 
             row_bg = BG_MID if slot_id % 2 == 0 else BG_DARK
             row = tk.Frame(inner, bg=row_bg)
@@ -2410,7 +2545,7 @@ class VillageBuildingsView(tk.Frame):
         """Recalculate overall progress from current UI state and update label."""
         planned_total = 0
         current_total = 0
-        for slot_id in range(1, 21):
+        for slot_id in range(1, 41):
             p_level = self._planned_levels.get(slot_id, 0)
             planned_total += p_level
             if p_level > 0:
@@ -2443,7 +2578,7 @@ class VillageBuildingsView(tk.Frame):
         # Gather current free-slot contents as a list of (building, level) pairs
         pool = []
         free_slots = []
-        for slot_id in range(1, 21):
+        for slot_id in range(1, 41):
             _, locked = VILLAGE_SLOTS[slot_id]
             if locked:
                 continue
@@ -2496,7 +2631,7 @@ class VillageBuildingsView(tk.Frame):
     def _save(self):
         buildings = {}
         wall_building = WALL_BY_TRIBE.get(self.tribe, "Wall")
-        for slot_id in range(1, 21):
+        for slot_id in range(1, 41):
             _, locked = VILLAGE_SLOTS[slot_id]
             if locked == "__WALL__": building = wall_building
             elif locked:             building = locked
@@ -2978,7 +3113,25 @@ class TroopOverviewImportDialog(tk.Toplevel):
                  font=FONT_SMALL, bg=BG_DARK, fg=TEXT_MUTED,
                  justify="left").pack(anchor="w", pady=(0, 10))
 
-        # Text area
+        # Buttons — packed first (side=bottom) so they're always visible
+        btn_row = tk.Frame(pad, bg=BG_DARK)
+        btn_row.pack(side="bottom", fill="x", pady=(8, 0))
+        styled_button(btn_row, "🔍  Parse", command=self._parse,
+                      accent=True).pack(side="left")
+        styled_button(btn_row, "✅  Import", command=self._import,
+                      small=True).pack(side="left", padx=8)
+        self._status_lbl = tk.Label(btn_row, text="", font=FONT_SMALL,
+                                    bg=BG_DARK, fg=COL_FULL_GREEN)
+        self._status_lbl.pack(side="left", padx=8)
+        styled_button(btn_row, "Close", command=self.destroy,
+                      small=True).pack(side="right")
+
+        # Preview area — packed second (side=bottom), scrollable
+        self._preview_frame = tk.Frame(pad, bg=BG_DARK, height=80)
+        self._preview_frame.pack(side="bottom", fill="x", pady=(6, 0))
+        self._preview_frame.pack_propagate(False)
+
+        # Text area — fills remaining space
         txt_frame = tk.Frame(pad, bg=BORDER)
         txt_frame.pack(fill="both", expand=True)
         self._txt = tk.Text(txt_frame, bg=BG_MID, fg=TEXT_PRIMARY,
@@ -2994,23 +3147,6 @@ class TroopOverviewImportDialog(tk.Toplevel):
         sb_y.pack(side="right", fill="y")
         sb_x.pack(side="bottom", fill="x")
         self._txt.pack(fill="both", expand=True)
-
-        # Preview area (shown after parse)
-        self._preview_frame = tk.Frame(pad, bg=BG_DARK)
-        self._preview_frame.pack(fill="x", pady=(8, 0))
-
-        # Buttons
-        btn_row = tk.Frame(pad, bg=BG_DARK)
-        btn_row.pack(fill="x", pady=(10, 0))
-        styled_button(btn_row, "🔍  Parse", command=self._parse,
-                      accent=True).pack(side="left")
-        styled_button(btn_row, "✅  Import", command=self._import,
-                      small=True).pack(side="left", padx=8)
-        self._status_lbl = tk.Label(btn_row, text="", font=FONT_SMALL,
-                                    bg=BG_DARK, fg=COL_FULL_GREEN)
-        self._status_lbl.pack(side="left", padx=8)
-        styled_button(btn_row, "Close", command=self.destroy,
-                      small=True).pack(side="right")
 
     def _parse(self):
         raw = self._txt.get("1.0", "end")
@@ -3094,7 +3230,7 @@ class TroopOverviewImportDialog(tk.Toplevel):
                     v = existing_map[vname]
                     if not v.get("coord_x") and cx:  v["coord_x"] = cx
                     if not v.get("coord_y") and cy:  v["coord_y"] = cy
-                    if not v.get("group")   and grp: v["group"]   = grp
+                    if grp: v["group"] = grp   # always update group from latest import
                     output_villages.append(v)
                 else:
                     output_villages.append({
@@ -3639,6 +3775,25 @@ class ImportTradeRoutesDialog(tk.Toplevel):
                  font=FONT_SMALL, bg=BG_DARK, fg=TEXT_MUTED,
                  justify="left").pack(anchor="w", pady=(0,8))
 
+        # Buttons — packed first so always visible
+        btn_row = tk.Frame(pad, bg=BG_DARK)
+        btn_row.pack(side="bottom", fill="x", pady=(8,0))
+        styled_button(btn_row, "🔍  Parse",  command=self._parse,  accent=True).pack(side="left")
+        styled_button(btn_row, "✅  Import", command=self._import, small=True).pack(side="left", padx=6)
+        self._status = tk.Label(btn_row, text="", font=FONT_SMALL,
+                                bg=BG_DARK, fg=COL_FULL_GREEN)
+        self._status.pack(side="left", padx=8)
+        styled_button(btn_row, "Close", command=self.destroy, small=True).pack(side="right")
+
+        # Scrollable preview — packed second (side=bottom)
+        prev_frame = tk.Frame(pad, bg=BORDER, height=90)
+        prev_frame.pack(side="bottom", fill="x", pady=(6,0))
+        prev_frame.pack_propagate(False)
+        self._preview_txt = tk.Text(prev_frame, bg=BG_MID, fg=COL_FULL_GREEN,
+                                    font=FONT_SMALL, relief="flat", bd=4,
+                                    state="disabled", wrap="word")
+        self._preview_txt.pack(fill="both", expand=True)
+
         txt_frame = tk.Frame(pad, bg=BORDER)
         txt_frame.pack(fill="both", expand=True)
         self._txt = tk.Text(txt_frame, bg=BG_MID, fg=TEXT_PRIMARY,
@@ -3651,33 +3806,27 @@ class ImportTradeRoutesDialog(tk.Toplevel):
         sb.pack(side="right", fill="y")
         self._txt.pack(fill="both", expand=True)
 
-        self._preview = tk.Label(pad, text="", font=FONT_SMALL,
-                                 bg=BG_DARK, fg=COL_FULL_GREEN, justify="left")
-        self._preview.pack(anchor="w", pady=(6,0))
-
-        btn_row = tk.Frame(pad, bg=BG_DARK)
-        btn_row.pack(fill="x", pady=(8,0))
-        styled_button(btn_row, "🔍  Parse",  command=self._parse,  accent=True).pack(side="left")
-        styled_button(btn_row, "✅  Import", command=self._import, small=True).pack(side="left", padx=6)
-        self._status = tk.Label(btn_row, text="", font=FONT_SMALL,
-                                bg=BG_DARK, fg=COL_FULL_GREEN)
-        self._status.pack(side="left", padx=8)
-        styled_button(btn_row, "Close", command=self.destroy, small=True).pack(side="right")
+    def _set_preview(self, text, fg=None):
+        self._preview_txt.config(state="normal")
+        self._preview_txt.delete("1.0", "end")
+        self._preview_txt.insert("end", text)
+        if fg: self._preview_txt.config(fg=fg)
+        self._preview_txt.config(state="disabled")
 
     def _parse(self):
         raw = self._txt.get("1.0", "end")
         self._parsed = parse_trade_routes(raw)
         if not self._parsed:
-            self._preview.config(
-                text="❌  No trade routes found. Make sure the paste includes\n"
-                     "   'Create new trade route' and 'Add route to village'.",
-                fg=COL_RED)
+            self._set_preview(
+                "❌  No trade routes found. Make sure the paste includes\n"
+                "   'Create new trade route' and 'Add route to village'.",
+                COL_RED)
         else:
             lines = [f"✔  Found {len(self._parsed)} route(s):"]
             for rt in self._parsed:
                 res = ", ".join(f"{k}:{rt[k]}" for k in ("wood","clay","iron","crop") if rt.get(k,"0") != "0")
                 lines.append(f"  → {rt['target']}  travel:{rt['travel_minutes']}min  {res or 'no resources?'}  dep:{rt['departure_time']}")
-            self._preview.config(text="\n".join(lines), fg=COL_FULL_GREEN)
+            self._set_preview("\n".join(lines), COL_FULL_GREEN)
 
     def _import(self):
         if not self._parsed:
@@ -3741,6 +3890,25 @@ class ImportProductionDialog(tk.Toplevel):
                  font=FONT_SMALL, bg=BG_DARK, fg=TEXT_MUTED,
                  justify="left").pack(anchor="w", pady=(0, 8))
 
+        # Buttons — packed first so always visible
+        btn_row = tk.Frame(pad, bg=BG_DARK)
+        btn_row.pack(side="bottom", fill="x", pady=(8, 0))
+        styled_button(btn_row, "🔍  Parse",  command=self._parse,  accent=True).pack(side="left")
+        styled_button(btn_row, "✅  Import", command=self._import, small=True).pack(side="left", padx=6)
+        self._status = tk.Label(btn_row, text="", font=FONT_SMALL,
+                                bg=BG_DARK, fg=COL_FULL_GREEN)
+        self._status.pack(side="left", padx=8)
+        styled_button(btn_row, "Close", command=self.destroy, small=True).pack(side="right")
+
+        # Scrollable preview
+        prev_frame = tk.Frame(pad, bg=BORDER, height=90)
+        prev_frame.pack(side="bottom", fill="x", pady=(6, 0))
+        prev_frame.pack_propagate(False)
+        self._preview = tk.Text(prev_frame, bg=BG_MID, fg=COL_FULL_GREEN,
+                                font=FONT_SMALL, relief="flat", bd=4,
+                                state="disabled", wrap="word")
+        self._preview.pack(fill="both", expand=True)
+
         txt_frame = tk.Frame(pad, bg=BORDER)
         txt_frame.pack(fill="both", expand=True)
         self._txt = tk.Text(txt_frame, bg=BG_MID, fg=TEXT_PRIMARY,
@@ -3753,28 +3921,20 @@ class ImportProductionDialog(tk.Toplevel):
         sb.pack(side="right", fill="y")
         self._txt.pack(fill="both", expand=True)
 
-        self._preview = tk.Label(pad, text="", font=FONT_SMALL,
-                                 bg=BG_DARK, fg=COL_FULL_GREEN, justify="left",
-                                 wraplength=640)
-        self._preview.pack(anchor="w", pady=(6, 0))
-
-        btn_row = tk.Frame(pad, bg=BG_DARK)
-        btn_row.pack(fill="x", pady=(8, 0))
-        styled_button(btn_row, "🔍  Parse",  command=self._parse,  accent=True).pack(side="left")
-        styled_button(btn_row, "✅  Import", command=self._import, small=True).pack(side="left", padx=6)
-        self._status = tk.Label(btn_row, text="", font=FONT_SMALL,
-                                bg=BG_DARK, fg=COL_FULL_GREEN)
-        self._status.pack(side="left", padx=8)
-        styled_button(btn_row, "Close", command=self.destroy, small=True).pack(side="right")
+    def _set_preview(self, text, fg=None):
+        self._preview.config(state="normal")
+        self._preview.delete("1.0", "end")
+        self._preview.insert("end", text)
+        if fg: self._preview.config(fg=fg)
+        self._preview.config(state="disabled")
 
     def _parse(self):
         raw = self._txt.get("1.0", "end")
         self._parsed = parse_production_overview(raw)
         if not self._parsed:
-            self._preview.config(
-                text="❌  No production data found. Make sure the paste includes the "
-                     "production table with village names and numeric values.",
-                fg=COL_RED)
+            self._set_preview(
+                "❌  No production data found. Make sure the paste includes the "
+                "production table with village names and numeric values.", COL_RED)
             return
 
         lines = [f"✔  Found {len(self._parsed)} village(s):"]
@@ -3782,13 +3942,12 @@ class ImportProductionDialog(tk.Toplevel):
             lines.append(f"  {vname}:  🌲{prod['wood']:,}  🧱{prod['clay']:,}"
                          f"  ⚙{prod['iron']:,}  🌾{prod['crop']:,}")
 
-        # Warn about unmatched names
         unmatched = [vn for vn in self._parsed if vn not in self.village_names]
         if unmatched:
             lines.append(f"⚠  {len(unmatched)} name(s) not in your village list: "
                          + ", ".join(unmatched))
 
-        self._preview.config(text="\n".join(lines), fg=COL_FULL_GREEN)
+        self._set_preview("\n".join(lines), COL_FULL_GREEN)
 
     def _import(self):
         if not self._parsed:
@@ -3917,6 +4076,25 @@ class ReinforcementsImportDialog(tk.Toplevel):
         tk.Label(pad, text=desc, font=FONT_SMALL, bg=BG_DARK, fg=TEXT_MUTED,
                  justify="left").pack(anchor="w", pady=(0, 8))
 
+        # Buttons — packed first so always visible
+        btn_row = tk.Frame(pad, bg=BG_DARK)
+        btn_row.pack(side="bottom", fill="x", pady=(8, 0))
+        styled_button(btn_row, "🔍  Parse",  command=self._parse,  accent=True).pack(side="left")
+        styled_button(btn_row, "✅  Import", command=self._import, small=True).pack(side="left", padx=6)
+        self._status = tk.Label(btn_row, text="", font=FONT_SMALL,
+                                bg=BG_DARK, fg=COL_FULL_GREEN)
+        self._status.pack(side="left", padx=8)
+        styled_button(btn_row, "Close", command=self.destroy, small=True).pack(side="right")
+
+        # Scrollable preview
+        prev_frame = tk.Frame(pad, bg=BORDER, height=90)
+        prev_frame.pack(side="bottom", fill="x", pady=(6, 0))
+        prev_frame.pack_propagate(False)
+        self._preview = tk.Text(prev_frame, bg=BG_MID, fg=COL_FULL_GREEN,
+                                font=("Consolas", 8), relief="flat", bd=4,
+                                state="disabled", wrap="word")
+        self._preview.pack(fill="both", expand=True)
+
         txt_frame = tk.Frame(pad, bg=BORDER)
         txt_frame.pack(fill="both", expand=True)
         self._txt = tk.Text(txt_frame, bg=BG_MID, fg=TEXT_PRIMARY,
@@ -3929,19 +4107,12 @@ class ReinforcementsImportDialog(tk.Toplevel):
         sb.pack(side="right", fill="y")
         self._txt.pack(fill="both", expand=True)
 
-        self._preview = tk.Label(pad, text="", font=("Consolas", 8),
-                                 bg=BG_DARK, fg=COL_FULL_GREEN,
-                                 justify="left", wraplength=660, anchor="w")
-        self._preview.pack(fill="x", pady=(6, 0))
-
-        btn_row = tk.Frame(pad, bg=BG_DARK)
-        btn_row.pack(fill="x", pady=(8, 0))
-        styled_button(btn_row, "🔍  Parse",  command=self._parse,  accent=True).pack(side="left")
-        styled_button(btn_row, "✅  Import", command=self._import, small=True).pack(side="left", padx=6)
-        self._status = tk.Label(btn_row, text="", font=FONT_SMALL,
-                                bg=BG_DARK, fg=COL_FULL_GREEN)
-        self._status.pack(side="left", padx=8)
-        styled_button(btn_row, "Close", command=self.destroy, small=True).pack(side="right")
+    def _set_preview(self, text, fg=None):
+        self._preview.config(state="normal")
+        self._preview.delete("1.0", "end")
+        self._preview.insert("end", text)
+        if fg: self._preview.config(fg=fg)
+        self._preview.config(state="disabled")
 
     def _parse(self):
         raw = self._txt.get("1.0", "end")
@@ -3968,7 +4139,7 @@ class ReinforcementsImportDialog(tk.Toplevel):
                      f"Tribe: {self.tribe}  |  All parsed: {len(all_parsed)}"
                      + (f"  |  Source filter: '{self.village_name}'" if self.village_name else "") + "\n"
                      "First 30 cleaned lines seen:\n" + "\n".join(reinf_lines))
-            self._preview.config(text=debug, fg=COL_RED)
+            self._set_preview(debug, COL_RED)
             return
 
         lines_out = [f"✔  Found {len(self._parsed)} block(s){filtered_note}:"]
@@ -3976,7 +4147,7 @@ class ReinforcementsImportDialog(tk.Toplevel):
             nonzero = {k: v for k, v in r["troops"].items() if v}
             lines_out.append(f"  {r['source_village']} → {r['target_village']}:  "
                              + ("  ".join(f"{k}: {v}" for k, v in nonzero.items()) or "all zero"))
-        self._preview.config(text="\n".join(lines_out), fg=COL_FULL_GREEN)
+        self._set_preview("\n".join(lines_out), COL_FULL_GREEN)
 
     def _import(self):
         if not self._parsed:
@@ -4142,6 +4313,26 @@ class SupportTroopsImportDialog(tk.Toplevel):
                  justify="left").pack(anchor="w", pady=(0, 8))
 
         txt_frame = tk.Frame(pad, bg=BORDER)
+
+        # Buttons — packed first so always visible
+        btn_row = tk.Frame(pad, bg=BG_DARK)
+        btn_row.pack(side="bottom", fill="x", pady=(8, 0))
+        styled_button(btn_row, "🔍  Parse",  command=self._parse,  accent=True).pack(side="left")
+        styled_button(btn_row, "✅  Import", command=self._import, small=True).pack(side="left", padx=6)
+        self._status = tk.Label(btn_row, text="", font=FONT_SMALL,
+                                bg=BG_DARK, fg=COL_FULL_GREEN)
+        self._status.pack(side="left", padx=8)
+        styled_button(btn_row, "Close", command=self.destroy, small=True).pack(side="right")
+
+        # Scrollable preview
+        prev_frame = tk.Frame(pad, bg=BORDER, height=90)
+        prev_frame.pack(side="bottom", fill="x", pady=(6, 0))
+        prev_frame.pack_propagate(False)
+        self._preview = tk.Text(prev_frame, bg=BG_MID, fg=COL_FULL_GREEN,
+                                font=("Consolas", 8), relief="flat", bd=4,
+                                state="disabled", wrap="word")
+        self._preview.pack(fill="both", expand=True)
+
         txt_frame.pack(fill="both", expand=True)
         self._txt = tk.Text(txt_frame, bg=BG_MID, fg=TEXT_PRIMARY,
                             insertbackground=ACCENT, font=("Consolas", 9),
@@ -4153,19 +4344,12 @@ class SupportTroopsImportDialog(tk.Toplevel):
         sb.pack(side="right", fill="y")
         self._txt.pack(fill="both", expand=True)
 
-        self._preview = tk.Label(pad, text="", font=("Consolas", 8),
-                                 bg=BG_DARK, fg=COL_FULL_GREEN,
-                                 justify="left", wraplength=660, anchor="w")
-        self._preview.pack(fill="x", pady=(6, 0))
-
-        btn_row = tk.Frame(pad, bg=BG_DARK)
-        btn_row.pack(fill="x", pady=(8, 0))
-        styled_button(btn_row, "🔍  Parse",  command=self._parse,  accent=True).pack(side="left")
-        styled_button(btn_row, "✅  Import", command=self._import, small=True).pack(side="left", padx=6)
-        self._status = tk.Label(btn_row, text="", font=FONT_SMALL,
-                                bg=BG_DARK, fg=COL_FULL_GREEN)
-        self._status.pack(side="left", padx=8)
-        styled_button(btn_row, "Close", command=self.destroy, small=True).pack(side="right")
+    def _set_preview(self, text, fg=None):
+        self._preview.config(state="normal")
+        self._preview.delete("1.0", "end")
+        self._preview.insert("end", text)
+        if fg: self._preview.config(fg=fg)
+        self._preview.config(state="disabled")
 
     def _parse(self):
         raw = self._txt.get("1.0", "end")
@@ -4176,18 +4360,18 @@ class SupportTroopsImportDialog(tk.Toplevel):
                 return _re.sub(r'[\u200e\u200f\u202a-\u202e\u2066-\u2069\xad\xa0,]', '', s).strip()
             lines = raw.splitlines()
             preview_lines = [f"  [{i}] {repr(_cl(ln))}" for i, ln in enumerate(lines[:25]) if _cl(ln)]
-            self._preview.config(
-                text="❌  No support troops found. Make sure you pasted from\n"
-                     "Rally Point → Overview → Troops in this village.\n\n"
-                     "First 25 lines:\n" + "\n".join(preview_lines),
-                fg=COL_RED)
+            self._set_preview(
+                "❌  No support troops found. Make sure you pasted from\n"
+                "Rally Point → Overview → Troops in this village.\n\n"
+                "First 25 lines:\n" + "\n".join(preview_lines),
+                COL_RED)
             return
         lines_out = [f"✔  Found {len(self._parsed)} reinforcement(s):"]
         for r in self._parsed:
             nonzero = {k: v for k, v in r["troops"].items() if v}
             lines_out.append(f"  from {r['source_village']}:  "
                              + ("  ".join(f"{k}: {v}" for k, v in nonzero.items()) or "all zero"))
-        self._preview.config(text="\n".join(lines_out), fg=COL_FULL_GREEN)
+        self._set_preview("\n".join(lines_out), COL_FULL_GREEN)
 
     def _import(self):
         if not self._parsed:
@@ -4235,6 +4419,187 @@ class SupportTroopsImportDialog(tk.Toplevel):
 
         self._status.config(text="✅  Support troops imported.", fg=COL_FULL_GREEN)
         self._parsed = []
+        if self._on_complete:
+            self._on_complete()
+
+
+# ─── Village Buildings HTML parser & import dialog ────────────────────────────
+
+# GID → building name mapping for resource fields (dorf1.php)
+_GID_TO_RESOURCE = {
+    "1": "Woodcutter",
+    "2": "Clay Pit",
+    "3": "Iron Mine",
+    "4": "Cropland",
+}
+
+def parse_village_buildings_html(html_text: str) -> dict:
+    """
+    Parse the HTML body copied from browser DevTools (Inspect → Copy element on <body>).
+
+    Handles both Travian page types in a single pass:
+
+    dorf1.php  (resource field view)
+    ─────────────────────────────────
+    <a class="... resourceField gidX buildingSlotN ..." data-aid="N" data-gid="X">
+        <div class="labelLayer">LEVEL</div>
+    </a>
+    GID 1=Woodcutter, 2=Clay Pit, 3=Iron Mine, 4=Cropland
+
+    dorf2.php  (city building view)
+    ─────────────────────────────────
+    <div class="buildingSlot..." data-aid="N" data-name="BuildingName">
+        <a ... data-level="N"> ...
+    </div>
+
+    Returns {slot_id (int): {"building": str, "level": int}}, or {} if nothing found.
+    """
+    import re as _re
+
+    result = {}
+
+    # ── 1. Resource fields (dorf1) ────────────────────────────────────────────
+    # <a class="... resourceField gidX buildingSlotN ..." data-aid="N" data-gid="X">
+    #   <div class="labelLayer">LEVEL</div>
+    # </a>
+    rf_pat = _re.compile(
+        r'<a[^>]+class="[^"]*\bresourceField\b[^"]*"[^>]*'
+        r'data-aid="(\d+)"[^>]*data-gid="(\d+)"[^>]*>'
+        r'.*?<div[^>]+class="labelLayer"[^>]*>(\d+)<\/div>',
+        _re.IGNORECASE | _re.DOTALL
+    )
+    for m in rf_pat.finditer(html_text):
+        aid, gid, level = m.group(1), m.group(2), m.group(3)
+        name = _GID_TO_RESOURCE.get(gid, f"Resource gid{gid}")
+        result[int(aid)] = {"building": name, "level": int(level)}
+
+    # ── 2. City buildings (dorf2) ─────────────────────────────────────────────
+    # <div class="buildingSlot..." data-aid="N" data-name="BuildingName">
+    #   <a ... data-level="N"> ...
+    # </div>
+    slot_pat  = _re.compile(
+        r'<div[^>]+class="[^"]*\bbuildingSlot\b[^"]*"[^>]*'
+        r'data-aid="(\d+)"[^>]*'
+        r'data-name="([^"]+)"[^>]*>',
+        _re.IGNORECASE | _re.DOTALL
+    )
+    level_pat = _re.compile(r'data-level="(\d+)"', _re.IGNORECASE)
+
+    for m in slot_pat.finditer(html_text):
+        aid      = int(m.group(1))
+        bld_name = m.group(2).strip()
+        # Look for data-level in the next 600 chars after this opening tag
+        snippet  = html_text[m.end(): m.end() + 600]
+        lv_m     = level_pat.search(snippet)
+        level    = int(lv_m.group(1)) if lv_m else 0
+        result[aid] = {"building": bld_name, "level": level}
+
+    return result
+
+
+class ImportBuildingsHTMLDialog(tk.Toplevel):
+    """Paste the <body> HTML from browser DevTools to import village building levels."""
+
+    def __init__(self, master, server, account, village_name, on_complete=None):
+        super().__init__(master)
+        self.server       = server
+        self.account      = account
+        self.village_name = village_name
+        self._on_complete = on_complete
+        self._parsed      = {}
+        self.title(f"Import Buildings — {village_name}")
+        self.configure(bg=BG_DARK)
+        self.geometry("740x580")
+        self.grab_set()
+        self._build()
+
+    def _build(self):
+        pad = tk.Frame(self, bg=BG_DARK)
+        pad.pack(fill="both", expand=True, padx=20, pady=16)
+
+        tk.Label(pad, text="Import Village Buildings from HTML",
+                 font=FONT_HEADING, bg=BG_DARK, fg=TEXT_PRIMARY).pack(anchor="w", pady=(0, 4))
+        tk.Label(pad,
+                 text="Works with BOTH Travian page types:\n"
+                      "  • Resource fields (dorf1.php)  — paste the full body HTML\n"
+                      "  • City buildings  (dorf2.php)  — paste the full body HTML\n"
+                      "In browser: right-click → Inspect → right-click <body> → Copy element.",
+                 font=FONT_SMALL, bg=BG_DARK, fg=TEXT_MUTED,
+                 justify="left").pack(anchor="w", pady=(0, 8))
+
+        # Buttons first — always visible
+        btn_row = tk.Frame(pad, bg=BG_DARK)
+        btn_row.pack(side="bottom", fill="x", pady=(8, 0))
+        styled_button(btn_row, "🔍  Parse",  command=self._parse,  accent=True).pack(side="left")
+        styled_button(btn_row, "✅  Import", command=self._import, small=True).pack(side="left", padx=6)
+        self._status = tk.Label(btn_row, text="", font=FONT_SMALL,
+                                bg=BG_DARK, fg=COL_FULL_GREEN)
+        self._status.pack(side="left", padx=8)
+        styled_button(btn_row, "Close", command=self.destroy, small=True).pack(side="right")
+
+        # Scrollable preview
+        prev_frame = tk.Frame(pad, bg=BORDER, height=110)
+        prev_frame.pack(side="bottom", fill="x", pady=(6, 0))
+        prev_frame.pack_propagate(False)
+        self._preview = tk.Text(prev_frame, bg=BG_MID, fg=COL_FULL_GREEN,
+                                font=("Consolas", 8), relief="flat", bd=4,
+                                state="disabled", wrap="word")
+        self._preview.pack(fill="both", expand=True)
+
+        # Text input
+        txt_frame = tk.Frame(pad, bg=BORDER)
+        txt_frame.pack(fill="both", expand=True)
+        self._txt = tk.Text(txt_frame, bg=BG_MID, fg=TEXT_PRIMARY,
+                            insertbackground=ACCENT, font=("Consolas", 8),
+                            relief="flat", bd=6, wrap="none",
+                            selectbackground=BG_HOVER)
+        sb_y = tk.Scrollbar(txt_frame, command=self._txt.yview,
+                            bg=BG_MID, troughcolor=BG_DARK, relief="flat", bd=0, width=8)
+        sb_x = tk.Scrollbar(txt_frame, orient="horizontal", command=self._txt.xview,
+                            bg=BG_MID, troughcolor=BG_DARK, relief="flat", bd=0, width=8)
+        self._txt.config(yscrollcommand=sb_y.set, xscrollcommand=sb_x.set)
+        sb_y.pack(side="right", fill="y")
+        sb_x.pack(side="bottom", fill="x")
+        self._txt.pack(fill="both", expand=True)
+
+    def _set_preview(self, text, fg=None):
+        self._preview.config(state="normal")
+        self._preview.delete("1.0", "end")
+        self._preview.insert("end", text)
+        if fg: self._preview.config(fg=fg)
+        self._preview.config(state="disabled")
+
+    def _parse(self):
+        raw = self._txt.get("1.0", "end")
+        self._parsed = parse_village_buildings_html(raw)
+        if not self._parsed:
+            self._set_preview(
+                "❌  No building slots found.\n"
+                "Supported pages: dorf1.php (resource fields) and dorf2.php (city buildings).\n"
+                "Make sure you copied the full <body> element:\n"
+                "  Browser → F12 → Elements → right-click <body> → Copy element.",
+                COL_RED)
+            return
+        lines = [f"✔  Found {len(self._parsed)} building slot(s):"]
+        for sid in sorted(self._parsed):
+            b = self._parsed[sid]
+            lines.append(f"  Slot {sid:>2d}:  {b['building']:<28s}  Level {b['level']}")
+        self._set_preview("\n".join(lines), COL_FULL_GREEN)
+
+    def _import(self):
+        if not self._parsed:
+            self._parse()
+        if not self._parsed:
+            return
+        # Merge with existing — keep existing slots not present in HTML parse
+        existing = load_current_buildings(self.server, self.account, self.village_name)
+        merged = dict(existing)
+        merged.update(self._parsed)
+        save_current_buildings(self.server, self.account, self.village_name, merged)
+        self._status.config(
+            text=f"✅  Imported {len(self._parsed)} slot(s).",
+            fg=COL_FULL_GREEN)
+        self._parsed = {}
         if self._on_complete:
             self._on_complete()
 
@@ -4549,6 +4914,25 @@ class ImportFarmStatsDialog(tk.Toplevel):
                  font=FONT_SMALL, bg=BG_DARK, fg=TEXT_MUTED,
                  justify="left").pack(anchor="w", pady=(0, 8))
 
+        # Buttons — packed first so always visible
+        btn_row = tk.Frame(pad, bg=BG_DARK)
+        btn_row.pack(side="bottom", fill="x", pady=(8, 0))
+        styled_button(btn_row, "🔍  Parse",  command=self._parse,  accent=True).pack(side="left")
+        styled_button(btn_row, "✅  Import", command=self._import, small=True).pack(side="left", padx=6)
+        self._status = tk.Label(btn_row, text="", font=FONT_SMALL,
+                                bg=BG_DARK, fg=COL_FULL_GREEN)
+        self._status.pack(side="left", padx=8)
+        styled_button(btn_row, "Close", command=self.destroy, small=True).pack(side="right")
+
+        # Scrollable preview — packed second (side=bottom)
+        preview_frame = tk.Frame(pad, bg=BORDER, height=110)
+        preview_frame.pack(side="bottom", fill="x", pady=(6, 0))
+        preview_frame.pack_propagate(False)
+        self._preview = tk.Text(preview_frame, bg=BG_MID, fg=COL_FULL_GREEN,
+                                font=("Consolas", 8), relief="flat", bd=4,
+                                state="disabled", wrap="word")
+        self._preview.pack(fill="both", expand=True)
+
         txt_frame = tk.Frame(pad, bg=BORDER)
         txt_frame.pack(fill="both", expand=True)
         self._txt = tk.Text(txt_frame, bg=BG_MID, fg=TEXT_PRIMARY,
@@ -4560,23 +4944,6 @@ class ImportFarmStatsDialog(tk.Toplevel):
         self._txt.config(yscrollcommand=sb.set)
         sb.pack(side="right", fill="y")
         self._txt.pack(fill="both", expand=True)
-
-        preview_frame = tk.Frame(pad, bg=BORDER, height=100)
-        preview_frame.pack(fill="x", pady=(6, 0))
-        preview_frame.pack_propagate(False)
-        self._preview = tk.Text(preview_frame, bg=BG_MID, fg=COL_FULL_GREEN,
-                                font=("Consolas", 8), relief="flat", bd=4,
-                                state="disabled", wrap="word", height=6)
-        self._preview.pack(fill="both", expand=True)
-
-        btn_row = tk.Frame(pad, bg=BG_DARK)
-        btn_row.pack(fill="x", pady=(8, 0))
-        styled_button(btn_row, "🔍  Parse",  command=self._parse,  accent=True).pack(side="left")
-        styled_button(btn_row, "✅  Import", command=self._import, small=True).pack(side="left", padx=6)
-        self._status = tk.Label(btn_row, text="", font=FONT_SMALL,
-                                bg=BG_DARK, fg=COL_FULL_GREEN)
-        self._status.pack(side="left", padx=8)
-        styled_button(btn_row, "Close", command=self.destroy, small=True).pack(side="right")
 
     def _set_preview(self, text, color=None):
         self._preview.config(state="normal")
@@ -4640,6 +5007,9 @@ class MainApp(tk.Frame):
         self.status = self.account_data.get("status", "active")
         self.speed  = self.account_data.get("speed", "1x")
         self.is_archived = (self.status == "archived")
+
+        _alliance = load_alliance_info(server, account)
+        self.recruitment_lvl = int(_alliance.get("Recruitment", 0))
 
         self.pack(fill="both", expand=True)
         self._build()
@@ -4949,11 +5319,39 @@ class MainApp(tk.Frame):
 
             tmpl_opts = ["— None —"] + templates
 
-            for i, v in enumerate(cur_villages):
-                r      = i + 2
-                bg     = BG_MID if i % 2 == 0 else BG_PANEL
-                vname  = v["village_name"]
-                is_cap = v.get("is_capital", "") == "1"
+            # Group villages: ungrouped first, then by group name in order of first appearance
+            from collections import OrderedDict
+            grouped = OrderedDict()
+            grouped[""] = []   # ungrouped
+            for v in cur_villages:
+                g = v.get("group", "") or ""
+                if g and g not in grouped:
+                    grouped[g] = []
+                grouped[g].append(v)
+
+            row_idx = 2   # starts after header + separator
+            for group_name, gvillages in grouped.items():
+                if not gvillages:
+                    continue
+                # Group header row (skip for ungrouped)
+                if group_name:
+                    tk.Frame(tbl, bg=BORDER, height=1).grid(
+                        row=row_idx, column=0, columnspan=n_cols,
+                        sticky="ew", pady=(2, 0))
+                    row_idx += 1
+                    tk.Label(tbl, text=f"  {group_name}",
+                             font=("Consolas", 8, "bold"),
+                             bg=BG_DARK, fg=ACCENT_DIM,
+                             anchor="w", padx=6, pady=2
+                             ).grid(row=row_idx, column=0, columnspan=n_cols,
+                                    sticky="ew", padx=(0, 1), pady=(0, 1))
+                    row_idx += 1
+
+                for vi, v in enumerate(gvillages):
+                    r      = row_idx
+                    bg     = BG_MID if vi % 2 == 0 else BG_PANEL
+                    vname  = v["village_name"]
+                    is_cap = v.get("is_capital", "") == "1"
 
                 # Village name
                 tk.Label(tbl, text=("👑 " if is_cap else "   ") + vname,
@@ -5007,6 +5405,8 @@ class MainApp(tk.Frame):
                     if self.is_archived:
                         cb2.config(state="disabled")
                     cb2.grid(row=r, column=ci, sticky="nsew", padx=(0,1), pady=(0,1))
+
+                row_idx += 1   # one row per village
 
         # Wire the save button's command now that _save_roles is defined
         if not self.is_archived:
@@ -5312,6 +5712,9 @@ class MainApp(tk.Frame):
                 except ValueError:
                     info_new[bt] = 0
             save_alliance_info(self.server, self.account, info_new)
+            # Refresh cached alliance values so queue costs update immediately
+            self.recruitment_lvl = int(info_new.get("Recruitment", 0))
+            self.commerce_lvl    = int(info_new.get("Commerce",    0))
             status_lbl.config(text="✓ Saved", fg=COL_FULL_GREEN)
             fade_label(status_lbl, after_ms=3000)
 
@@ -6196,6 +6599,8 @@ class MainApp(tk.Frame):
         except (ValueError, AttributeError):
             speed_mult = 1.0
 
+        recruitment_pct = get_recruitment_pct(self.recruitment_lvl, self.speed)
+
         upkeep_map = {}
         troops_csv = DATA_DIR / "general" / "1x" / "troops.csv"
         if troops_csv.exists():
@@ -6290,7 +6695,7 @@ class MainApp(tk.Frame):
                 if bname not in PRODUCTION_BUILDINGS: continue
                 tname = saved_q.get(bname,"")
                 if not tname: continue
-                c = calc_queue_hourly_cost(bname, blvl, tname, troop_stats, speed_mult)
+                c = calc_queue_hourly_cost(bname, blvl, tname, troop_stats, speed_mult, recruitment_pct)
                 for k in queue_cost: queue_cost[k] -= c[k]
 
             net = {k: prod[k]+trade[k]+celebration[k]+consumption[k]+queue_cost[k]
@@ -7299,6 +7704,8 @@ class MainApp(tk.Frame):
         except (ValueError, AttributeError):
             speed_mult = 1.0
 
+        recruitment_pct = get_recruitment_pct(self.recruitment_lvl, self.speed)
+
         scroll_outer, inner = scrollable_frame(outer)
         scroll_outer.pack(fill="both", expand=True, padx=24, pady=(0, 16))
 
@@ -7329,7 +7736,7 @@ class MainApp(tk.Frame):
             tname = queue_vars[bname].get()
             blvl  = present[bname]
             if tname and tname != "— None —":
-                c = calc_queue_hourly_cost(bname, blvl, tname, troop_stats, speed_mult)
+                c = calc_queue_hourly_cost(bname, blvl, tname, troop_stats, speed_mult, recruitment_pct)
                 txt = (f"🌲{c['wood']:,}  🧱{c['clay']:,}  "
                        f"⚙{c['iron']:,}  🌾{c['crop']:,}  /hr")
             else:
@@ -7542,6 +7949,8 @@ class MainApp(tk.Frame):
         except (ValueError, AttributeError):
             speed_mult = 1.0
 
+        recruitment_pct = get_recruitment_pct(self.recruitment_lvl, self.speed)
+
         queue_cost = {"wood": 0, "clay": 0, "iron": 0, "crop": 0}
         for slot in current_blds.values():
             bname = slot.get("building", "")
@@ -7551,7 +7960,7 @@ class MainApp(tk.Frame):
             tname = saved_queues.get(bname, "")
             if not tname:
                 continue
-            c = calc_queue_hourly_cost(bname, blvl, tname, troop_stats, speed_mult)
+            c = calc_queue_hourly_cost(bname, blvl, tname, troop_stats, speed_mult, recruitment_pct)
             for k in queue_cost:
                 queue_cost[k] -= c[k]
 

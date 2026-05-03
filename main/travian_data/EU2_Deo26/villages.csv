@@ -1,8 +1,9 @@
 village_name,coord_x,coord_y,res_wood,res_clay,res_iron,res_crop,applied_template,group,is_capital
-04 Beetletun,99,111,4,4,4,6,,(0/20),
-05 Thunderhead Keep,103,116,4,4,4,6,,(0/20),
-06 Ebonhawke,101,116,4,4,4,6,,Under Construction,
-01 Dinivity's Reach,102,117,4,4,4,6,,(0/20),1
-03 Rata Sum,102,116,4,4,4,6,,(0/20),
-02 Fort Trinity,101,117,4,4,4,6,,(0/20),
-00 Shaemoor,13,70,4,4,4,6,,(0/20),
+05 Thunderhead Keep,103,116,4,4,4,6,,Under Construction,
+06 Ebonhawke,101,116,4,4,4,6,Anvil,Under Construction,
+07 Lowland Shore,104,108,4,4,4,6,,Under Construction,
+01 Dinivity's Reach,102,117,4,4,4,6,,Cap n Storage,1
+03 Rata Sum,102,116,4,4,4,6,,Cap n Storage,
+02 Fort Trinity,101,117,4,4,4,6,,Raider,
+00 Shaemoor,13,70,4,4,4,6,,Feeders,
+04 Beetletun,99,111,4,4,4,6,,Feeders,

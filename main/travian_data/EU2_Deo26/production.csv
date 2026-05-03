@@ -1,10 +1,11 @@
 village_name,wood,clay,iron,crop
 00 Shaemoor,2100,1750,1750,2991
-01 Dinivity's Reach,350,350,350,41052
+01 Dinivity's Reach,350,350,350,49145
 02 Ebonhawke,490,490,385,593
-02 Fort Trinity,1750,1750,1750,2460
+02 Fort Trinity,1750,1750,1750,2455
 03 Ebonhawke,490,525,350,666
 04 Beetletun,1750,2625,1313,2929
-03 Rata Sum,1750,1313,1750,3051
-05 Thunderhead Keep,2123,2998,2560,3265
-06 Ebonhawke,1750,1750,1750,2524
+03 Rata Sum,2100,1313,1750,3021
+05 Thunderhead Keep,2303,3178,2740,3353
+06 Ebonhawke,1750,2100,1750,2349
+07 Lowland Shore,946,490,490,1412

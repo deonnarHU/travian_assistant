@@ -1,5 +1,6 @@
 slot_id,building,level
 1,Barracks,20
 2,Stable,20
-19,Rally Point,0
+3,Townhall,10
+19,Rally Point,1
 20,Palisade,0

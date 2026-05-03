@@ -1,4 +1,41 @@
 slot_id,building,level
-1,Townhall,10
-19,Rally Point,0
-20,Palisade,0
+1,Woodcutter,10
+2,Cropland,10
+3,Woodcutter,10
+4,Iron Mine,10
+5,Clay Pit,10
+6,Clay Pit,10
+7,Iron Mine,10
+8,Cropland,10
+9,Cropland,10
+10,Iron Mine,10
+11,Iron Mine,10
+12,Cropland,10
+13,Cropland,10
+14,Woodcutter,10
+15,Cropland,10
+16,Clay Pit,10
+17,Woodcutter,10
+18,Clay Pit,10
+19,Warehouse,17
+20,Grain Mill,5
+21,Sawmill,5
+22,Brickyard,5
+23,Smithy,4
+24,Granary,15
+25,Academy,16
+26,Main Building,20
+27,Marketplace,20
+28,Town Hall,10
+29,Iron Foundry,5
+30,Residence,10
+31,Bakery,5
+32,Hospital,2
+33,Barracks,7
+34,Embassy,10
+35,Trade Office,11
+36,Hero's Mansion,10
+37,Cranny,10
+38,Stable,12
+39,Rally Point,5
+40,Palisade,8
