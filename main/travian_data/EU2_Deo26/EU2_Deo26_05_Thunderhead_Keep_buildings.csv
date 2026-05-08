@@ -1,4 +1,21 @@
 slot_id,building,level
-21,Townhall,10
-39,Rally Point,0
-40,Palisade,0
+19,Warehouse,17
+20,Grain Mill,5
+21,Brickyard,5
+22,Sawmill,5
+23,Smithy,5
+24,Granary,16
+25,Academy,15
+26,Main Building,20
+27,Marketplace,12
+28,Town Hall,10
+29,Iron Foundry,5
+30,Residence,10
+31,Bakery,4
+33,Barracks,20
+35,Hospital,2
+36,Stable,20
+37,Tournament Square,5
+38,Workshop,15
+39,Rally Point,15
+40,Palisade,1

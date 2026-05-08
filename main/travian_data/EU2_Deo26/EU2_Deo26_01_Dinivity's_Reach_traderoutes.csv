@@ -1,3 +1,2 @@
 route_id,target,wood,clay,iron,crop,merchants,frequency_min,departure_time,travel_minutes,active
-1,02 Fort Trinity,0,0,0,2000,1,60,23:30,2,1
-2,03 Rata Sum,0,0,0,18500,8,60,23:00,2,1
+2,03 Rata Sum,0,0,0,24000,48,60,23:00,2,1

@@ -69,7 +69,7 @@ FONT_TINY    = ("Consolas", 8)
 _UNIVERSAL_BUILDINGS = [
     "Main Building", "Warehouse", "Granary", "Marketplace", "Embassy",
     "Barracks", "Stable", "Workshop", "Academy", "Smithy", "Armoury",
-    "Cranny", "Townhall", "Residence", "Palace", "Tournament Square",
+    "Cranny", "Town Hall", "Residence", "Palace", "Tournament Square",
     "Trade Office", "Hero's Mansion", "Sawmill", "Brickyard",
     "Iron Foundry", "Flour Mill", "Bakery", "Great Warehouse", "Great Granary",
     "Great Barracks", "Great Stable", "Stonemason", "Treasury",
@@ -6680,7 +6680,7 @@ class MainApp(tk.Frame):
             current_blds = load_current_buildings(self.server, self.account, vname)
             th_level = 0
             for slot in current_blds.values():
-                if slot.get("building","").lower() == "townhall":
+                if slot.get("building","").lower() == "town hall":
                     try: th_level = int(slot.get("level",0))
                     except ValueError: pass
                     break
@@ -7883,7 +7883,7 @@ class MainApp(tk.Frame):
         current_buildings = load_current_buildings(self.server, self.account, village)
         th_level = 0
         for slot_data in current_buildings.values():
-            if slot_data.get("building", "").lower() == "townhall":
+            if slot_data.get("building", "").lower() == "town hall":
                 try:
                     th_level = int(slot_data.get("level", 0))
                 except ValueError:

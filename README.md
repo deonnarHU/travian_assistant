@@ -23,18 +23,24 @@ Fixes:
 - fixed a bug where alliance bonuses were not calculated into troop production times
 - fixed a bug where after the response info of the initial parsing buttons are not visible
 - fixed a bug where on the account overview page only one village was visible per village groups
+- fixed a bug where parsed villages couldnt calculate party costs
 
 Improvements:
 - added a grand total "all resourses sum" number to the net production table
 - added a village building and resource field parser
 
+
+---------------------------------------------------------
+Later releases:
+
 Errors found:
 - found an error where in the buildings menu the "sort to plan" deletes entries - need to check further
+- found a bug where trade routes are improperly processed if the frequency is under 1 hour
 
 
 Improvements still needed:
 - add a delete village template button
-- set the field type distribution on the right side from the parsed res field data
+- set the resource field type distribution on the right side from the parsed res field data
 - add an "inactive wh/granary fill time" table. Inactive means no new queues or parties, dont count those in, but calculate with trade routes and troops present
 - add a "troops in villages" page parser, calculate crop consumption per villa from that - !!!IMPORTANT!!! - multi tribe troops (+ animals) are possible, that could break shit
 - add a "time until accountwide negative crop" calculation from current net production + queues
